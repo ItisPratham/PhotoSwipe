@@ -1,0 +1,32 @@
+name: PhotoSwipe
+options:
+  bundleIdPrefix: com.phototinder
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_LANGUAGE: en
+
+targets:
+  PhotoSwipe:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: PhotoSwipe
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: PhotoSwipe/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.phototinder.PhotoSwipe
+        PRODUCT_NAME: PhotoSwipe
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES

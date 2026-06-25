@@ -1,0 +1,37 @@
+# Xcode / Swift .gitignore
+# Based on github/gitignore Swift + Xcode templates
+
+## User settings & state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+## Build artifacts
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Generated project (XcodeGen produces this from project.yml)
+*.xcodeproj
+
+## Swift Package Manager
+.build/
+.swiftpm/
+
+## CocoaPods / Carthage (unused, but ignore if added later)
+Pods/
+Carthage/Build/
+
+## Editor / tooling local state
+.claude/
+
+## macOS
+.DS_Store
+
+## Misc
+*.swp
