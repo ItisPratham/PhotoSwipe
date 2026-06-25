@@ -1,4 +1,12 @@
 name: PhotoSwipe
+
+# Non-compiled files surfaced in the Xcode navigator (repo-root docs/config).
+fileGroups:
+  - PhotoSwipe_Instructions.md
+  - README.md
+  - project.yml
+  - .gitignore
+
 options:
   bundleIdPrefix: com.phototinder
   deploymentTarget:

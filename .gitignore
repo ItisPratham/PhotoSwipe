@@ -16,8 +16,8 @@ DerivedData/
 *.dSYM.zip
 *.dSYM
 
-## Generated project (XcodeGen produces this from project.yml)
-*.xcodeproj
+# NOTE: The project is Xcode-managed and committed (see README). We still ignore
+# per-user state below; only the shared project structure is tracked.
 
 ## Swift Package Manager
 .build/

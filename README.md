@@ -22,17 +22,20 @@ batch delete. Deletion is never per-swipe.
 
 ## Setup
 
-This project uses [XcodeGen](https://github.com/yonik/XcodeGen) so the `.xcodeproj`
-is generated from `project.yml` (and is git-ignored).
+The Xcode project is committed and Xcode-managed — just open it:
 
 ```sh
-brew install xcodegen      # one-time
-xcodegen generate          # produces PhotoSwipe.xcodeproj
 open PhotoSwipe.xcodeproj
 ```
 
 Then in Xcode: select the **PhotoSwipe** target → **Signing & Capabilities** →
 set your **Team**, and run on a connected device.
+
+> `project.yml` is kept as the [XcodeGen](https://github.com/yonik/XcodeGen)
+> source of truth. If you prefer to regenerate the project from it
+> (`brew install xcodegen && xcodegen generate`), keep `project.yml` updated when
+> you add files. Day-to-day, editing in Xcode is fine — new Swift files added to
+> the project are picked up automatically.
 
 ## Status
 
