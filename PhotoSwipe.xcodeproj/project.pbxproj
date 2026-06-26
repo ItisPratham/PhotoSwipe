@@ -10,19 +10,21 @@
 		04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */; };
 		1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DD4BFCFA42E704998845D5E /* PhotoSwipeApp.swift */; };
 		9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF08B652DDDFCD1896529719 /* RootView.swift */; };
+		AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */; };
 		B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6338753D3A338BAA01A682 /* PermissionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		03AB91CD9F66CD48272AEF3F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		2981107A74443087108E74FA /* PhotoSwipe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhotoSwipe.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		38F397B9832AAB78B9E6EAE6 /* .gitignore */ = {isa = PBXFileReference; path = .gitignore; sourceTree = "<group>"; };
+		2981107A74443087108E74FA /* PhotoSwipe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoSwipe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38F397B9832AAB78B9E6EAE6 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		4DD4BFCFA42E704998845D5E /* PhotoSwipeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSwipeApp.swift; sourceTree = "<group>"; };
 		A1063A930CE720CA8067F608 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yml; sourceTree = "<group>"; };
 		AF08B652DDDFCD1896529719 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PhotoSwipe_Instructions.md; sourceTree = "<group>"; };
 		C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
+		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -56,6 +58,7 @@
 			isa = PBXGroup;
 			children = (
 				022DDA5F326FC76D896A6429 /* App */,
+				B1182CEF30E7DB3E3E9E1E60 /* Models */,
 				76BBF63374BA9031FECB536B /* Resources */,
 				E79EAACDAEB716487F29CC79 /* Services */,
 				00642D981975E754B3559990 /* Views */,
@@ -73,6 +76,14 @@
 				FCF0BD6A50077FE5896359E2 /* README.md */,
 				EA90F5E966AD4112BE5588AD /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		B1182CEF30E7DB3E3E9E1E60 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 		E79EAACDAEB716487F29CC79 /* Services */ = {
@@ -150,6 +161,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
+				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
 				9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */,
@@ -165,6 +177,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TT7LR66US3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
@@ -187,6 +200,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = TT7LR66US3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
@@ -240,6 +254,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_LANGUAGE = en;
+				DEVELOPMENT_TEAM = 3N3526X38B;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -299,6 +314,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_LANGUAGE = en;
+				DEVELOPMENT_TEAM = 3N3526X38B;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
