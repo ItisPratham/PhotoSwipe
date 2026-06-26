@@ -18,7 +18,7 @@ struct RootView: View {
                     await library.requestAuthorization()
                 }
             case .authorized:
-                authorizedPlaceholder
+                SwipeView(service: library)
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -29,18 +29,6 @@ struct RootView: View {
         }
     }
 
-    private var authorizedPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("Access granted")
-                .font(.title2.bold())
-            Text("Swipe flow coming in the next milestone.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-    }
 }
 
 #Preview {

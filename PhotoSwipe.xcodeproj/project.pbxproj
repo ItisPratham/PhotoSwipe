@@ -12,6 +12,8 @@
 		9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF08B652DDDFCD1896529719 /* RootView.swift */; };
 		AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */; };
 		B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6338753D3A338BAA01A682 /* PermissionView.swift */; };
+		D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D592FEE5F1000AE08D1 /* CardView.swift */; };
+		D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +25,8 @@
 		AF08B652DDDFCD1896529719 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PhotoSwipe_Instructions.md; sourceTree = "<group>"; };
 		C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
+		D7893D592FEE5F1000AE08D1 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
+		D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -34,6 +38,8 @@
 			children = (
 				DD6338753D3A338BAA01A682 /* PermissionView.swift */,
 				AF08B652DDDFCD1896529719 /* RootView.swift */,
+				D7893D592FEE5F1000AE08D1 /* CardView.swift */,
+				D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -163,7 +169,9 @@
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
+				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
+				D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */,
 				9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
