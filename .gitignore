@@ -35,3 +35,9 @@ Carthage/Build/
 
 ## Misc
 *.swp
+*.save
+
+## Markdown — keep only README.md tracked. Other .md files are local
+## reference notes (spec, scratchpads) and should stay out of the repo.
+*.md
+!README.md
