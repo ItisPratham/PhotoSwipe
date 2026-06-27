@@ -4,6 +4,7 @@ import SwiftUI
 /// access. The swipe UI itself lands in a later milestone.
 struct RootView: View {
     @StateObject private var library = PhotoLibraryService()
+    @StateObject private var reviewStore = ReviewStore()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -18,7 +19,7 @@ struct RootView: View {
                     await library.requestAuthorization()
                 }
             case .authorized:
-                SwipeView(service: library)
+                SwipeView(service: library, store: reviewStore)
             }
         }
         .onChange(of: scenePhase) { phase in

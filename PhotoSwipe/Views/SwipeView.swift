@@ -6,9 +6,14 @@ import SwiftUI
 /// persistence and the Delete(N) review flow arrive in later milestones.
 struct SwipeView: View {
     @ObservedObject var service: PhotoLibraryService
-    @StateObject private var viewModel = SwipeViewModel()
+    @StateObject private var viewModel: SwipeViewModel
 
     @State private var dragOffset: CGSize = .zero
+
+    init(service: PhotoLibraryService, store: ReviewStore) {
+        self.service = service
+        self._viewModel = StateObject(wrappedValue: SwipeViewModel(store: store))
+    }
 
     /// Horizontal distance (points) past which a release commits the swipe.
     private let swipeThreshold: CGFloat = 120
