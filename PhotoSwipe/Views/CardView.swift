@@ -33,7 +33,7 @@ struct CardView: View {
         if let image {
             Image(uiImage: image)
                 .resizable()
-                .scaledToFill()
+                .scaledToFit()
         } else {
             ProgressView()
                 .controlSize(.large)

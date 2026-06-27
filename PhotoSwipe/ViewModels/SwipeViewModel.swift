@@ -28,6 +28,10 @@ final class SwipeViewModel: ObservableObject {
         !isLoading && currentIndex >= assets.count
     }
 
+    var pendingDeletionCount: Int {
+        store.markedForDeletionIDs.count
+    }
+
     /// Loads the library and filters out already-reviewed assets. Safe to call
     /// repeatedly — the next call rebuilds the deck from scratch.
     func load(using service: PhotoLibraryService) async {
@@ -66,4 +70,21 @@ final class SwipeViewModel: ObservableObject {
         canUndo = false
     }
 
+    /// Performs a batched delete of every asset currently marked for deletion.
+    /// PhotoKit always prompts the user — returning `true` here means they
+    /// confirmed and the delete succeeded; on success we drop those IDs from
+    /// the store entirely. On cancel/failure the marks stay so the user can
+    /// retry or untick more.
+    @discardableResult
+    func confirmDelete(using service: PhotoLibraryService) async -> Bool {
+        let ids = store.markedForDeletionIDs
+        guard !ids.isEmpty else { return false }
+        let success = await service.deleteAssets(ids: ids)
+        if success {
+            store.forget(ids: ids)
+            // Undo can't reach across a confirmed delete — the photo is gone.
+            canUndo = false
+        }
+        return success
+    }
 }

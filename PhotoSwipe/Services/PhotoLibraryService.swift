@@ -2,8 +2,8 @@ import Photos
 import SwiftUI
 import UIKit
 
-/// Owns photo-library authorization, asset fetching, and image loading.
-/// Batch delete arrives in a later milestone.
+/// Owns photo-library authorization, asset fetching, image loading, and the
+/// batched-delete bridge to PhotoKit.
 @MainActor
 final class PhotoLibraryService: ObservableObject {
 
@@ -112,6 +112,57 @@ final class PhotoLibraryService: ObservableObject {
 
             continuation.onTermination = { _ in
                 PHImageManager.default().cancelImageRequest(requestID)
+            }
+        }
+    }
+
+    // MARK: - Batch operations
+
+    /// Resolves a set of local identifiers to `PhotoAsset`s, sorted by
+    /// creation date (oldest first). IDs that no longer exist on device are
+    /// silently dropped.
+    nonisolated func fetchAssets(withIDs ids: Set<String>) async -> [PhotoAsset] {
+        guard !ids.isEmpty else { return [] }
+        return await Task.detached(priority: .userInitiated) {
+            let options = PHFetchOptions()
+            options.sortDescriptors = [
+                NSSortDescriptor(key: "creationDate", ascending: true)
+            ]
+            let result = PHAsset.fetchAssets(
+                withLocalIdentifiers: Array(ids),
+                options: options
+            )
+            var assets: [PhotoAsset] = []
+            assets.reserveCapacity(result.count)
+            result.enumerateObjects { asset, _, _ in
+                assets.append(PhotoAsset(phAsset: asset))
+            }
+            return assets
+        }.value
+    }
+
+    /// Deletes the supplied assets via a single batched PhotoKit request. iOS
+    /// always shows a system confirmation dialog — there's no silent path.
+    /// Returns `true` only when the user confirmed and the delete succeeded.
+    nonisolated func deleteAssets(ids: Set<String>) async -> Bool {
+        guard !ids.isEmpty else { return false }
+        let fetchResult = PHAsset.fetchAssets(
+            withLocalIdentifiers: Array(ids),
+            options: nil
+        )
+        guard fetchResult.count > 0 else { return false }
+
+        var assets: [PHAsset] = []
+        assets.reserveCapacity(fetchResult.count)
+        fetchResult.enumerateObjects { asset, _, _ in
+            assets.append(asset)
+        }
+
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.deleteAssets(assets as NSArray)
+            } completionHandler: { success, _ in
+                continuation.resume(returning: success)
             }
         }
     }
