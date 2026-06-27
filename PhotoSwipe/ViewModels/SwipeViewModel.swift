@@ -9,6 +9,9 @@ final class SwipeViewModel: ObservableObject {
     @Published private(set) var assets: [PhotoAsset] = []
     @Published private(set) var currentIndex: Int = 0
     @Published private(set) var isLoading: Bool = true
+    /// True after a swipe that hasn't been undone. Single-step only — undoing
+    /// flips this off until the next swipe.
+    @Published private(set) var canUndo: Bool = false
 
     private let store: ReviewStore
 
@@ -32,6 +35,7 @@ final class SwipeViewModel: ObservableObject {
         let fetched = await service.fetchAllImages()
         assets = fetched.filter { !store.isReviewed($0.id) }
         currentIndex = 0
+        canUndo = false
         isLoading = false
     }
 
@@ -40,6 +44,7 @@ final class SwipeViewModel: ObservableObject {
         guard let asset = currentAsset else { return }
         store.markKept(asset.id)
         currentIndex += 1
+        canUndo = true
     }
 
     /// Left swipe — mark for batch deletion (also counts as reviewed).
@@ -47,5 +52,18 @@ final class SwipeViewModel: ObservableObject {
         guard let asset = currentAsset else { return }
         store.markForDeletion(asset.id)
         currentIndex += 1
+        canUndo = true
     }
+
+    /// Restore the previous card and clear whatever mark it received. Single
+    /// step only: the user can't chain undos.
+    func undo() {
+        guard canUndo, currentIndex > 0 else { return }
+        currentIndex -= 1
+        if let asset = currentAsset {
+            store.clearDecision(for: asset.id)
+        }
+        canUndo = false
+    }
+
 }
