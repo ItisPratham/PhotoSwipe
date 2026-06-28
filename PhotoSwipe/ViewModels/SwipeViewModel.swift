@@ -12,6 +12,9 @@ final class SwipeViewModel: ObservableObject {
     /// True after a swipe that hasn't been undone. Single-step only — undoing
     /// flips this off until the next swipe.
     @Published private(set) var canUndo: Bool = false
+    /// Bytes reclaimed by the most recent successful delete. Surfaced to the
+    /// UI as a "Freed ~X MB" banner and cleared after the user sees it.
+    @Published var lastFreedBytes: Int64? = nil
 
     private let store: ReviewStore
 
@@ -79,11 +82,15 @@ final class SwipeViewModel: ObservableObject {
     func confirmDelete(using service: PhotoLibraryService) async -> Bool {
         let ids = store.markedForDeletionIDs
         guard !ids.isEmpty else { return false }
+        // Compute size before delete — once the assets are gone PhotoKit can't
+        // tell us how big they were.
+        let bytes = await service.totalSize(forIDs: ids)
         let success = await service.deleteAssets(ids: ids)
         if success {
             store.forget(ids: ids)
             // Undo can't reach across a confirmed delete — the photo is gone.
             canUndo = false
+            lastFreedBytes = bytes
         }
         return success
     }

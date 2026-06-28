@@ -20,6 +20,7 @@ struct SwipeView: View {
     @State private var exitOffset: CGSize = .zero
     @State private var isExiting = false
     @State private var showReviewSheet = false
+    @State private var freedBannerDismiss: Task<Void, Never>?
 
     /// What we actually offset the card by. During the drag we follow the
     /// gesture; while flinging the card off-screen we switch to the explicit
@@ -40,7 +41,7 @@ struct SwipeView: View {
     private let exitDistance: CGFloat = 1000
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             swipeTint
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
@@ -62,9 +63,22 @@ struct SwipeView: View {
                     actionsBar
                 }
             }
+
+            if let bytes = viewModel.lastFreedBytes {
+                FreedBanner(bytes: bytes)
+                    .padding(.top, 8)
+                    .onTapGesture { dismissFreedBanner() }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1)
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85),
+                   value: viewModel.lastFreedBytes)
         .task {
             await viewModel.load(using: service)
+        }
+        .onChange(of: viewModel.lastFreedBytes) { newValue in
+            scheduleFreedBannerDismiss(for: newValue)
         }
         .sheet(isPresented: $showReviewSheet) {
             DeleteReviewSheet(
@@ -73,6 +87,22 @@ struct SwipeView: View {
                 onConfirm: { await viewModel.confirmDelete(using: service) }
             )
         }
+    }
+
+    private func scheduleFreedBannerDismiss(for bytes: Int64?) {
+        freedBannerDismiss?.cancel()
+        guard bytes != nil else { return }
+        freedBannerDismiss = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled {
+                viewModel.lastFreedBytes = nil
+            }
+        }
+    }
+
+    private func dismissFreedBanner() {
+        freedBannerDismiss?.cancel()
+        viewModel.lastFreedBytes = nil
     }
 
     // MARK: - Card
@@ -230,5 +260,33 @@ struct SwipeView: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
+    }
+}
+
+/// Transient "Freed ~X MB" banner shown after a successful batch delete.
+private struct FreedBanner: View {
+    let bytes: Int64
+
+    private static let formatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        f.allowsNonnumericFormatting = false
+        return f
+    }()
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(.green)
+            Text("Freed ~\(Self.formatter.string(fromByteCount: bytes))")
+                .font(.headline)
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Freed approximately \(Self.formatter.string(fromByteCount: bytes))")
     }
 }

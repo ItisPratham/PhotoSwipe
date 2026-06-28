@@ -141,6 +141,32 @@ final class PhotoLibraryService: ObservableObject {
         }.value
     }
 
+    /// Sums on-device file sizes for the given assets. Uses
+    /// PHAssetResource.fileSize via KVC — the only practical way to read size
+    /// metadata without downloading the asset data itself. Some assets carry
+    /// multiple resources (RAW + JPEG, edits); they're all counted because
+    /// they all reclaim space on delete.
+    nonisolated func totalSize(forIDs ids: Set<String>) async -> Int64 {
+        guard !ids.isEmpty else { return 0 }
+        return await Task.detached(priority: .utility) {
+            let fetch = PHAsset.fetchAssets(
+                withLocalIdentifiers: Array(ids),
+                options: nil
+            )
+            var total: Int64 = 0
+            fetch.enumerateObjects { asset, _, _ in
+                for resource in PHAssetResource.assetResources(for: asset) {
+                    if let size = resource.value(forKey: "fileSize") as? Int64 {
+                        total += size
+                    } else if let size = resource.value(forKey: "fileSize") as? NSNumber {
+                        total += size.int64Value
+                    }
+                }
+            }
+            return total
+        }.value
+    }
+
     /// Deletes the supplied assets via a single batched PhotoKit request. iOS
     /// always shows a system confirmation dialog — there's no silent path.
     /// Returns `true` only when the user confirmed and the delete succeeded.
