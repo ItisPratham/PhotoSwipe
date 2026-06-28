@@ -127,12 +127,20 @@ struct SwipeView: View {
                         handleDragEnd(translation: value.translation)
                     }
             )
+            .accessibilityHint("Swipe right to keep, swipe left to mark for deletion")
+            .accessibilityAction(named: Text("Keep")) {
+                viewModel.keep()
+            }
+            .accessibilityAction(named: Text("Mark for deletion")) {
+                viewModel.markForDeletion()
+            }
             // Identity tied to the asset so SwiftUI rebuilds (and CardView's
             // .task reloads) when the deck advances.
             .id(asset.id)
     }
 
     /// Stamps that fade in with the swipe — Tinder-style direction cue.
+    /// Decorative; the underlying card carries the a11y label.
     private var cardStamps: some View {
         HStack {
             stamp(text: "Delete", systemImage: "trash.fill", color: .red)
@@ -144,6 +152,7 @@ struct SwipeView: View {
         .padding(.horizontal, 24)
         .padding(.top, 24)
         .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func stamp(text: String, systemImage: String, color: Color) -> some View {

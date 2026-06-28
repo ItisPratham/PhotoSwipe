@@ -22,6 +22,8 @@ struct CardView: View {
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Photo from \(asset.formattedDate)"))
             .task(id: asset.id) {
                 await loadImage(targetSize: targetPixelSize(from: proxy.size))
             }

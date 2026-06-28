@@ -10,9 +10,12 @@ at a time to clear out the junk and duplicates that pile up over the years.
 
 iOS **cannot** silently delete photos. `PHAssetChangeRequest.deleteAssets(_:)`
 always shows a system confirmation dialog — by design, and it can't be bypassed.
-So swiping only *marks* assets. A persistent **Delete (N)** button opens a review
-sheet where you can spare any photo, then **one** system prompt confirms the whole
+So swiping only *marks* assets. A persistent **Review (N)** pill opens a grid
+where you can spare any photo, then **one** system prompt confirms the whole
 batch delete. Deletion is never per-swipe.
+
+After a successful batch delete the app surfaces a "Freed ~X MB" banner sized
+from the deleted assets' on-device file sizes.
 
 ## Requirements
 
@@ -31,16 +34,26 @@ open PhotoSwipe.xcodeproj
 Then in Xcode: select the **PhotoSwipe** target → **Signing & Capabilities** →
 set your **Team**, and run on a connected device.
 
-> `project.yml` is kept as the [XcodeGen](https://github.com/yonik/XcodeGen)
-> source of truth. If you prefer to regenerate the project from it
-> (`brew install xcodegen && xcodegen generate`), keep `project.yml` updated when
-> you add files. Day-to-day, editing in Xcode is fine — new Swift files added to
-> the project are picked up automatically.
+> The Xcode project is the source of truth. A `project.yml` is still in the
+> repo for historical reference (the project was originally seeded by
+> [XcodeGen](https://github.com/yonik/XcodeGen)), but day-to-day you just edit
+> in Xcode — new Swift files added to the project are picked up automatically.
 
-## Status
+## What's in the MVP
 
-Scaffold in place; features land milestone by milestone (see
-`PhotoSwipe_Instructions.md`).
+- Permission flow with a Settings deep-link when access is limited or blocked.
+- Oldest-first chronological deck, photos and screenshots only (no videos).
+- Tinder-style swipe deck with direction tint, Keep/Delete stamps, drag-to-tilt,
+  and a spring-back when the gesture is interrupted (e.g. a second finger).
+- Decisions persisted locally — judged photos never re-enter the deck across
+  sessions.
+- Single-step undo that re-mounts the last card and clears its decision.
+- Batched delete: **Review (N)** pill → grid sheet with tap-to-toggle and
+  long-press preview → "Delete permanently (N)" → one system prompt → one
+  batched PhotoKit delete → "Freed ~X MB" banner.
+- "All caught up" state at the end of the deck.
+- VoiceOver-friendly: photo card carries a date label and `Keep` /
+  `Mark for deletion` actions so the deck is usable without the drag gesture.
 
 ## Known limitations (MVP)
 
