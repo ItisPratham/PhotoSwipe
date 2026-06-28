@@ -16,6 +16,7 @@
 		D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */; };
 		D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */; };
 		D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D602FEE646800AE08D1 /* ReviewStore.swift */; };
+		D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */; };
 		D7CEAF2D2FEFB405002C1ACF /* DeleteReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */; };
 /* End PBXBuildFile section */
 
@@ -32,6 +33,7 @@
 		D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
 		D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeViewModel.swift; sourceTree = "<group>"; };
 		D7893D602FEE646800AE08D1 /* ReviewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewStore.swift; sourceTree = "<group>"; };
+		D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaughtUpView.swift; sourceTree = "<group>"; };
 		D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteReviewSheet.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
@@ -47,6 +49,7 @@
 				D7893D592FEE5F1000AE08D1 /* CardView.swift */,
 				D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */,
 				D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */,
+				D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -187,6 +190,7 @@
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
+				D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */,
 				D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */,
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,

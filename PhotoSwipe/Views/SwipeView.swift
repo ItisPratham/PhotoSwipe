@@ -54,7 +54,7 @@ struct SwipeView: View {
                     } else if let asset = viewModel.currentAsset {
                         card(for: asset)
                     } else {
-                        caughtUpPlaceholder
+                        CaughtUpView(totalReviewed: store.reviewedIDs.count)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -249,18 +249,6 @@ struct SwipeView: View {
         .padding(.bottom, 16)
     }
 
-    private var caughtUpPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(.largeTitle))
-                .foregroundStyle(.green)
-            Text("All caught up 🎉")
-                .font(.title2.bold())
-            Text("That's the end of your library.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-    }
 }
 
 /// Transient "Freed ~X MB" banner shown after a successful batch delete.
