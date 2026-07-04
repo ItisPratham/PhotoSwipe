@@ -64,6 +64,15 @@ final class ReviewStore: ObservableObject {
         persist()
     }
 
+    /// Wipes every kept/marked decision so the whole library re-enters the
+    /// deck as un-reviewed. Photos themselves are untouched — this only
+    /// clears the app's tracking.
+    func resetAll() {
+        reviewedIDs.removeAll()
+        markedForDeletionIDs.removeAll()
+        persist()
+    }
+
     private func persist() {
         defaults.set(Array(reviewedIDs), forKey: reviewedKey)
         defaults.set(Array(markedForDeletionIDs), forKey: deletionKey)

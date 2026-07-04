@@ -21,6 +21,7 @@ struct SwipeView: View {
     @State private var isExiting = false
     @State private var showReviewSheet = false
     @State private var showTutorial = false
+    @State private var showResetConfirm = false
     @State private var freedBannerDismiss: Task<Void, Never>?
 
     /// What we actually offset the card by. During the drag we follow the
@@ -100,12 +101,34 @@ struct SwipeView: View {
                     } label: {
                         Label("Show tutorial", systemImage: "questionmark.circle")
                     }
+
+                    Section {
+                        Button(role: .destructive) {
+                            showResetConfirm = true
+                        } label: {
+                            Label("Reset review history",
+                                  systemImage: "arrow.counterclockwise")
+                        }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .accessibilityLabel("More")
                 }
             }
         }
+        .alert("Reset review history?", isPresented: $showResetConfirm) {
+            Button("Reset", role: .destructive) {
+                Task { await resetReviewHistory() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
+        }
+    }
+
+    private func resetReviewHistory() async {
+        store.resetAll()
+        await viewModel.load(using: service)
     }
 
     private func scheduleFreedBannerDismiss(for bytes: Int64?) {
