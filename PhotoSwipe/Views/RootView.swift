@@ -27,7 +27,9 @@ struct RootView: View {
                         await library.requestAuthorization()
                     }
                 case .authorized:
-                    SwipeView(service: library, store: reviewStore)
+                    NavigationStack {
+                        SwipeView(service: library, store: reviewStore)
+                    }
                 }
             }
         }

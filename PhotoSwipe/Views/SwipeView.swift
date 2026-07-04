@@ -20,6 +20,7 @@ struct SwipeView: View {
     @State private var exitOffset: CGSize = .zero
     @State private var isExiting = false
     @State private var showReviewSheet = false
+    @State private var showTutorial = false
     @State private var freedBannerDismiss: Task<Void, Never>?
 
     /// What we actually offset the card by. During the drag we follow the
@@ -86,6 +87,24 @@ struct SwipeView: View {
                 store: store,
                 onConfirm: { await viewModel.confirmDelete(using: service) }
             )
+        }
+        .sheet(isPresented: $showTutorial) {
+            OnboardingView { showTutorial = false }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showTutorial = true
+                    } label: {
+                        Label("Show tutorial", systemImage: "questionmark.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .accessibilityLabel("More")
+                }
+            }
         }
     }
 
