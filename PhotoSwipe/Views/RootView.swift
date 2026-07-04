@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     @StateObject private var library = PhotoLibraryService()
     @StateObject private var reviewStore = ReviewStore()
+    @StateObject private var statsStore = StatsStore()
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("PhotoSwipe.hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -28,7 +29,9 @@ struct RootView: View {
                     }
                 case .authorized:
                     NavigationStack {
-                        SwipeView(service: library, store: reviewStore)
+                        SwipeView(service: library,
+                                  store: reviewStore,
+                                  stats: statsStore)
                     }
                 }
             }

@@ -8,6 +8,7 @@ import SwiftUI
 struct SwipeView: View {
     @ObservedObject var service: PhotoLibraryService
     @ObservedObject var store: ReviewStore
+    @ObservedObject var stats: StatsStore
     @StateObject private var viewModel: SwipeViewModel
 
     /// Live translation while the finger is down. Backed by GestureState so
@@ -33,10 +34,13 @@ struct SwipeView: View {
         isExiting ? exitOffset : dragTranslation
     }
 
-    init(service: PhotoLibraryService, store: ReviewStore) {
+    init(service: PhotoLibraryService, store: ReviewStore, stats: StatsStore) {
         self.service = service
         self.store = store
-        self._viewModel = StateObject(wrappedValue: SwipeViewModel(store: store))
+        self.stats = stats
+        self._viewModel = StateObject(
+            wrappedValue: SwipeViewModel(store: store, stats: stats)
+        )
     }
 
     /// Horizontal distance (points) past which a release commits the swipe.

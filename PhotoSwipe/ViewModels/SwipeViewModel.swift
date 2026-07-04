@@ -17,9 +17,11 @@ final class SwipeViewModel: ObservableObject {
     @Published var lastFreedBytes: Int64? = nil
 
     private let store: ReviewStore
+    private let stats: StatsStore
 
-    init(store: ReviewStore) {
+    init(store: ReviewStore, stats: StatsStore) {
         self.store = store
+        self.stats = stats
     }
 
     var currentAsset: PhotoAsset? {
@@ -88,6 +90,7 @@ final class SwipeViewModel: ObservableObject {
         let success = await service.deleteAssets(ids: ids)
         if success {
             store.forget(ids: ids)
+            stats.recordDelete(count: ids.count, bytesFreed: bytes)
             // Undo can't reach across a confirmed delete — the photo is gone.
             canUndo = false
             lastFreedBytes = bytes
