@@ -18,6 +18,7 @@
 		D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D602FEE646800AE08D1 /* ReviewStore.swift */; };
 		D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */; };
 		D7CEAF2D2FEFB405002C1ACF /* DeleteReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */; };
+		D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		D7893D602FEE646800AE08D1 /* ReviewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewStore.swift; sourceTree = "<group>"; };
 		D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaughtUpView.swift; sourceTree = "<group>"; };
 		D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteReviewSheet.swift; sourceTree = "<group>"; };
+		D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -50,6 +52,7 @@
 				D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */,
 				D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */,
 				D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */,
+				D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -195,6 +198,7 @@
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
 				D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */,
+				D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */,
 				D7CEAF2D2FEFB405002C1ACF /* DeleteReviewSheet.swift in Sources */,
 				9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */,
 			);
