@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- iOS applies its own squircle mask; full-bleed background -->
+  <rect x="0" y="0" width="1024" height="1024" fill="#1C1C1E"/>
+
+  <!-- Fanned deck of photo cards; front card mid-swipe with a swipe arrow -->
+  <g transform="translate(512,800) scale(3.4)">
+    <g transform="rotate(-30)"><rect x="-46" y="-160" width="92" height="140" rx="15" fill="#9B5DE5"/></g>
+    <g transform="rotate(-15)"><rect x="-46" y="-160" width="92" height="140" rx="15" fill="#3D9BFF"/></g>
+    <g transform="rotate(0)"><rect x="-46" y="-160" width="92" height="140" rx="15" fill="#3DD68C"/></g>
+    <g transform="rotate(15)"><rect x="-46" y="-160" width="92" height="140" rx="15" fill="#FFC93D"/></g>
+    <g transform="rotate(30)">
+      <rect x="-46" y="-160" width="92" height="140" rx="15" fill="#FF5A5F"/>
+      <path fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"
+            d="M-22 -90 H14 M2 -106 L20 -90 L2 -74"/>
+    </g>
+  </g>
+</svg>
