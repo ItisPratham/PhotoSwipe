@@ -24,6 +24,8 @@ struct SwipeView: View {
     @State private var showResetConfirm = false
     @State private var freedBannerDismiss: Task<Void, Never>?
 
+    @Environment(\.openURL) private var openURL
+
     /// What we actually offset the card by. During the drag we follow the
     /// gesture; while flinging the card off-screen we switch to the explicit
     /// exit offset so the GestureState reset doesn't snap us back to center.
@@ -96,10 +98,18 @@ struct SwipeView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button {
-                        showTutorial = true
-                    } label: {
-                        Label("Show tutorial", systemImage: "questionmark.circle")
+                    Section {
+                        Button {
+                            showTutorial = true
+                        } label: {
+                            Label("Show tutorial", systemImage: "questionmark.circle")
+                        }
+
+                        Button {
+                            openSupport()
+                        } label: {
+                            Label("Contact support", systemImage: "envelope")
+                        }
                     }
 
                     Section {
@@ -129,6 +139,11 @@ struct SwipeView: View {
     private func resetReviewHistory() async {
         store.resetAll()
         await viewModel.load(using: service)
+    }
+
+    private func openSupport() {
+        guard let url = ContactLink.makeSupportURL() else { return }
+        openURL(url)
     }
 
     private func scheduleFreedBannerDismiss(for bytes: Int64?) {

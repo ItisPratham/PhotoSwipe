@@ -20,6 +20,7 @@
 		D7CEAF2D2FEFB405002C1ACF /* DeleteReviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */; };
 		D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */; };
 		D7DDEA2D2FF97F3600E3ED52 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D7DDEA2A2FF97C7400E3ED52 /* Assets.xcassets */; };
+		D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteReviewSheet.swift; sourceTree = "<group>"; };
 		D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		D7DDEA2A2FF97C7400E3ED52 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactLink.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -55,6 +57,7 @@
 				D7CEAF2C2FEFB405002C1ACF /* DeleteReviewSheet.swift */,
 				D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */,
 				D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */,
+				D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -208,6 +211,7 @@
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
+				D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */,
 				D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */,
 				D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */,
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
