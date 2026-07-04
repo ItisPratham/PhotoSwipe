@@ -22,6 +22,7 @@ struct SwipeView: View {
     @State private var isExiting = false
     @State private var showReviewSheet = false
     @State private var showTutorial = false
+    @State private var showStats = false
     @State private var showResetConfirm = false
     @State private var freedBannerDismiss: Task<Void, Never>?
 
@@ -98,10 +99,21 @@ struct SwipeView: View {
         .sheet(isPresented: $showTutorial) {
             OnboardingView { showTutorial = false }
         }
+        .sheet(isPresented: $showStats) {
+            StatsView(stats: stats)
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Section {
+                        Button {
+                            showStats = true
+                        } label: {
+                            Label("Activity", systemImage: "chart.bar")
+                        }
+                    }
+
                     Section {
                         Button {
                             showTutorial = true

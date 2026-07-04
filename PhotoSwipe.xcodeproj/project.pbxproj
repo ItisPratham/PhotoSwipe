@@ -23,6 +23,7 @@
 		D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */; };
 		D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */; };
 		D7DDEA332FF982A500E3ED52 /* StatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA322FF982A500E3ED52 /* StatsStore.swift */; };
+		D7DDEA352FF9848600E3ED52 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA342FF9848600E3ED52 /* StatsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactLink.swift; sourceTree = "<group>"; };
 		D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteRecord.swift; sourceTree = "<group>"; };
 		D7DDEA322FF982A500E3ED52 /* StatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsStore.swift; sourceTree = "<group>"; };
+		D7DDEA342FF9848600E3ED52 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 				D7A461422FF0E90D00F1DB7E /* CaughtUpView.swift */,
 				D7DDEA262FF9748100E3ED52 /* OnboardingView.swift */,
 				D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */,
+				D7DDEA342FF9848600E3ED52 /* StatsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -217,6 +220,7 @@
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
+				D7DDEA352FF9848600E3ED52 /* StatsView.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
 				D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */,
 				D7DDEA332FF982A500E3ED52 /* StatsStore.swift in Sources */,
