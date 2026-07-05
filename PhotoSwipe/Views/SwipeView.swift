@@ -104,7 +104,10 @@ struct SwipeView: View {
             StatsView(stats: stats)
         }
         .sheet(isPresented: $showBrowse) {
-            BrowseView(service: service)
+            BrowseView(service: service) { source in
+                showBrowse = false
+                Task { await viewModel.load(using: service, source: source) }
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -164,7 +167,9 @@ struct SwipeView: View {
 
     private func resetReviewHistory() async {
         store.resetAll()
-        await viewModel.load(using: service)
+        // Reset also clears any active browse/album filter so the deck jumps
+        // straight back to the oldest photo. Restart-persistence follows.
+        await viewModel.load(using: service, source: .allPhotos)
     }
 
     private func openSupport() {

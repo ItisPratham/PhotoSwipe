@@ -18,13 +18,24 @@ final class SwipeViewModel: ObservableObject {
 
     private let store: ReviewStore
     private let stats: StatsStore
-    /// What's currently feeding the deck. Retained so a reload after reset or
-    /// a review-history clear rebuilds against the same source.
+    private let defaults: UserDefaults
+    private let sourceKey = "PhotoSwipe.currentDeckSource"
+
+    /// What's currently feeding the deck. Persisted so a chosen filter
+    /// (Browse start-from-day/photo, or an album in v2.1 M4) survives
+    /// relaunch. Reset review history restores this to `.allPhotos`.
     private(set) var source: DeckSource = .allPhotos
 
-    init(store: ReviewStore, stats: StatsStore) {
+    init(store: ReviewStore,
+         stats: StatsStore,
+         defaults: UserDefaults = .standard) {
         self.store = store
         self.stats = stats
+        self.defaults = defaults
+        if let data = defaults.data(forKey: sourceKey),
+           let restored = DeckSource.decoded(from: data) {
+            self.source = restored
+        }
     }
 
     var currentAsset: PhotoAsset? {
@@ -42,16 +53,26 @@ final class SwipeViewModel: ObservableObject {
 
     /// Loads the deck for the supplied source (defaults to the current one on
     /// re-entry) and filters out already-reviewed assets. Safe to call
-    /// repeatedly — the next call rebuilds the deck from scratch.
+    /// repeatedly — the next call rebuilds the deck from scratch. Persists
+    /// whenever the source changes so relaunch resumes on the same filter.
     func load(using service: PhotoLibraryService,
               source: DeckSource? = nil) async {
-        if let source { self.source = source }
+        if let source, source != self.source {
+            self.source = source
+            persistSource()
+        }
         isLoading = true
         let fetched = await service.fetchImages(source: self.source)
         assets = fetched.filter { !store.isReviewed($0.id) }
         currentIndex = 0
         canUndo = false
         isLoading = false
+    }
+
+    private func persistSource() {
+        if let data = source.encoded() {
+            defaults.set(data, forKey: sourceKey)
+        }
     }
 
     /// Right swipe — keep and never show again.
