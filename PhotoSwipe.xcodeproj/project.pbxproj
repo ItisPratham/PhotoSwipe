@@ -27,6 +27,7 @@
 		D7DDEA372FFA298600E3ED52 /* DeckSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA362FFA298600E3ED52 /* DeckSource.swift */; };
 		D7DDEA392FFA2A6D00E3ED52 /* BrowseViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA382FFA2A6D00E3ED52 /* BrowseViewModel.swift */; };
 		D7DDEA3B2FFA2A8000E3ED52 /* BrowseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA3A2FFA2A8000E3ED52 /* BrowseView.swift */; };
+		D7DDEA3D2FFA7CDF00E3ED52 /* PhotoZoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA3C2FFA7CDF00E3ED52 /* PhotoZoomView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		D7DDEA362FFA298600E3ED52 /* DeckSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckSource.swift; sourceTree = "<group>"; };
 		D7DDEA382FFA2A6D00E3ED52 /* BrowseViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseViewModel.swift; sourceTree = "<group>"; };
 		D7DDEA3A2FFA2A8000E3ED52 /* BrowseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseView.swift; sourceTree = "<group>"; };
+		D7DDEA3C2FFA7CDF00E3ED52 /* PhotoZoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoZoomView.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 				D7DDEA2E2FF9819D00E3ED52 /* ContactLink.swift */,
 				D7DDEA342FF9848600E3ED52 /* StatsView.swift */,
 				D7DDEA3A2FFA2A8000E3ED52 /* BrowseView.swift */,
+				D7DDEA3C2FFA7CDF00E3ED52 /* PhotoZoomView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -229,6 +232,7 @@
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
+				D7DDEA3D2FFA7CDF00E3ED52 /* PhotoZoomView.swift in Sources */,
 				D7DDEA352FF9848600E3ED52 /* StatsView.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
 				D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */,

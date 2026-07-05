@@ -25,6 +25,7 @@ struct SwipeView: View {
     @State private var showStats = false
     @State private var showBrowse = false
     @State private var showResetConfirm = false
+    @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
 
     @Environment(\.openURL) private var openURL
@@ -163,6 +164,9 @@ struct SwipeView: View {
         } message: {
             Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
         }
+        .fullScreenCover(item: $zoomAsset) { asset in
+            PhotoZoomView(asset: asset, service: service)
+        }
     }
 
     private func resetReviewHistory() async {
@@ -213,6 +217,16 @@ struct SwipeView: View {
                     }
                     .onEnded { value in
                         handleDragEnd(translation: value.translation)
+                    }
+            )
+            // Two-finger pinch opens the fullscreen inspector. Distinct from
+            // the one-finger drag, so both can coexist via simultaneous.
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .onEnded { finalScale in
+                        if finalScale > 1.15 {
+                            zoomAsset = asset
+                        }
                     }
             )
             .accessibilityHint("Swipe right to keep, swipe left to mark for deletion")
