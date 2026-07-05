@@ -65,7 +65,34 @@ set your **Team**, and run on a connected device.
   drag the correct direction (left for delete, right for keep), reinforced by
   the same red/green tint the real deck uses. Persisted seen-flag; re-openable
   from the toolbar menu at any time.
-- **Toolbar menu** (`•••` top-right of the swipe deck) with:
+- **Light + dark app icon** — full-bleed 1024×1024 renders, wired into the
+  asset catalog with `luminosity: dark` so iOS 18+ switches automatically.
+
+### v2.1
+
+- **DeckSource** — a value type that gates what feeds the swipe deck (scope +
+  optional `startFrom` cutoff). The engine downstream is unchanged; scope
+  changes just replace the fetch. `DeckSource` is `Hashable` so it rides a
+  `NavigationLink` value from Browse into the swipe deck.
+- **Pinch-to-zoom** — a two-finger pinch on the current card opens a
+  fullscreen photo inspector with further pinch (1×–4×), pan when zoomed,
+  double-tap toggle, and downward-drag-to-dismiss.
+
+## Navigation
+
+Browse is home. Every launch lands there cold; the swipe deck is a push
+destination parameterized by a `DeckSource`.
+
+- **Home** — `BrowseView`, wrapped in a `NavigationStack` from `RootView`.
+- **From Browse you can:**
+  - Tap the prominent **Start swiping** card at the top → push the deck for
+    the whole library, oldest first.
+  - Tap the **Albums** row → push `AlbumListView`; pick an album → push the
+    deck scoped to that album.
+  - Scroll the day-grouped grid → tap a day header or a specific thumbnail
+    to push the deck with that date as the `startFrom` cutoff. Long-press a
+    thumbnail for a full-photo preview.
+- **Overflow menu** (`•••` on Browse's toolbar):
   - **Activity** — cumulative bytes freed, running photo count, and a reverse
     chronological list of every successful batch delete (date, count, MB).
     Read-only; the system's Recently Deleted covers restore.
@@ -75,27 +102,14 @@ set your **Team**, and run on a connected device.
   - **Reset review history** — destructive, confirmation alert. Wipes the
     kept/marked sets so the whole library re-enters the deck as un-reviewed.
     The Photos library itself is not touched.
-- **Light + dark app icon** — full-bleed 1024×1024 renders, wired into the
-  asset catalog with `luminosity: dark` so iOS 18+ switches automatically.
+- **On the swipe deck (pushed):** standard back button pops to Browse. Deck
+  UX (Keep/Delete stamps, Undo, Review(N), freed banner, pinch-to-zoom) is
+  unchanged. The end-of-deck "All caught up" screen has a *Back to Browse*
+  button as a fast pop.
 
-### v2.1
-
-- **DeckSource** — a value type that gates what feeds the swipe deck (scope +
-  optional `startFrom` cutoff). The engine downstream is unchanged; scope
-  changes just replace the fetch. The current source is persisted through
-  UserDefaults so a chosen entry point survives relaunch. Reset review
-  history explicitly clears the filter back to `.allPhotos`.
-- **Browse** (menu → Browse) — a Photos.app-style day-grouped grid of the
-  full library, newest-first, with sticky day headers and a visible scroll
-  indicator. Tap a thumbnail to start the deck at that photo; tap a day
-  header to start at the beginning of that day. Long-press any thumbnail
-  for a full-photo preview.
-- **Albums** (menu → Albums) — lists every user-created album that contains
-  photos, with cover thumbnail and count. Tap an album to swipe scoped to
-  it. All the review, undo, and batch-delete behaviour applies identically.
-- **Pinch-to-zoom** — a two-finger pinch on the current card opens a
-  fullscreen photo inspector with further pinch (1×–4×), pan when zoomed,
-  double-tap toggle, and downward-drag-to-dismiss.
+Routing goes through a `Hashable AppRoute` enum
+(`.albums`, `.swipe(DeckSource)`), registered as a single
+`.navigationDestination(for: AppRoute.self)` on the stack.
 
 ## App icon
 
@@ -119,9 +133,9 @@ Everything is UserDefaults, keyed to be human-readable:
 - `PhotoSwipe.hasSeenOnboarding` — Bool flag.
 - `PhotoSwipe.stats.totalBytesFreed` / `PhotoSwipe.stats.deleteHistory` —
   cumulative bytes reclaimed + JSON-encoded array of `DeleteRecord` values.
-- `PhotoSwipe.currentDeckSource` — JSON-encoded snapshot of the active
-  DeckSource (scope + optional `startFrom`); albums travel via their
-  `PHAssetCollection.localIdentifier` and are re-resolved on relaunch.
+
+The active `DeckSource` is **not** persisted — every launch lands on Browse
+cold and the user re-picks their entry point.
 
 ## Known limitations
 
