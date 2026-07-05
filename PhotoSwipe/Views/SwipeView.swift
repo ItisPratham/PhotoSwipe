@@ -24,6 +24,7 @@ struct SwipeView: View {
     @State private var showTutorial = false
     @State private var showStats = false
     @State private var showBrowse = false
+    @State private var showAlbums = false
     @State private var showResetConfirm = false
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
@@ -110,6 +111,12 @@ struct SwipeView: View {
                 Task { await viewModel.load(using: service, source: source) }
             }
         }
+        .sheet(isPresented: $showAlbums) {
+            AlbumListView(service: service) { source in
+                showAlbums = false
+                Task { await viewModel.load(using: service, source: source) }
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -119,6 +126,12 @@ struct SwipeView: View {
                             showBrowse = true
                         } label: {
                             Label("Browse", systemImage: "square.grid.2x2")
+                        }
+
+                        Button {
+                            showAlbums = true
+                        } label: {
+                            Label("Albums", systemImage: "rectangle.stack")
                         }
 
                         Button {

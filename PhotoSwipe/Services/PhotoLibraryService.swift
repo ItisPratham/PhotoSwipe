@@ -183,6 +183,59 @@ final class PhotoLibraryService: ObservableObject {
         }.value
     }
 
+    /// Lightweight summary of a user album — enough for a list row without
+    /// forcing the caller to touch PhotoKit directly. Holds the collection
+    /// itself so we can build a DeckSource without re-resolving.
+    struct AlbumSummary: Identifiable {
+        let id: String
+        let title: String
+        let count: Int
+        let cover: PhotoAsset?
+        let collection: PHAssetCollection
+    }
+
+    /// Fetches every user-created album that has at least one image asset,
+    /// sorted alphabetically. Videos are excluded from the count so it
+    /// matches what the user will actually see in the swipe deck.
+    nonisolated func fetchUserAlbums() async -> [AlbumSummary] {
+        await Task.detached(priority: .userInitiated) {
+            let albumOptions = PHFetchOptions()
+            albumOptions.sortDescriptors = [
+                NSSortDescriptor(key: "localizedTitle", ascending: true)
+            ]
+            let collections = PHAssetCollection.fetchAssetCollections(
+                with: .album,
+                subtype: .any,
+                options: albumOptions
+            )
+
+            let assetOptions = PHFetchOptions()
+            assetOptions.predicate = NSPredicate(
+                format: "mediaType = %d",
+                PHAssetMediaType.image.rawValue
+            )
+            assetOptions.sortDescriptors = [
+                NSSortDescriptor(key: "creationDate", ascending: false)
+            ]
+
+            var summaries: [AlbumSummary] = []
+            collections.enumerateObjects { collection, _, _ in
+                let assets = PHAsset.fetchAssets(in: collection, options: assetOptions)
+                guard assets.count > 0 else { return }
+                let title = collection.localizedTitle ?? "Untitled"
+                let cover = assets.firstObject.map(PhotoAsset.init(phAsset:))
+                summaries.append(AlbumSummary(
+                    id: collection.localIdentifier,
+                    title: title,
+                    count: assets.count,
+                    cover: cover,
+                    collection: collection
+                ))
+            }
+            return summaries
+        }.value
+    }
+
     /// Deletes the supplied assets via a single batched PhotoKit request. iOS
     /// always shows a system confirmation dialog — there's no silent path.
     /// Returns `true` only when the user confirmed and the delete succeeded.
