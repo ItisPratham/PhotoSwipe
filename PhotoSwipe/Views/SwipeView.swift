@@ -23,6 +23,7 @@ struct SwipeView: View {
     @State private var showReviewSheet = false
     @State private var showTutorial = false
     @State private var showStats = false
+    @State private var showBrowse = false
     @State private var showResetConfirm = false
     @State private var freedBannerDismiss: Task<Void, Never>?
 
@@ -102,11 +103,20 @@ struct SwipeView: View {
         .sheet(isPresented: $showStats) {
             StatsView(stats: stats)
         }
+        .sheet(isPresented: $showBrowse) {
+            BrowseView(service: service)
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Section {
+                        Button {
+                            showBrowse = true
+                        } label: {
+                            Label("Browse", systemImage: "square.grid.2x2")
+                        }
+
                         Button {
                             showStats = true
                         } label: {
