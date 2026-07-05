@@ -10,6 +10,10 @@ struct BrowseView: View {
     @ObservedObject var store: ReviewStore
     @ObservedObject var stats: StatsStore
 
+    /// Called once the initial library fetch completes — lets RootView's launch
+    /// splash wait for the grid before crossfading in.
+    private let onLoaded: () -> Void
+
     @StateObject private var viewModel = BrowseViewModel()
 
     @State private var showTutorial = false
@@ -20,10 +24,12 @@ struct BrowseView: View {
 
     init(service: PhotoLibraryService,
          store: ReviewStore,
-         stats: StatsStore) {
+         stats: StatsStore,
+         onLoaded: @escaping () -> Void = {}) {
         self.service = service
         self.store = store
         self.stats = stats
+        self.onLoaded = onLoaded
     }
 
     private static let dayFormatter: DateFormatter = {
@@ -49,6 +55,7 @@ struct BrowseView: View {
             }
             .task {
                 await viewModel.load(using: service)
+                onLoaded()
             }
             .sheet(isPresented: $showTutorial) {
                 OnboardingView { showTutorial = false }

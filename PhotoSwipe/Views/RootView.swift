@@ -11,46 +11,87 @@ struct RootView: View {
 
     @AppStorage("PhotoSwipe.hasSeenOnboarding") private var hasSeenOnboarding = false
 
+    /// Launch-splash gating. The splash stays up until the content beneath is
+    /// ready *and* a minimum on-screen time has passed, then crossfades out.
+    @State private var launchFinished = false
+    @State private var minTimeElapsed = false
+    @State private var browseLoaded = false
+
+    /// Only the Browse path has a library fetch to wait on; onboarding and the
+    /// permission screen have nothing to load.
+    private var requiresLibraryLoad: Bool {
+        hasSeenOnboarding && library.accessState == .authorized
+    }
+
+    private var contentReady: Bool {
+        !requiresLibraryLoad || browseLoaded
+    }
+
+    private var readyToReveal: Bool {
+        minTimeElapsed && contentReady
+    }
+
     var body: some View {
-        Group {
-            if !hasSeenOnboarding {
-                OnboardingView {
-                    hasSeenOnboarding = true
-                }
-            } else {
-                switch library.accessState {
-                case .undetermined:
-                    PermissionView(isBlocked: false) {
-                        await library.requestAuthorization()
-                    }
-                case .blocked:
-                    PermissionView(isBlocked: true) {
-                        await library.requestAuthorization()
-                    }
-                case .authorized:
-                    NavigationStack {
-                        BrowseView(service: library,
-                                   store: reviewStore,
-                                   stats: statsStore)
-                            .navigationDestination(for: AppRoute.self) { route in
-                                switch route {
-                                case .albums:
-                                    AlbumListView(service: library)
-                                case .swipe(let source):
-                                    SwipeView(service: library,
-                                              store: reviewStore,
-                                              stats: statsStore,
-                                              source: source)
-                                }
-                            }
+        ZStack {
+            content
+
+            if !launchFinished {
+                LaunchView(readyToReveal: readyToReveal) {
+                    withAnimation(.easeOut(duration: 0.45)) {
+                        launchFinished = true
                     }
                 }
+                .transition(.opacity)
             }
+        }
+        .task {
+            // Floor on splash time so the deck always fans, settles, and swipes
+            // in full even when the library loads instantly.
+            try? await Task.sleep(nanoseconds: 1_300_000_000)
+            minTimeElapsed = true
         }
         .onChange(of: scenePhase) { phase in
             // Re-check after the user may have changed access in Settings.
             if phase == .active {
                 library.refreshAccessState()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if !hasSeenOnboarding {
+            OnboardingView {
+                hasSeenOnboarding = true
+            }
+        } else {
+            switch library.accessState {
+            case .undetermined:
+                PermissionView(isBlocked: false) {
+                    await library.requestAuthorization()
+                }
+            case .blocked:
+                PermissionView(isBlocked: true) {
+                    await library.requestAuthorization()
+                }
+            case .authorized:
+                NavigationStack {
+                    BrowseView(service: library,
+                               store: reviewStore,
+                               stats: statsStore,
+                               onLoaded: { browseLoaded = true })
+                        .navigationDestination(for: AppRoute.self) { route in
+                            switch route {
+                            case .albums:
+                                AlbumListView(service: library)
+                            case .swipe(let source):
+                                SwipeView(service: library,
+                                          store: reviewStore,
+                                          stats: statsStore,
+                                          source: source)
+                            }
+                        }
+                }
             }
         }
     }
