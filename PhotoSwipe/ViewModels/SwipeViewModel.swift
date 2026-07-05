@@ -18,6 +18,9 @@ final class SwipeViewModel: ObservableObject {
 
     private let store: ReviewStore
     private let stats: StatsStore
+    /// What's currently feeding the deck. Retained so a reload after reset or
+    /// a review-history clear rebuilds against the same source.
+    private(set) var source: DeckSource = .allPhotos
 
     init(store: ReviewStore, stats: StatsStore) {
         self.store = store
@@ -37,11 +40,14 @@ final class SwipeViewModel: ObservableObject {
         store.markedForDeletionIDs.count
     }
 
-    /// Loads the library and filters out already-reviewed assets. Safe to call
+    /// Loads the deck for the supplied source (defaults to the current one on
+    /// re-entry) and filters out already-reviewed assets. Safe to call
     /// repeatedly — the next call rebuilds the deck from scratch.
-    func load(using service: PhotoLibraryService) async {
+    func load(using service: PhotoLibraryService,
+              source: DeckSource? = nil) async {
+        if let source { self.source = source }
         isLoading = true
-        let fetched = await service.fetchAllImages()
+        let fetched = await service.fetchImages(source: self.source)
         assets = fetched.filter { !store.isReviewed($0.id) }
         currentIndex = 0
         canUndo = false

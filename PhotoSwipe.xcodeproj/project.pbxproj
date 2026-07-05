@@ -24,6 +24,7 @@
 		D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */; };
 		D7DDEA332FF982A500E3ED52 /* StatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA322FF982A500E3ED52 /* StatsStore.swift */; };
 		D7DDEA352FF9848600E3ED52 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA342FF9848600E3ED52 /* StatsView.swift */; };
+		D7DDEA372FFA298600E3ED52 /* DeckSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7DDEA362FFA298600E3ED52 /* DeckSource.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +48,7 @@
 		D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteRecord.swift; sourceTree = "<group>"; };
 		D7DDEA322FF982A500E3ED52 /* StatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsStore.swift; sourceTree = "<group>"; };
 		D7DDEA342FF9848600E3ED52 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		D7DDEA362FFA298600E3ED52 /* DeckSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckSource.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoAsset.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 			children = (
 				F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */,
 				D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */,
+				D7DDEA362FFA298600E3ED52 /* DeckSource.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -227,6 +230,7 @@
 				D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */,
 				D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */,
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
+				D7DDEA372FFA298600E3ED52 /* DeckSource.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
 				D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */,
 				D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */,

@@ -50,22 +50,38 @@ final class PhotoLibraryService: ObservableObject {
 
     // MARK: - Fetch
 
-    /// Fetches every image asset (photos + screenshots) in chronological order,
-    /// oldest first. Videos are excluded at the fetch layer so they never enter
-    /// the swipe deck. Runs off the main actor since enumerating a large library
-    /// can take a noticeable beat.
-    nonisolated func fetchAllImages() async -> [PhotoAsset] {
+    /// Fetches image assets (photos + screenshots) in chronological order,
+    /// oldest first, honouring the supplied `DeckSource` — scope (all photos
+    /// or a specific album) and an optional `startFrom` cutoff. Videos are
+    /// excluded at the predicate layer so they never enter the deck. Runs off
+    /// the main actor because enumerating a large library can take a beat.
+    nonisolated func fetchImages(source: DeckSource) async -> [PhotoAsset] {
         await Task.detached(priority: .userInitiated) {
             let options = PHFetchOptions()
             options.sortDescriptors = [
                 NSSortDescriptor(key: "creationDate", ascending: true)
             ]
-            options.predicate = NSPredicate(
-                format: "mediaType = %d",
-                PHAssetMediaType.image.rawValue
-            )
 
-            let result = PHAsset.fetchAssets(with: options)
+            var predicates: [NSPredicate] = [
+                NSPredicate(format: "mediaType = %d",
+                            PHAssetMediaType.image.rawValue)
+            ]
+            if let startFrom = source.startFrom {
+                predicates.append(NSPredicate(format: "creationDate >= %@",
+                                              startFrom as NSDate))
+            }
+            options.predicate = predicates.count == 1
+                ? predicates[0]
+                : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+
+            let result: PHFetchResult<PHAsset>
+            switch source.scope {
+            case .allPhotos:
+                result = PHAsset.fetchAssets(with: options)
+            case .album(let collection):
+                result = PHAsset.fetchAssets(in: collection, options: options)
+            }
+
             var assets: [PhotoAsset] = []
             assets.reserveCapacity(result.count)
             result.enumerateObjects { asset, _, _ in
