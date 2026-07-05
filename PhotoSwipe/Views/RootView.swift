@@ -29,9 +29,20 @@ struct RootView: View {
                     }
                 case .authorized:
                     NavigationStack {
-                        SwipeView(service: library,
-                                  store: reviewStore,
-                                  stats: statsStore)
+                        BrowseView(service: library,
+                                   store: reviewStore,
+                                   stats: statsStore)
+                            .navigationDestination(for: AppRoute.self) { route in
+                                switch route {
+                                case .albums:
+                                    AlbumListView(service: library)
+                                case .swipe(let source):
+                                    SwipeView(service: library,
+                                              store: reviewStore,
+                                              stats: statsStore,
+                                              source: source)
+                                }
+                            }
                     }
                 }
             }

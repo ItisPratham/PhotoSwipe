@@ -1,30 +1,20 @@
 import SwiftUI
 
-/// Sheet-presented list of the user's albums. Tapping an album fires
-/// `onSelect` with a `.album(collection)` DeckSource so the swipe deck
-/// reloads scoped to that album's photos. All the existing engine rules
-/// still apply — videos excluded, reviewed IDs skipped, decisions and
-/// deletes routed through the same stores.
+/// Pushed list of the user's albums. Tapping an album pushes the swipe deck
+/// scoped to that album's photos via an `AppRoute.swipe` value. All the
+/// existing engine rules still apply — videos excluded, reviewed IDs skipped,
+/// decisions and deletes routed through the same stores.
 struct AlbumListView: View {
     let service: PhotoLibraryService
-    let onSelect: (DeckSource) -> Void
 
     @State private var albums: [PhotoLibraryService.AlbumSummary] = []
     @State private var isLoading = true
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Albums")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
-                    }
-                }
-        }
-        .task { await load() }
+        content
+            .navigationTitle("Albums")
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await load() }
     }
 
     @ViewBuilder
@@ -38,9 +28,7 @@ struct AlbumListView: View {
         } else {
             List {
                 ForEach(albums) { album in
-                    Button {
-                        onSelect(DeckSource(scope: .album(album.collection)))
-                    } label: {
+                    NavigationLink(value: AppRoute.swipe(DeckSource(scope: .album(album.collection)))) {
                         AlbumRow(album: album, service: service)
                     }
                     .buttonStyle(.plain)

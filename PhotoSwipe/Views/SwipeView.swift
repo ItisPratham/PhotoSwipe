@@ -21,15 +21,8 @@ struct SwipeView: View {
     @State private var exitOffset: CGSize = .zero
     @State private var isExiting = false
     @State private var showReviewSheet = false
-    @State private var showTutorial = false
-    @State private var showStats = false
-    @State private var showBrowse = false
-    @State private var showAlbums = false
-    @State private var showResetConfirm = false
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
-
-    @Environment(\.openURL) private var openURL
 
     /// What we actually offset the card by. During the drag we follow the
     /// gesture; while flinging the card off-screen we switch to the explicit
@@ -38,12 +31,15 @@ struct SwipeView: View {
         isExiting ? exitOffset : dragTranslation
     }
 
-    init(service: PhotoLibraryService, store: ReviewStore, stats: StatsStore) {
+    init(service: PhotoLibraryService,
+         store: ReviewStore,
+         stats: StatsStore,
+         source: DeckSource) {
         self.service = service
         self.store = store
         self.stats = stats
         self._viewModel = StateObject(
-            wrappedValue: SwipeViewModel(store: store, stats: stats)
+            wrappedValue: SwipeViewModel(store: store, stats: stats, source: source)
         )
     }
 
@@ -99,99 +95,10 @@ struct SwipeView: View {
                 onConfirm: { await viewModel.confirmDelete(using: service) }
             )
         }
-        .sheet(isPresented: $showTutorial) {
-            OnboardingView { showTutorial = false }
-        }
-        .sheet(isPresented: $showStats) {
-            StatsView(stats: stats)
-        }
-        .sheet(isPresented: $showBrowse) {
-            BrowseView(service: service) { source in
-                showBrowse = false
-                Task { await viewModel.load(using: service, source: source) }
-            }
-        }
-        .sheet(isPresented: $showAlbums) {
-            AlbumListView(service: service) { source in
-                showAlbums = false
-                Task { await viewModel.load(using: service, source: source) }
-            }
-        }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Section {
-                        Button {
-                            showBrowse = true
-                        } label: {
-                            Label("Browse", systemImage: "square.grid.2x2")
-                        }
-
-                        Button {
-                            showAlbums = true
-                        } label: {
-                            Label("Albums", systemImage: "rectangle.stack")
-                        }
-
-                        Button {
-                            showStats = true
-                        } label: {
-                            Label("Activity", systemImage: "chart.bar")
-                        }
-                    }
-
-                    Section {
-                        Button {
-                            showTutorial = true
-                        } label: {
-                            Label("Show tutorial", systemImage: "questionmark.circle")
-                        }
-
-                        Button {
-                            openSupport()
-                        } label: {
-                            Label("Contact support", systemImage: "envelope")
-                        }
-                    }
-
-                    Section {
-                        Button(role: .destructive) {
-                            showResetConfirm = true
-                        } label: {
-                            Label("Reset review history",
-                                  systemImage: "arrow.counterclockwise")
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .accessibilityLabel("More")
-                }
-            }
-        }
-        .alert("Reset review history?", isPresented: $showResetConfirm) {
-            Button("Reset", role: .destructive) {
-                Task { await resetReviewHistory() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
-        }
         .fullScreenCover(item: $zoomAsset) { asset in
             PhotoZoomView(asset: asset, service: service)
         }
-    }
-
-    private func resetReviewHistory() async {
-        store.resetAll()
-        // Reset also clears any active browse/album filter so the deck jumps
-        // straight back to the oldest photo. Restart-persistence follows.
-        await viewModel.load(using: service, source: .allPhotos)
-    }
-
-    private func openSupport() {
-        guard let url = ContactLink.makeSupportURL() else { return }
-        openURL(url)
     }
 
     private func scheduleFreedBannerDismiss(for bytes: Int64?) {

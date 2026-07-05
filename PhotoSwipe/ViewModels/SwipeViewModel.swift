@@ -18,24 +18,18 @@ final class SwipeViewModel: ObservableObject {
 
     private let store: ReviewStore
     private let stats: StatsStore
-    private let defaults: UserDefaults
-    private let sourceKey = "PhotoSwipe.currentDeckSource"
 
-    /// What's currently feeding the deck. Persisted so a chosen filter
-    /// (Browse start-from-day/photo, or an album in v2.1 M4) survives
-    /// relaunch. Reset review history restores this to `.allPhotos`.
-    private(set) var source: DeckSource = .allPhotos
+    /// What's currently feeding the deck. Chosen at construction time by the
+    /// parent screen (Browse) — every launch starts fresh on Browse, so no
+    /// persistence is needed here.
+    private(set) var source: DeckSource
 
     init(store: ReviewStore,
          stats: StatsStore,
-         defaults: UserDefaults = .standard) {
+         source: DeckSource) {
         self.store = store
         self.stats = stats
-        self.defaults = defaults
-        if let data = defaults.data(forKey: sourceKey),
-           let restored = DeckSource.decoded(from: data) {
-            self.source = restored
-        }
+        self.source = source
     }
 
     var currentAsset: PhotoAsset? {
@@ -51,28 +45,16 @@ final class SwipeViewModel: ObservableObject {
         store.markedForDeletionIDs.count
     }
 
-    /// Loads the deck for the supplied source (defaults to the current one on
-    /// re-entry) and filters out already-reviewed assets. Safe to call
-    /// repeatedly — the next call rebuilds the deck from scratch. Persists
-    /// whenever the source changes so relaunch resumes on the same filter.
-    func load(using service: PhotoLibraryService,
-              source: DeckSource? = nil) async {
-        if let source, source != self.source {
-            self.source = source
-            persistSource()
-        }
+    /// Loads the deck for the configured source and filters out already-reviewed
+    /// assets. Safe to call repeatedly — the next call rebuilds the deck from
+    /// scratch.
+    func load(using service: PhotoLibraryService) async {
         isLoading = true
         let fetched = await service.fetchImages(source: self.source)
         assets = fetched.filter { !store.isReviewed($0.id) }
         currentIndex = 0
         canUndo = false
         isLoading = false
-    }
-
-    private func persistSource() {
-        if let data = source.encoded() {
-            defaults.set(data, forKey: sourceKey)
-        }
     }
 
     /// Right swipe — keep and never show again.

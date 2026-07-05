@@ -1,17 +1,30 @@
 import SwiftUI
 
-/// Sheet-presented browse screen. Photos grouped by day, newest-first — the
-/// same shape as Photos.app so users know what they're looking at. Tapping
-/// a thumbnail starts the deck at that photo; tapping a day header starts
-/// at the beginning of that day. In both cases the deck moves forward in
-/// time toward the newest photos, and previously reviewed assets are still
-/// skipped by the shared deck engine downstream.
+/// Home screen. Presents the primary "Start swiping" CTA, an entry into
+/// Albums, and a day-grouped grid of the user's library (Photos.app shape).
+/// Tapping a thumbnail or a day header pushes the swipe deck starting at
+/// that photo/day. The overflow menu here hosts Activity, tutorial, support,
+/// and the destructive reset action.
 struct BrowseView: View {
     let service: PhotoLibraryService
-    let onSelect: (DeckSource) -> Void
+    @ObservedObject var store: ReviewStore
+    @ObservedObject var stats: StatsStore
 
     @StateObject private var viewModel = BrowseViewModel()
-    @Environment(\.dismiss) private var dismiss
+
+    @State private var showTutorial = false
+    @State private var showStats = false
+    @State private var showResetConfirm = false
+
+    @Environment(\.openURL) private var openURL
+
+    init(service: PhotoLibraryService,
+         store: ReviewStore,
+         stats: StatsStore) {
+        self.service = service
+        self.store = store
+        self.stats = stats
+    }
 
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -26,19 +39,31 @@ struct BrowseView: View {
     )
 
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Browse")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismiss() }
-                    }
+        content
+            .navigationTitle("PhotoSwipe")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    overflowMenu
                 }
-        }
-        .task {
-            await viewModel.load(using: service)
-        }
+            }
+            .task {
+                await viewModel.load(using: service)
+            }
+            .sheet(isPresented: $showTutorial) {
+                OnboardingView { showTutorial = false }
+            }
+            .sheet(isPresented: $showStats) {
+                StatsView(stats: stats)
+            }
+            .alert("Reset review history?", isPresented: $showResetConfirm) {
+                Button("Reset", role: .destructive) {
+                    store.resetAll()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
+            }
     }
 
     @ViewBuilder
@@ -47,61 +72,80 @@ struct BrowseView: View {
             ProgressView("Loading library…")
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if viewModel.sections.isEmpty {
-            emptyState
         } else {
-            grid
+            scroll
         }
     }
 
-    private var grid: some View {
+    private var scroll: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
-                ForEach(viewModel.sections) { section in
-                    Section {
-                        LazyVGrid(columns: columns, spacing: 4) {
-                            ForEach(section.assets) { asset in
-                                Button {
-                                    select(from: asset)
-                                } label: {
-                                    Thumbnail(asset: asset, service: service)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Start swiping from \(asset.formattedDate)")
-                                .contextMenu {
-                                    Button {
-                                        select(from: asset)
-                                    } label: {
-                                        Label("Start swiping from here",
-                                              systemImage: "play.circle")
+                startSwipingCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                albumsRow
+                    .padding(.horizontal, 16)
+
+                if viewModel.sections.isEmpty {
+                    emptyState
+                        .padding(.top, 40)
+                } else {
+                    ForEach(viewModel.sections) { section in
+                        Section {
+                            LazyVGrid(columns: columns, spacing: 4) {
+                                ForEach(section.assets) { asset in
+                                    NavigationLink(
+                                        value: AppRoute.swipe(
+                                            DeckSource(scope: .allPhotos,
+                                                       startFrom: asset.creationDate)
+                                        )
+                                    ) {
+                                        Thumbnail(asset: asset, service: service)
                                     }
-                                } preview: {
-                                    ThumbnailPreview(asset: asset, service: service)
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Start swiping from \(asset.formattedDate)")
+                                    .contextMenu {
+                                        NavigationLink(
+                                            value: AppRoute.swipe(
+                                                DeckSource(scope: .allPhotos,
+                                                           startFrom: asset.creationDate)
+                                            )
+                                        ) {
+                                            Label("Start swiping from here",
+                                                  systemImage: "play.circle")
+                                        }
+                                    } preview: {
+                                        ThumbnailPreview(asset: asset, service: service)
+                                    }
                                 }
                             }
-                        }
-                        .padding(.horizontal, 12)
-                    } header: {
-                        Button {
-                            select(dayStart: section.id)
-                        } label: {
-                            HStack(spacing: 8) {
-                                Text(Self.dayFormatter.string(from: section.id))
-                                    .font(.headline)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: "arrow.right.circle.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.tint)
+                            .padding(.horizontal, 12)
+                        } header: {
+                            NavigationLink(
+                                value: AppRoute.swipe(
+                                    DeckSource(scope: .allPhotos,
+                                               startFrom: section.id)
+                                )
+                            ) {
+                                HStack(spacing: 8) {
+                                    Text(Self.dayFormatter.string(from: section.id))
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Image(systemName: "arrow.right.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.tint)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(.regularMaterial)
+                                .contentShape(Rectangle())
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(.regularMaterial)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Start swiping from \(Self.dayFormatter.string(from: section.id))")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Start swiping from \(Self.dayFormatter.string(from: section.id))")
                     }
                 }
             }
@@ -110,12 +154,111 @@ struct BrowseView: View {
         .scrollIndicators(.visible)
     }
 
-    private func select(from asset: PhotoAsset) {
-        onSelect(DeckSource(scope: .allPhotos, startFrom: asset.creationDate))
+    // MARK: - CTA card
+
+    private var startSwipingCard: some View {
+        NavigationLink(value: AppRoute.swipe(.allPhotos)) {
+            HStack(spacing: 16) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(.white)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Start swiping")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white)
+                    Text("Oldest first")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 32)
+            .background(
+                LinearGradient(
+                    colors: [Color.accentColor, Color.accentColor.opacity(0.7)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Color.accentColor.opacity(0.25), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Start swiping the whole library, oldest first")
     }
 
-    private func select(dayStart: Date) {
-        onSelect(DeckSource(scope: .allPhotos, startFrom: dayStart))
+    // MARK: - Albums row
+
+    private var albumsRow: some View {
+        NavigationLink(value: AppRoute.albums) {
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.stack")
+                    .font(.headline)
+                    .foregroundStyle(.tint)
+                Text("Albums")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Browse albums")
+    }
+
+    // MARK: - Overflow menu
+
+    private var overflowMenu: some View {
+        Menu {
+            Section {
+                Button {
+                    showStats = true
+                } label: {
+                    Label("Activity", systemImage: "chart.bar")
+                }
+            }
+
+            Section {
+                Button {
+                    showTutorial = true
+                } label: {
+                    Label("Show tutorial", systemImage: "questionmark.circle")
+                }
+
+                Button {
+                    openSupport()
+                } label: {
+                    Label("Contact support", systemImage: "envelope")
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showResetConfirm = true
+                } label: {
+                    Label("Reset review history",
+                          systemImage: "arrow.counterclockwise")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .accessibilityLabel("More")
+        }
+    }
+
+    private func openSupport() {
+        guard let url = ContactLink.makeSupportURL() else { return }
+        openURL(url)
     }
 
     private var emptyState: some View {
@@ -127,7 +270,7 @@ struct BrowseView: View {
                 .font(.headline)
         }
         .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
     }
 }
 

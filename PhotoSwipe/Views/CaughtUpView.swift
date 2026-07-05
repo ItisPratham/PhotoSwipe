@@ -6,6 +6,8 @@ import SwiftUI
 struct CaughtUpView: View {
     let totalReviewed: Int
 
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.seal.fill")
@@ -21,6 +23,15 @@ struct CaughtUpView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+
+            Button {
+                dismiss()
+            } label: {
+                Text("Back to Browse")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.top, 8)
         }
         .padding(24)
         .accessibilityElement(children: .combine)
