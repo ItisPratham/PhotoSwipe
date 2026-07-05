@@ -15,7 +15,8 @@ where you can spare any photo, then **one** system prompt confirms the whole
 batch delete. Deletion is never per-swipe.
 
 After a successful batch delete the app surfaces a "Freed ~X MB" banner sized
-from the deleted assets' on-device file sizes.
+from the deleted assets' on-device file sizes, and appends a `DeleteRecord` to
+the persistent activity log (see below).
 
 ## Requirements
 
@@ -39,7 +40,9 @@ set your **Team**, and run on a connected device.
 > [XcodeGen](https://github.com/yonik/XcodeGen)), but day-to-day you just edit
 > in Xcode — new Swift files added to the project are picked up automatically.
 
-## What's in the MVP
+## Features
+
+### MVP (v1)
 
 - Permission flow with a Settings deep-link when access is limited or blocked.
 - Oldest-first chronological deck, photos and screenshots only (no videos).
@@ -55,9 +58,60 @@ set your **Team**, and run on a connected device.
 - VoiceOver-friendly: photo card carries a date label and `Keep` /
   `Mark for deletion` actions so the deck is usable without the drag gesture.
 
-## Known limitations (MVP)
+### v2.0
 
-- Reviewed / marked state is **local only** (UserDefaults, keyed by asset
-  `localIdentifier`). Reinstall or new device = fresh start. No sync.
-- **No duplicate detection** — chronological order surfaces bursts naturally.
-- **No videos** — photos and screenshots only.
+- **First-launch onboarding** — 3 slides that *teach the swipe by being one*:
+  the tutorial card follows your finger, tilts, and only advances when you
+  drag the correct direction (left for delete, right for keep), reinforced by
+  the same red/green tint the real deck uses. Persisted seen-flag; re-openable
+  from the toolbar menu at any time.
+- **Toolbar menu** (`•••` top-right of the swipe deck) with:
+  - **Activity** — cumulative bytes freed, running photo count, and a reverse
+    chronological list of every successful batch delete (date, count, MB).
+    Read-only; the system's Recently Deleted covers restore.
+  - **Show tutorial** — re-plays the onboarding without touching the seen-flag.
+  - **Contact support** — opens a `mailto:` draft to the support address with
+    the app version and iOS version pre-filled in the subject line.
+  - **Reset review history** — destructive, confirmation alert. Wipes the
+    kept/marked sets so the whole library re-enters the deck as un-reviewed.
+    The Photos library itself is not touched.
+- **Light + dark app icon** — full-bleed 1024×1024 renders, wired into the
+  asset catalog with `luminosity: dark` so iOS 18+ switches automatically.
+
+## App icon
+
+The icon art is **owner-supplied**. Source SVGs live under `Design/`
+(`AppIcon_Light.svg`, `AppIcon_Dark.svg`), and the shipped PNGs sit inside
+`PhotoSwipe/Resources/Assets.xcassets/AppIcon.appiconset/`. To swap the art:
+
+1. Edit the SVGs (or drop in new ones).
+2. Re-render each to a **1024×1024 PNG, opaque, no alpha** (`qlmanage` + a
+   short CoreGraphics flatten pass — see the icon commit for the recipe).
+3. Overwrite the two PNGs in the appiconset with the same filenames. No
+   Xcode wiring changes needed.
+
+## Persistence
+
+Everything is UserDefaults, keyed to be human-readable:
+
+- `PhotoSwipe.reviewedIDs` / `PhotoSwipe.markedForDeletionIDs` — Sets of
+  `PHAsset.localIdentifier`. Reviewed = kept ∪ marked-for-deletion; excluded
+  from the fetched deck.
+- `PhotoSwipe.hasSeenOnboarding` — Bool flag.
+- `PhotoSwipe.stats.totalBytesFreed` / `PhotoSwipe.stats.deleteHistory` —
+  cumulative bytes reclaimed + JSON-encoded array of `DeleteRecord` values.
+
+## Known limitations
+
+- **Local only.** All state above is local; reinstall or new device = fresh
+  start. No cloud sync.
+- **No duplicate detection.** Chronological adjacency surfaces bursts and
+  near-dupes naturally; we don't run perceptual hashing.
+- **No videos.** Photos and screenshots only — videos are filtered at the
+  fetch layer.
+- **Person / face filtering is out of scope.** Apple's People album isn't
+  exposed via public PhotoKit — there's no `PHPerson` — so implementing
+  "photos of this person" would require running our own Vision-based face
+  detection + clustering across the library. That's compute-heavy,
+  privacy-sensitive, and not on the roadmap; see `PhotoSwipe_v2_Instructions.md`
+  §7 for the parked spike.
