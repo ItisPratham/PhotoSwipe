@@ -78,6 +78,25 @@ set your **Team**, and run on a connected device.
 - **Light + dark app icon** — full-bleed 1024×1024 renders, wired into the
   asset catalog with `luminosity: dark` so iOS 18+ switches automatically.
 
+### v2.1
+
+- **DeckSource** — a value type that gates what feeds the swipe deck (scope +
+  optional `startFrom` cutoff). The engine downstream is unchanged; scope
+  changes just replace the fetch. The current source is persisted through
+  UserDefaults so a chosen entry point survives relaunch. Reset review
+  history explicitly clears the filter back to `.allPhotos`.
+- **Browse** (menu → Browse) — a Photos.app-style day-grouped grid of the
+  full library, newest-first, with sticky day headers and a visible scroll
+  indicator. Tap a thumbnail to start the deck at that photo; tap a day
+  header to start at the beginning of that day. Long-press any thumbnail
+  for a full-photo preview.
+- **Albums** (menu → Albums) — lists every user-created album that contains
+  photos, with cover thumbnail and count. Tap an album to swipe scoped to
+  it. All the review, undo, and batch-delete behaviour applies identically.
+- **Pinch-to-zoom** — a two-finger pinch on the current card opens a
+  fullscreen photo inspector with further pinch (1×–4×), pan when zoomed,
+  double-tap toggle, and downward-drag-to-dismiss.
+
 ## App icon
 
 The icon art is **owner-supplied**. Source SVGs live under `Design/`
@@ -100,6 +119,9 @@ Everything is UserDefaults, keyed to be human-readable:
 - `PhotoSwipe.hasSeenOnboarding` — Bool flag.
 - `PhotoSwipe.stats.totalBytesFreed` / `PhotoSwipe.stats.deleteHistory` —
   cumulative bytes reclaimed + JSON-encoded array of `DeleteRecord` values.
+- `PhotoSwipe.currentDeckSource` — JSON-encoded snapshot of the active
+  DeckSource (scope + optional `startFrom`); albums travel via their
+  `PHAssetCollection.localIdentifier` and are re-resolved on relaunch.
 
 ## Known limitations
 
