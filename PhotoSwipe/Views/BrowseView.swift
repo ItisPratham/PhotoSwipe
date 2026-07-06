@@ -94,6 +94,9 @@ struct BrowseView: View {
                 albumsRow
                     .padding(.horizontal, 16)
 
+                videosRow
+                    .padding(.horizontal, 16)
+
                 if viewModel.sections.isEmpty {
                     emptyState
                         .padding(.top, 40)
@@ -221,6 +224,34 @@ struct BrowseView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Browse albums")
+    }
+
+    // MARK: - Videos row
+
+    private var videosRow: some View {
+        NavigationLink(
+            value: AppRoute.swipe(
+                DeckSource(scope: .allPhotos, media: .videos)
+            )
+        ) {
+            HStack(spacing: 12) {
+                Image(systemName: "video")
+                    .font(.headline)
+                    .foregroundStyle(.tint)
+                Text("Videos")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Swipe through videos, oldest first")
     }
 
     // MARK: - Overflow menu
