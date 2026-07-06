@@ -12,6 +12,7 @@
 		9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF08B652DDDFCD1896529719 /* RootView.swift */; };
 		AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */; };
 		B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6338753D3A338BAA01A682 /* PermissionView.swift */; };
+		D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */; };
 		D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D592FEE5F1000AE08D1 /* CardView.swift */; };
 		D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */; };
 		D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */; };
@@ -43,6 +44,7 @@
 		AF08B652DDDFCD1896529719 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PhotoSwipe_Instructions.md; sourceTree = "<group>"; };
 		C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
+		D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SizeStore.swift; sourceTree = "<group>"; };
 		D7893D592FEE5F1000AE08D1 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
 		D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeViewModel.swift; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 				C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */,
 				D7893D602FEE646800AE08D1 /* ReviewStore.swift */,
 				D7DDEA322FF982A500E3ED52 /* StatsStore.swift */,
+				D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -242,6 +245,7 @@
 			files = (
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
+				D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */,
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				D7DDEA3D2FFA7CDF00E3ED52 /* PhotoZoomView.swift in Sources */,

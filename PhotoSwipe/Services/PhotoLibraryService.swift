@@ -212,6 +212,30 @@ final class PhotoLibraryService: ObservableObject {
         }.value
     }
 
+    /// Measures on-device byte size per asset from `PHAssetResource` metadata
+    /// (no download), returning a map keyed by `localIdentifier`. Callers pass
+    /// only the assets they don't already have cached. Runs at `.utility` off
+    /// the main actor. Assets with multiple resources (RAW + JPEG, edits) sum
+    /// them all, since they all reclaim space on delete.
+    nonisolated func byteSizes(for assets: [PhotoAsset]) async -> [String: Int64] {
+        guard !assets.isEmpty else { return [:] }
+        return await Task.detached(priority: .utility) {
+            var result: [String: Int64] = [:]
+            for asset in assets {
+                var total: Int64 = 0
+                for resource in PHAssetResource.assetResources(for: asset.phAsset) {
+                    if let size = resource.value(forKey: "fileSize") as? Int64 {
+                        total += size
+                    } else if let size = resource.value(forKey: "fileSize") as? NSNumber {
+                        total += size.int64Value
+                    }
+                }
+                result[asset.id] = total
+            }
+            return result
+        }.value
+    }
+
     /// Lightweight summary of a user album — enough for a list row without
     /// forcing the caller to touch PhotoKit directly. Holds the collection
     /// itself so we can build a DeckSource without re-resolving.
