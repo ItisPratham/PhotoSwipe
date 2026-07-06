@@ -1,3 +1,4 @@
+import AVFoundation
 import Photos
 import SwiftUI
 import UIKit
@@ -50,11 +51,12 @@ final class PhotoLibraryService: ObservableObject {
 
     // MARK: - Fetch
 
-    /// Fetches image assets (photos + screenshots) in chronological order,
-    /// oldest first, honouring the supplied `DeckSource` — scope (all photos
-    /// or a specific album) and an optional `startFrom` cutoff. Videos are
-    /// excluded at the predicate layer so they never enter the deck. Runs off
-    /// the main actor because enumerating a large library can take a beat.
+    /// Fetches assets in chronological order, oldest first, honouring the
+    /// supplied `DeckSource` — scope (all photos or a specific album), media
+    /// kind (photos / videos / both), and an optional `startFrom` cutoff. The
+    /// media filter is applied at the predicate layer, so the default `.photos`
+    /// source never surfaces a video. Runs off the main actor because
+    /// enumerating a large library can take a beat.
     nonisolated func fetchImages(source: DeckSource) async -> [PhotoAsset] {
         await Task.detached(priority: .userInitiated) {
             let options = PHFetchOptions()
@@ -62,17 +64,26 @@ final class PhotoLibraryService: ObservableObject {
                 NSSortDescriptor(key: "creationDate", ascending: true)
             ]
 
-            var predicates: [NSPredicate] = [
-                NSPredicate(format: "mediaType = %d",
-                            PHAssetMediaType.image.rawValue)
-            ]
+            var predicates: [NSPredicate] = []
+            switch source.media {
+            case .photos:
+                predicates.append(NSPredicate(format: "mediaType = %d",
+                                              PHAssetMediaType.image.rawValue))
+            case .videos:
+                predicates.append(NSPredicate(format: "mediaType = %d",
+                                              PHAssetMediaType.video.rawValue))
+            case .all:
+                break // no media-type restriction
+            }
             if let startFrom = source.startFrom {
                 predicates.append(NSPredicate(format: "creationDate >= %@",
                                               startFrom as NSDate))
             }
-            options.predicate = predicates.count == 1
-                ? predicates[0]
-                : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+            options.predicate = predicates.isEmpty
+                ? nil
+                : predicates.count == 1
+                    ? predicates[0]
+                    : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
 
             let result: PHFetchResult<PHAsset>
             switch source.scope {
@@ -128,6 +139,24 @@ final class PhotoLibraryService: ObservableObject {
 
             continuation.onTermination = { _ in
                 PHImageManager.default().cancelImageRequest(requestID)
+            }
+        }
+    }
+
+    /// Resolves an `AVPlayerItem` for a video asset. `isNetworkAccessAllowed`
+    /// lets an iCloud original stream in; the caller shows the poster thumbnail
+    /// first and never blocks on this. Returns nil if PhotoKit can't provide a
+    /// playable item.
+    nonisolated func playerItem(for asset: PhotoAsset) async -> AVPlayerItem? {
+        await withCheckedContinuation { continuation in
+            let options = PHVideoRequestOptions()
+            options.isNetworkAccessAllowed = true
+            options.deliveryMode = .automatic
+            PHImageManager.default().requestPlayerItem(
+                forVideo: asset.phAsset,
+                options: options
+            ) { item, _ in
+                continuation.resume(returning: item)
             }
         }
     }

@@ -120,7 +120,7 @@ struct SwipeView: View {
     // MARK: - Card
 
     private func card(for asset: PhotoAsset) -> some View {
-        CardView(asset: asset, service: service)
+        deckCard(for: asset)
             .overlay(alignment: .top) { cardStamps }
             .padding(.horizontal, 20)
             .padding(.vertical, 28)
@@ -139,12 +139,13 @@ struct SwipeView: View {
                         handleDragEnd(translation: value.translation)
                     }
             )
-            // Two-finger pinch opens the fullscreen inspector. Distinct from
-            // the one-finger drag, so both can coexist via simultaneous.
+            // Two-finger pinch opens the fullscreen inspector (photos only —
+            // a video card taps to play/pause instead). Distinct from the
+            // one-finger drag, so both can coexist via simultaneous.
             .simultaneousGesture(
                 MagnificationGesture()
                     .onEnded { finalScale in
-                        if finalScale > 1.15 {
+                        if !asset.isVideo, finalScale > 1.15 {
                             zoomAsset = asset
                         }
                     }
@@ -156,9 +157,20 @@ struct SwipeView: View {
             .accessibilityAction(named: Text("Mark for deletion")) {
                 viewModel.markForDeletion()
             }
-            // Identity tied to the asset so SwiftUI rebuilds (and CardView's
+            // Identity tied to the asset so SwiftUI rebuilds (and the card's
             // .task reloads) when the deck advances.
             .id(asset.id)
+    }
+
+    /// Picks the right card renderer for the asset. Both share the swipe /
+    /// stamp / tint mechanics above — only the content differs.
+    @ViewBuilder
+    private func deckCard(for asset: PhotoAsset) -> some View {
+        if asset.isVideo {
+            VideoCardView(asset: asset, service: service)
+        } else {
+            CardView(asset: asset, service: service)
+        }
     }
 
     /// Stamps that fade in with the swipe — Tinder-style direction cue.
