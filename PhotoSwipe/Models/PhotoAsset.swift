@@ -16,6 +16,11 @@ struct PhotoAsset: Identifiable, Equatable {
     /// Play length in seconds. Zero for stills.
     var duration: TimeInterval { phAsset.duration }
 
+    /// Native pixel dimensions — used to shape the video preview to its aspect.
+    var pixelSize: CGSize {
+        CGSize(width: phAsset.pixelWidth, height: phAsset.pixelHeight)
+    }
+
     /// `m:ss` badge text for the video card. Empty for stills.
     var formattedDuration: String {
         guard isVideo else { return "" }

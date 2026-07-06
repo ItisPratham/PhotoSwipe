@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 /// Grid of every asset currently marked for deletion. Tapping a thumbnail
@@ -173,7 +174,11 @@ private struct ThumbnailCell: View {
                 onTap()
             }
         } preview: {
-            ThumbnailPreview(asset: asset, service: service)
+            if asset.isVideo {
+                VideoPreview(asset: asset, service: service)
+            } else {
+                ThumbnailPreview(asset: asset, service: service)
+            }
         }
         .task(id: asset.id) {
             image = nil
@@ -215,6 +220,58 @@ private struct ThumbnailPreview: View {
             ) {
                 image = next
             }
+        }
+    }
+}
+
+/// Playable preview shown when long-pressing a marked *video* — the analog of
+/// the full-photo preview above. Poster first, then a muted, looping autoplay,
+/// shaped to the clip's own aspect ratio. Torn down when the preview closes.
+private struct VideoPreview: View {
+    let asset: PhotoAsset
+    let service: PhotoLibraryService
+
+    @StateObject private var controller = VideoPlaybackController()
+    @State private var poster: UIImage?
+
+    private var aspect: CGFloat {
+        let size = asset.pixelSize
+        guard size.width > 0, size.height > 0 else { return 1 }
+        return size.width / size.height
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black
+            if let poster {
+                Image(uiImage: poster)
+                    .resizable()
+                    .scaledToFit()
+            }
+            if let player = controller.player {
+                PlayerLayerView(player: player)
+            }
+        }
+        .aspectRatio(aspect, contentMode: .fit)
+        .frame(width: 320)
+        .task(id: asset.id) {
+            poster = nil
+            async let posterLoad: Void = loadPoster()
+            let item = await service.playerItem(for: asset)
+            if let item {
+                controller.start(item: item, duration: asset.duration)
+            }
+            _ = await posterLoad
+        }
+        .onDisappear { controller.teardown() }
+    }
+
+    private func loadPoster() async {
+        for await next in service.imageStream(
+            for: asset,
+            targetSize: CGSize(width: 640, height: 640)
+        ) {
+            poster = next
         }
     }
 }
