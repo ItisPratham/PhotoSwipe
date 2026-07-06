@@ -266,8 +266,9 @@ final class VideoPlaybackController: ObservableObject {
 }
 
 /// Thin `AVPlayerLayer` host — aspect-fit to match `CardView`'s `scaledToFit`,
-/// no playback controls (the card owns tap-to-toggle and the scrubber).
-private struct PlayerLayerView: UIViewRepresentable {
+/// no playback controls (the card owns tap-to-toggle and the scrubber). Shared
+/// with the delete-review video preview.
+struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
 
     func makeUIView(context: Context) -> PlayerUIView {
@@ -282,7 +283,7 @@ private struct PlayerLayerView: UIViewRepresentable {
     }
 }
 
-private final class PlayerUIView: UIView {
+final class PlayerUIView: UIView {
     override class var layerClass: AnyClass { AVPlayerLayer.self }
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 }
