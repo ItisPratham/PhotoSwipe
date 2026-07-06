@@ -9,6 +9,7 @@ struct SwipeView: View {
     @ObservedObject var service: PhotoLibraryService
     @ObservedObject var store: ReviewStore
     @ObservedObject var stats: StatsStore
+    @ObservedObject var sizes: SizeStore
     @StateObject private var viewModel: SwipeViewModel
 
     /// Live translation while the finger is down. Backed by GestureState so
@@ -34,12 +35,14 @@ struct SwipeView: View {
     init(service: PhotoLibraryService,
          store: ReviewStore,
          stats: StatsStore,
+         sizes: SizeStore,
          source: DeckSource) {
         self.service = service
         self.store = store
         self.stats = stats
+        self.sizes = sizes
         self._viewModel = StateObject(
-            wrappedValue: SwipeViewModel(store: store, stats: stats, source: source)
+            wrappedValue: SwipeViewModel(store: store, stats: stats, sizes: sizes, source: source)
         )
     }
 

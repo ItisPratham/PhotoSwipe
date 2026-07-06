@@ -43,8 +43,17 @@ struct DeckSource: Hashable {
         case all
     }
 
+    /// Deck ordering. `.chronological` is the default oldest-first stream;
+    /// `.largestFirst` sorts by on-device byte size (desc) to surface space
+    /// hogs. `startFrom` is ignored under `.largestFirst`.
+    enum Order: Hashable {
+        case chronological
+        case largestFirst
+    }
+
     var scope: Scope
     var media: Media
+    var order: Order
     /// Include only assets whose creationDate is on/after this date. Used by
     /// the browse flow to start from a chosen photo or day, moving forward
     /// in time toward the newest.
@@ -52,9 +61,11 @@ struct DeckSource: Hashable {
 
     init(scope: Scope = .allPhotos,
          media: Media = .photos,
+         order: Order = .chronological,
          startFrom: Date? = nil) {
         self.scope = scope
         self.media = media
+        self.order = order
         self.startFrom = startFrom
     }
 
@@ -64,6 +75,7 @@ struct DeckSource: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(scope)
         hasher.combine(media)
+        hasher.combine(order)
         hasher.combine(startFrom)
     }
 }

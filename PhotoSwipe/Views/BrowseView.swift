@@ -97,6 +97,9 @@ struct BrowseView: View {
                 videosRow
                     .padding(.horizontal, 16)
 
+                biggestFilesRow
+                    .padding(.horizontal, 16)
+
                 if viewModel.sections.isEmpty {
                     emptyState
                         .padding(.top, 40)
@@ -252,6 +255,39 @@ struct BrowseView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Swipe through videos, oldest first")
+    }
+
+    // MARK: - Biggest files row
+
+    private var biggestFilesRow: some View {
+        NavigationLink(
+            value: AppRoute.swipe(
+                DeckSource(scope: .allPhotos, media: .all, order: .largestFirst)
+            )
+        ) {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.up.arrow.down.circle")
+                    .font(.headline)
+                    .foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Biggest files")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Photos & videos, largest first")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Swipe through your biggest files, largest first")
     }
 
     // MARK: - Overflow menu
