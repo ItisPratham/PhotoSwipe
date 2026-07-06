@@ -31,6 +31,7 @@ struct VideoCardView: View {
             }
             .overlay(alignment: .topLeading) { dateLabel }
             .overlay(alignment: .topTrailing) { durationBadge }
+            .overlay(alignment: .bottomTrailing) { muteButton }
             .overlay(alignment: .bottom) { scrubber }
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -88,6 +89,24 @@ struct VideoCardView: View {
             .padding(.vertical, 8)
             .background(.black.opacity(0.45), in: Capsule())
             .padding(16)
+    }
+
+    /// Sits just above the scrubber; its Button consumes the tap so it doesn't
+    /// also toggle play/pause. Muted by default.
+    private var muteButton: some View {
+        Button {
+            controller.toggleMute()
+        } label: {
+            Image(systemName: controller.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .background(.black.opacity(0.45), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(controller.isMuted ? "Unmute video" : "Mute video")
+        .padding(.trailing, 16)
+        .padding(.bottom, 48)
     }
 
     private var durationBadge: some View {
@@ -180,6 +199,9 @@ struct VideoCardView: View {
 final class VideoPlaybackController: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentTime: Double = 0
+    /// Muted by default; the user can unmute per card. Resets to muted on each
+    /// new card, since a fresh controller is built when the deck advances.
+    @Published private(set) var isMuted = true
 
     private(set) var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
@@ -195,9 +217,8 @@ final class VideoPlaybackController: ObservableObject {
 
     func start(item: AVPlayerItem, duration: Double) {
         self.duration = duration
-        // Ambient so a silent-but-playing preview mixes with (rather than
-        // stops) any audio the user has going, and respects the silent switch.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient)
+        isMuted = true
+        configureSession(muted: true)
 
         let queue = AVQueuePlayer()
         queue.isMuted = true
@@ -231,6 +252,21 @@ final class VideoPlaybackController: ObservableObject {
         }
     }
 
+    func toggleMute() {
+        let muted = !isMuted
+        isMuted = muted
+        player?.isMuted = muted
+        configureSession(muted: muted)
+    }
+
+    /// Muted → `.ambient` (mixes with the user's audio, silent-switch aware).
+    /// Unmuted → `.playback` so the clip's sound is actually audible.
+    private func configureSession(muted: Bool) {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(muted ? .ambient : .playback)
+        try? session.setActive(true)
+    }
+
     func beginScrubbing() { isScrubbing = true }
 
     func scrub(toFraction fraction: Double) {
@@ -262,6 +298,9 @@ final class VideoPlaybackController: ObservableObject {
         isPlaying = false
         currentTime = 0
         duration = 0
+        // Let any audio we interrupted (by unmuting into .playback) resume.
+        try? AVAudioSession.sharedInstance()
+            .setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 
