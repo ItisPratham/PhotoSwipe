@@ -18,6 +18,7 @@ final class SwipeViewModel: ObservableObject {
 
     private let store: ReviewStore
     private let stats: StatsStore
+    private let sizes: SizeStore
 
     /// What's currently feeding the deck. Chosen at construction time by the
     /// parent screen (Browse) — every launch starts fresh on Browse, so no
@@ -26,9 +27,11 @@ final class SwipeViewModel: ObservableObject {
 
     init(store: ReviewStore,
          stats: StatsStore,
+         sizes: SizeStore,
          source: DeckSource) {
         self.store = store
         self.stats = stats
+        self.sizes = sizes
         self.source = source
     }
 
@@ -51,10 +54,29 @@ final class SwipeViewModel: ObservableObject {
     func load(using service: PhotoLibraryService) async {
         isLoading = true
         let fetched = await service.fetchImages(source: self.source)
-        assets = fetched.filter { !store.isReviewed($0.id) }
+        var deck = fetched.filter { !store.isReviewed($0.id) }
+        if source.order == .largestFirst {
+            deck = await sortedByLargest(deck, using: service)
+        }
+        assets = deck
         currentIndex = 0
         canUndo = false
         isLoading = false
+    }
+
+    /// Sorts the deck by on-device byte size, descending. Sizes come from the
+    /// cache; anything not yet measured is enumerated once (metadata only, no
+    /// download) and folded back into the cache for next time.
+    private func sortedByLargest(_ deck: [PhotoAsset],
+                                 using service: PhotoLibraryService) async -> [PhotoAsset] {
+        let missing = deck.filter { sizes.size(for: $0.id) == nil }
+        if !missing.isEmpty {
+            let measured = await service.byteSizes(for: missing)
+            sizes.merge(measured)
+        }
+        return deck.sorted {
+            (sizes.size(for: $0.id) ?? 0) > (sizes.size(for: $1.id) ?? 0)
+        }
     }
 
     /// Right swipe — keep and never show again.

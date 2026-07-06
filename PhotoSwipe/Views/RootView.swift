@@ -7,6 +7,7 @@ struct RootView: View {
     @StateObject private var library = PhotoLibraryService()
     @StateObject private var reviewStore = ReviewStore()
     @StateObject private var statsStore = StatsStore()
+    @StateObject private var sizeStore = SizeStore()
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("PhotoSwipe.hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -88,6 +89,7 @@ struct RootView: View {
                                 SwipeView(service: library,
                                           store: reviewStore,
                                           stats: statsStore,
+                                          sizes: sizeStore,
                                           source: source)
                             }
                         }
