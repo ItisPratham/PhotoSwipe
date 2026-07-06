@@ -4,47 +4,46 @@ import SwiftUI
 /// Video variant of the swipe card. Mirrors `CardView`'s framing, rounding, and
 /// date label, but plays the clip: the poster thumbnail shows first (fast,
 /// local), then a muted, looping autoplay of the current card fades in on top.
-/// Tapping toggles play/pause; a duration badge sits in the top-trailing corner.
+/// Tapping toggles play/pause; a duration badge sits top-trailing; and a
+/// scrubber along the bottom seeks forward/backward like the Photos app.
 ///
-/// Only the visible card ever holds a player — it's built in `.task(id:)` and
-/// torn down in `onDisappear`, so advancing the deck releases the AV resources.
+/// Playback lives in a small `VideoPlaybackController` (player, looper, time
+/// observer, seeking) so the view stays declarative. Only the visible card
+/// holds a controller — built in `.task(id:)`, torn down in `onDisappear` — so
+/// advancing the deck releases the AV resources.
 struct VideoCardView: View {
     let asset: PhotoAsset
     let service: PhotoLibraryService
 
+    @StateObject private var controller = VideoPlaybackController()
     @State private var poster: UIImage?
-    @State private var player: AVQueuePlayer?
-    /// Retained so the loop keeps running; releasing it stops the looping.
-    @State private var looper: AVPlayerLooper?
-    @State private var isPlaying = true
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .bottomLeading) {
+            ZStack {
                 mediaLayer
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
 
-                if !isPlaying {
+                if !controller.isPlaying {
                     playIndicator
-                        .frame(width: proxy.size.width, height: proxy.size.height)
                 }
-
-                dateLabel
             }
+            .overlay(alignment: .topLeading) { dateLabel }
             .overlay(alignment: .topTrailing) { durationBadge }
+            .overlay(alignment: .bottom) { scrubber }
             .background(Color(.secondarySystemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
             .contentShape(Rectangle())
-            .onTapGesture { togglePlayback() }
+            .onTapGesture { controller.toggle() }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Video from \(asset.formattedDate), \(asset.formattedDuration)"))
             .accessibilityAddTraits(.startsMediaSession)
             .task(id: asset.id) {
                 await start(targetSize: targetPixelSize(from: proxy.size))
             }
-            .onDisappear(perform: teardown)
+            .onDisappear { controller.teardown() }
         }
     }
 
@@ -65,7 +64,7 @@ struct VideoCardView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            if let player {
+            if let player = controller.player {
                 PlayerLayerView(player: player)
             }
         }
@@ -105,7 +104,49 @@ struct VideoCardView: View {
         .padding(16)
     }
 
-    // MARK: - Playback
+    // MARK: - Scrubber
+
+    /// Bottom seek bar. Its drag is a descendant gesture, so it takes priority
+    /// over the parent swipe-to-decide drag — dragging the bar seeks the clip
+    /// rather than flinging the card. A zero-distance drag also handles taps to
+    /// seek to a point.
+    private var scrubber: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let progress = controller.progress
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.3))
+                    .frame(height: 4)
+                Capsule()
+                    .fill(.white)
+                    .frame(width: max(0, width * progress), height: 4)
+                Circle()
+                    .fill(.white)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: .black.opacity(0.35), radius: 2)
+                    .offset(x: width * progress - 7)
+            }
+            .frame(height: 24)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        controller.beginScrubbing()
+                        controller.scrub(toFraction: value.location.x / width)
+                    }
+                    .onEnded { value in
+                        controller.scrub(toFraction: value.location.x / width)
+                        controller.endScrubbing()
+                    }
+            )
+        }
+        .frame(height: 24)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+    }
+
+    // MARK: - Lifecycle
 
     private func start(targetSize: CGSize) async {
         poster = nil
@@ -113,17 +154,9 @@ struct VideoCardView: View {
         // poster stream finishing, and cancelling the task cancels both.
         async let posterLoad: Void = loadPoster(targetSize: targetSize)
         let item = await service.playerItem(for: asset)
-
         if let item {
-            configureAudioSession()
-            let queue = AVQueuePlayer()
-            queue.isMuted = true
-            looper = AVPlayerLooper(player: queue, templateItem: item)
-            player = queue
-            queue.play()
-            isPlaying = true
+            controller.start(item: item, duration: asset.duration)
         }
-
         _ = await posterLoad
     }
 
@@ -133,7 +166,60 @@ struct VideoCardView: View {
         }
     }
 
-    private func togglePlayback() {
+    private func targetPixelSize(from size: CGSize) -> CGSize {
+        let scale = UIScreen.main.scale
+        return CGSize(width: size.width * scale, height: size.height * scale)
+    }
+}
+
+/// Owns the AVQueuePlayer + looper and the periodic time observer that drives
+/// the scrubber. Muted, looping playback; seeking is precise (zero tolerance)
+/// so scrubbing lands where the finger is. Not `@MainActor`-annotated for iOS
+/// 16 compatibility — every entry point is called from the main actor and the
+/// time observer fires on the main queue.
+final class VideoPlaybackController: ObservableObject {
+    @Published private(set) var isPlaying = false
+    @Published private(set) var currentTime: Double = 0
+
+    private(set) var player: AVQueuePlayer?
+    private var looper: AVPlayerLooper?
+    private var timeObserver: Any?
+    private var duration: Double = 0
+    private var isScrubbing = false
+
+    /// 0…1 playback position for the scrubber fill/knob.
+    var progress: Double {
+        guard duration > 0 else { return 0 }
+        return min(max(currentTime / duration, 0), 1)
+    }
+
+    func start(item: AVPlayerItem, duration: Double) {
+        self.duration = duration
+        // Ambient so a silent-but-playing preview mixes with (rather than
+        // stops) any audio the user has going, and respects the silent switch.
+        try? AVAudioSession.sharedInstance().setCategory(.ambient)
+
+        let queue = AVQueuePlayer()
+        queue.isMuted = true
+        looper = AVPlayerLooper(player: queue, templateItem: item)
+        player = queue
+        addTimeObserver(to: queue)
+        queue.play()
+        isPlaying = true
+    }
+
+    private func addTimeObserver(to player: AVQueuePlayer) {
+        let interval = CMTime(seconds: 0.05, preferredTimescale: 600)
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: interval,
+            queue: .main
+        ) { [weak self] time in
+            guard let self, !self.isScrubbing else { return }
+            self.currentTime = time.seconds
+        }
+    }
+
+    func toggle() {
         guard let player else { return }
         if isPlaying {
             player.pause()
@@ -145,28 +231,42 @@ struct VideoCardView: View {
         }
     }
 
-    private func teardown() {
+    func beginScrubbing() { isScrubbing = true }
+
+    func scrub(toFraction fraction: Double) {
+        let clamped = min(max(fraction, 0), 1)
+        currentTime = clamped * duration
+        seek(to: clamped * duration)
+    }
+
+    func endScrubbing() { isScrubbing = false }
+
+    private func seek(to seconds: Double) {
+        guard let player else { return }
+        player.seek(
+            to: CMTime(seconds: seconds, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        )
+    }
+
+    func teardown() {
+        if let timeObserver {
+            player?.removeTimeObserver(timeObserver)
+        }
+        timeObserver = nil
         player?.pause()
         looper?.disableLooping()
         looper = nil
         player = nil
         isPlaying = false
-    }
-
-    /// Ambient so a silent-but-playing preview mixes with (rather than stops)
-    /// any audio the user already has going, and respects the ring/silent switch.
-    private func configureAudioSession() {
-        try? AVAudioSession.sharedInstance().setCategory(.ambient)
-    }
-
-    private func targetPixelSize(from size: CGSize) -> CGSize {
-        let scale = UIScreen.main.scale
-        return CGSize(width: size.width * scale, height: size.height * scale)
+        currentTime = 0
+        duration = 0
     }
 }
 
 /// Thin `AVPlayerLayer` host — aspect-fit to match `CardView`'s `scaledToFit`,
-/// no playback controls (the card owns tap-to-toggle).
+/// no playback controls (the card owns tap-to-toggle and the scrubber).
 private struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
 
