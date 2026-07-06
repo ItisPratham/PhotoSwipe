@@ -9,6 +9,20 @@ struct PhotoAsset: Identifiable, Equatable {
     var id: String { phAsset.localIdentifier }
     var creationDate: Date? { phAsset.creationDate }
 
+    /// Live Photos report `.image`, so they stay in the photo deck and render
+    /// as stills — only true movies count as video here.
+    var isVideo: Bool { phAsset.mediaType == .video }
+
+    /// Play length in seconds. Zero for stills.
+    var duration: TimeInterval { phAsset.duration }
+
+    /// `m:ss` badge text for the video card. Empty for stills.
+    var formattedDuration: String {
+        guard isVideo else { return "" }
+        let total = Int(duration.rounded())
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
     var formattedDate: String {
         guard let date = creationDate else { return "Unknown date" }
         return Self.dateFormatter.string(from: date)
