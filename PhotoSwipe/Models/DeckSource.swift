@@ -10,6 +10,8 @@ struct DeckSource: Hashable {
     enum Scope: Hashable {
         case allPhotos
         case album(PHAssetCollection)
+        /// A specific set of assets (a duplicate group), by localIdentifier.
+        case duplicateGroup([String])
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
             switch (lhs, rhs) {
@@ -18,6 +20,8 @@ struct DeckSource: Hashable {
             case (.album(let a), .album(let b)):
                 // PHAssetCollection identity travels via localIdentifier.
                 return a.localIdentifier == b.localIdentifier
+            case (.duplicateGroup(let a), .duplicateGroup(let b)):
+                return a == b
             default:
                 return false
             }
@@ -30,6 +34,9 @@ struct DeckSource: Hashable {
             case .album(let collection):
                 hasher.combine("album")
                 hasher.combine(collection.localIdentifier)
+            case .duplicateGroup(let ids):
+                hasher.combine("duplicateGroup")
+                hasher.combine(ids)
             }
         }
     }
@@ -58,24 +65,37 @@ struct DeckSource: Hashable {
     /// the browse flow to start from a chosen photo or day, moving forward
     /// in time toward the newest.
     var startFrom: Date?
+    /// For a duplicate-group deck: the localIdentifier of the shot suggested as
+    /// the keeper, badged in the deck. Nil for every other source.
+    var suggestedKeeperID: String?
 
     init(scope: Scope = .allPhotos,
          media: Media = .photos,
          order: Order = .chronological,
-         startFrom: Date? = nil) {
+         startFrom: Date? = nil,
+         suggestedKeeperID: String? = nil) {
         self.scope = scope
         self.media = media
         self.order = order
         self.startFrom = startFrom
+        self.suggestedKeeperID = suggestedKeeperID
     }
 
     /// Default source — the full chronological photo library.
     static let allPhotos = DeckSource(scope: .allPhotos, media: .photos, startFrom: nil)
+
+    /// Builds the deck for reviewing a duplicate group, keeper badged.
+    static func duplicateGroup(_ group: DuplicateGroup) -> DeckSource {
+        DeckSource(scope: .duplicateGroup(group.assetIDs),
+                   media: .all,
+                   suggestedKeeperID: group.suggestedKeeperID)
+    }
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(scope)
         hasher.combine(media)
         hasher.combine(order)
         hasher.combine(startFrom)
+        hasher.combine(suggestedKeeperID)
     }
 }

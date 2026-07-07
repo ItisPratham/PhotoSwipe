@@ -51,7 +51,7 @@ struct RootView: View {
             try? await Task.sleep(nanoseconds: 1_300_000_000)
             minTimeElapsed = true
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             // Re-check after the user may have changed access in Settings.
             if phase == .active {
                 library.refreshAccessState()
@@ -85,6 +85,8 @@ struct RootView: View {
                             switch route {
                             case .albums:
                                 AlbumListView(service: library)
+                            case .duplicates:
+                                DuplicatesView(service: library)
                             case .swipe(let source):
                                 SwipeView(service: library,
                                           store: reviewStore,

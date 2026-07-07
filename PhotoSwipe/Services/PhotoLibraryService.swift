@@ -4,9 +4,11 @@ import SwiftUI
 import UIKit
 
 /// Owns photo-library authorization, asset fetching, image loading, and the
-/// batched-delete bridge to PhotoKit.
+/// batched-delete bridge to PhotoKit. Also observes the library so features
+/// (e.g. Duplicates) can auto-refresh when photos are added, deleted, edited,
+/// or captured.
 @MainActor
-final class PhotoLibraryService: ObservableObject {
+final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
 
     /// App-level access state. We only proceed with the swipe flow on full
     /// access — `.limited` can't support bulk cleaning, so it is treated as
@@ -18,10 +20,27 @@ final class PhotoLibraryService: ObservableObject {
     }
 
     @Published private(set) var accessState: AccessState
+    /// Bumped on every library change. Observers watch this to know the library
+    /// is out of date without diffing PhotoKit themselves.
+    @Published private(set) var libraryVersion = 0
 
-    init() {
+    override init() {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         accessState = Self.map(status)
+        super.init()
+        PHPhotoLibrary.shared().register(self)
+    }
+
+    deinit {
+        PHPhotoLibrary.shared().unregisterChangeObserver(self)
+    }
+
+    /// PHPhotoLibraryChangeObserver — fires on an arbitrary queue, so hop to the
+    /// main actor to bump the version.
+    nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
+        Task { @MainActor in
+            self.libraryVersion &+= 1
+        }
     }
 
     /// Prompts for full access if undetermined. On already-resolved statuses
@@ -91,6 +110,11 @@ final class PhotoLibraryService: ObservableObject {
                 result = PHAsset.fetchAssets(with: options)
             case .album(let collection):
                 result = PHAsset.fetchAssets(in: collection, options: options)
+            case .duplicateGroup(let ids):
+                // A specific, already-chosen set — media/date filters don't
+                // apply; just resolve the identifiers (still oldest-first).
+                options.predicate = nil
+                result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
             }
 
             var assets: [PhotoAsset] = []

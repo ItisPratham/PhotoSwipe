@@ -88,7 +88,7 @@ struct SwipeView: View {
         .task {
             await viewModel.load(using: service)
         }
-        .onChange(of: viewModel.lastFreedBytes) { newValue in
+        .onChange(of: viewModel.lastFreedBytes) { _, newValue in
             scheduleFreedBannerDismiss(for: newValue)
         }
         .sheet(isPresented: $showReviewSheet) {
@@ -125,6 +125,11 @@ struct SwipeView: View {
     private func card(for asset: PhotoAsset) -> some View {
         deckCard(for: asset)
             .overlay(alignment: .top) { cardStamps }
+            .overlay(alignment: .bottom) {
+                if asset.id == viewModel.source.suggestedKeeperID {
+                    keeperBadge
+                }
+            }
             .padding(.horizontal, 20)
             .padding(.vertical, 28)
             .offset(displayOffset)
@@ -174,6 +179,22 @@ struct SwipeView: View {
         } else {
             CardView(asset: asset, service: service)
         }
+    }
+
+    /// Marks the highest-quality shot in a duplicate group as the one to keep.
+    private var keeperBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "star.fill")
+            Text("Suggested keeper")
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.black.opacity(0.55), in: Capsule())
+        .padding(.bottom, 40)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     /// Stamps that fade in with the swipe — Tinder-style direction cue.

@@ -21,6 +21,13 @@ struct PhotoAsset: Identifiable, Equatable {
         CGSize(width: phAsset.pixelWidth, height: phAsset.pixelHeight)
     }
 
+    /// Pixel count — a cheap "quality" proxy for suggesting a group's keeper.
+    var pixelArea: Int { phAsset.pixelWidth * phAsset.pixelHeight }
+
+    /// Identifies a camera-burst set. Assets sharing this belong to one burst
+    /// and can be grouped without any ML.
+    var burstIdentifier: String? { phAsset.burstIdentifier }
+
     /// `m:ss` badge text for the video card. Empty for stills.
     var formattedDuration: String {
         guard isVideo else { return "" }
