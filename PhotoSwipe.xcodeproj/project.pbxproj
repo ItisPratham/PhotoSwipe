@@ -13,6 +13,12 @@
 		AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */; };
 		B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6338753D3A338BAA01A682 /* PermissionView.swift */; };
 		D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */; };
+		D75FD6452FFC9C13003364D9 /* DuplicateGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */; };
+		D75FD6472FFC9C1F003364D9 /* AssetIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */; };
+		D75FD6492FFC9C30003364D9 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6482FFC9C30003364D9 /* IndexStore.swift */; };
+		D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */; };
+		D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */; };
+		D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */; };
 		D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D592FEE5F1000AE08D1 /* CardView.swift */; };
 		D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */; };
 		D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */; };
@@ -45,6 +51,12 @@
 		BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PhotoSwipe_Instructions.md; sourceTree = "<group>"; };
 		C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
 		D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SizeStore.swift; sourceTree = "<group>"; };
+		D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroup.swift; sourceTree = "<group>"; };
+		D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetIndex.swift; sourceTree = "<group>"; };
+		D75FD6482FFC9C30003364D9 /* IndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexStore.swift; sourceTree = "<group>"; };
+		D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryIndexService.swift; sourceTree = "<group>"; };
+		D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesViewModel.swift; sourceTree = "<group>"; };
+		D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		D7893D592FEE5F1000AE08D1 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
 		D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeViewModel.swift; sourceTree = "<group>"; };
@@ -88,6 +100,7 @@
 				D7DDEA3E2FFA7F4400E3ED52 /* AlbumListView.swift */,
 				D79CDCB02FFAE55F0012F45F /* LaunchView.swift */,
 				D79CDCB22FFAEA340012F45F /* VideoCardView.swift */,
+				D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -141,6 +154,8 @@
 				D7DDEA302FF9829A00E3ED52 /* DeleteRecord.swift */,
 				D7DDEA362FFA298600E3ED52 /* DeckSource.swift */,
 				D7DDEA402FFA8A9000E3ED52 /* AppRoute.swift */,
+				D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */,
+				D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -150,6 +165,7 @@
 			children = (
 				D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */,
 				D7DDEA382FFA2A6D00E3ED52 /* BrowseViewModel.swift */,
+				D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -161,6 +177,8 @@
 				D7893D602FEE646800AE08D1 /* ReviewStore.swift */,
 				D7DDEA322FF982A500E3ED52 /* StatsStore.swift */,
 				D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */,
+				D75FD6482FFC9C30003364D9 /* IndexStore.swift */,
+				D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -246,6 +264,8 @@
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
 				D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */,
+				D75FD6452FFC9C13003364D9 /* DuplicateGroup.swift in Sources */,
+				D75FD6492FFC9C30003364D9 /* IndexStore.swift in Sources */,
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				D7DDEA3D2FFA7CDF00E3ED52 /* PhotoZoomView.swift in Sources */,
@@ -255,14 +275,18 @@
 				D7DDEA332FF982A500E3ED52 /* StatsStore.swift in Sources */,
 				D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */,
 				D79CDCB32FFAEA340012F45F /* VideoCardView.swift in Sources */,
+				D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */,
 				D7893D5F2FEE60D200AE08D1 /* SwipeViewModel.swift in Sources */,
 				D79CDCB12FFAE55F0012F45F /* LaunchView.swift in Sources */,
 				D7DDEA3B2FFA2A8000E3ED52 /* BrowseView.swift in Sources */,
 				D7DDEA392FFA2A6D00E3ED52 /* BrowseViewModel.swift in Sources */,
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
+				D75FD6472FFC9C1F003364D9 /* AssetIndex.swift in Sources */,
 				D7DDEA372FFA298600E3ED52 /* DeckSource.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
 				D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */,
+				D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */,
+				D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */,
 				D7DDEA412FFA8A9000E3ED52 /* AppRoute.swift in Sources */,
 				D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */,
 				D7CEAF2D2FEFB405002C1ACF /* DeleteReviewSheet.swift in Sources */,
@@ -285,7 +309,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -309,7 +333,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -370,7 +394,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -436,7 +460,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;

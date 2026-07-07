@@ -100,6 +100,9 @@ struct BrowseView: View {
                 biggestFilesRow
                     .padding(.horizontal, 16)
 
+                duplicatesRow
+                    .padding(.horizontal, 16)
+
                 if viewModel.sections.isEmpty {
                     emptyState
                         .padding(.top, 40)
@@ -288,6 +291,35 @@ struct BrowseView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Swipe through your biggest files, largest first")
+    }
+
+    // MARK: - Duplicates row
+
+    private var duplicatesRow: some View {
+        NavigationLink(value: AppRoute.duplicates) {
+            HStack(spacing: 12) {
+                Image(systemName: "square.on.square.dashed")
+                    .font(.headline)
+                    .foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Duplicates")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Find bursts & near-identical shots")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Find duplicate photos")
     }
 
     // MARK: - Overflow menu

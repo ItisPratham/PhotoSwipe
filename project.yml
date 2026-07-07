@@ -10,7 +10,7 @@ fileGroups:
 options:
   bundleIdPrefix: com.phototinder
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -20,12 +20,13 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_LANGUAGE: en
+    DEVELOPMENT_TEAM: 3N3526X38B
 
 targets:
   PhotoSwipe:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: "17.0"
     sources:
       - path: PhotoSwipe
     settings:
