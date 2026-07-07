@@ -1,99 +1,108 @@
 # PhotoSwipe
 
-A Tinder-style photo cleaner for iOS.
+**A Tinder-style photo cleaner for iOS.** Clear years of camera-roll clutter
+one swipe at a time — swipe left to mark a photo for deletion, swipe right to
+keep it. Nothing is deleted until you review and confirm, so you can move fast
+without fear.
 
-PhotoSwipe lets you review your photo library one photo at a time using simple swipe gestures. Swipe left to mark a photo for deletion, swipe right to keep it. Instead of interrupting every swipe with a confirmation dialog, deletions are reviewed and performed in a single batch.
+PhotoSwipe runs entirely on your device. There's no account, no upload, and no
+tracking — your library never leaves your phone.
 
-## Features
+## Highlights
 
-* Tinder-style swipe interface.
-* Oldest-first chronological browsing (photos and screenshots by default).
-* Persistent review history so photos you've already judged don't appear again.
-* One-step undo.
-* Batched deletion with a review screen before anything is removed.
-* Fullscreen pinch-to-zoom photo viewer, with clamped, rubber-banded panning.
-* Browse by album or jump into the deck from any day in the timeline.
-* Activity log showing deletion history and estimated storage reclaimed.
-* VoiceOver support.
-* First-launch interactive onboarding and an animated launch splash.
+**The swipe deck**
+* Fast Tinder-style review with direction tint, Keep/Delete stamps, drag-to-tilt,
+  and one-step undo.
+* Decisions persist, so a photo you've judged never comes back.
+* Fullscreen pinch-to-zoom inspector with clamped, rubber-banded panning.
+* Fully VoiceOver-accessible, with an interactive first-launch tutorial and an
+  animated launch screen.
 
-### v3
+**Ways in**
+* The whole library, oldest first.
+* Any **album**, or jump into the timeline from a specific **day**.
+* **Videos** — reviewed right in the deck: poster first, then muted looping
+  autoplay, a duration badge, tap to play/pause, a scrubber to seek, and a
+  per-card mute toggle. Videos get a playable preview in the review grid too.
+* **Biggest files** — sort by on-device size (photos and videos together) to
+  reclaim the most space fastest.
+* **Duplicates** — an on-device scan groups camera bursts and near-identical
+  shots; open a group to review just those, with the best shot suggested as the
+  keeper.
 
-* **Videos** — an opt-in Videos entry brings clips into the same deck: poster
-  first, then muted, looping autoplay of the current card, with a duration
-  badge, tap-to-play/pause, a scrubber to seek, and a per-card mute toggle
-  (muted by default). Videos also get a playable long-press preview in the
-  review grid. The default photo stream stays photos-only.
-* **Biggest files** — sort the deck by on-device byte size (largest first,
-  photos and videos together) to clear space hogs quickly. Sizes are read from
-  `PHAssetResource` metadata (no download) and cached.
-* **Duplicates** — an opt-in, on-device Vision scan groups camera bursts and
-  near-identical shots. Determinate progress with cancel; the index is cached
-  in SwiftData and re-scans incrementally. The screen auto-refreshes when the
-  library changes (add / delete / capture) and offers a manual reload and a
-  Sensitivity slider. Opening a group enters the deck scoped to it, with the
-  highest-quality shot badged as the suggested keeper.
+**Safe, batched deletion**
+* Swiping only *marks* photos. A **Review** screen lets you spare anything before
+  a single confirmed batch delete.
+* After deleting, PhotoSwipe shows the space reclaimed and logs every batch in a
+  read-only **Activity** history.
 
 ## Why deletion is batched
 
-iOS does not allow apps to silently delete photos. Every deletion must be confirmed through the system Photos dialog.
+iOS never lets an app silently delete photos — every deletion is confirmed
+through the system Photos dialog, by design. So PhotoSwipe marks as you swipe,
+then deletes the whole batch behind **one** system prompt. Deleted photos go to
+the system's *Recently Deleted*, recoverable for ~30 days.
 
-Because of this limitation, swiping only marks photos for deletion. When you're ready, tap **Review**, optionally restore any marked photos, then confirm a single batch deletion through the system prompt.
+## Duplicate detection
 
-After a successful delete, PhotoSwipe estimates the storage reclaimed and records the operation in the activity log.
+The Duplicates finder is opt-in and runs entirely on-device. It warns before
+starting, shows cancelable progress, and caches its work so re-scans are
+incremental. It uses PhotoKit burst grouping plus Vision image feature prints
+(`VNGenerateImageFeaturePrintRequest`) — whole-image similarity, **not** face
+recognition. A Sensitivity control tunes how aggressively shots are grouped, and
+the screen auto-refreshes as your library changes (photos added, deleted, or
+captured).
 
 ## Requirements
 
 * Xcode 16 or later
-* iOS 17.0+ (raised from 16.0 in v3 — the duplicate index uses SwiftData)
-* A physical iPhone or iPad for meaningful testing (the Simulator does not contain a real photo library)
+* iOS 17.0 or later
+* A physical iPhone or iPad — the Simulator has no real photo library
 
 ## Building
-
-Open the project:
 
 ```sh
 open PhotoSwipe.xcodeproj
 ```
 
-In Xcode:
-
-1. Select the **PhotoSwipe** target.
-2. Open **Signing & Capabilities**.
-3. Choose your Apple Developer Team.
-4. Build and run on a connected device.
-
-The committed Xcode project is the source of truth.
+In Xcode: select the **PhotoSwipe** target → **Signing & Capabilities** → choose
+your Apple Developer Team, then build and run on a connected device. The
+committed Xcode project is the source of truth.
 
 ## Tech Stack
 
-* Swift
-* SwiftUI
-* PhotoKit
-* AVFoundation / AVKit (video playback in the deck)
-* Vision — `VNGenerateImageFeaturePrintRequest` for near-duplicate grouping
-  (whole-image similarity, **not** face recognition)
+* Swift + SwiftUI (MVVM, async/await — no Combine, no third-party dependencies)
+* PhotoKit — fetch, thumbnail-first loading, and batched delete
+* AVFoundation / AVKit — video playback in the deck
+* Vision — image feature prints for near-duplicate grouping (not face recognition)
 * SwiftData — on-disk store for the duplicate feature-print index
 
-Review decisions, onboarding/stats flags, and cached byte sizes live in
-UserDefaults; only the (large) feature-print index lives in SwiftData.
+Review decisions, onboarding/activity state, and cached byte sizes live in
+UserDefaults; only the large feature-print index lives in SwiftData.
 
-## Known Limitations
+## Privacy & data
 
-* Review history and the duplicate index are stored locally. Reinstalling the app or moving to another device resets them.
-* No iCloud sync.
-* Duplicate detection is opt-in and heuristic (feature-print similarity within a time window); it isn't guaranteed to catch every near-duplicate, and sensitivity is user-tunable.
-* Videos are opt-in (via the Videos / Biggest files entries); the default chronological stream stays photos-only.
-* Person/face filtering is not supported because PhotoKit does not expose Apple's People album through a public API, and Vision offers no public face-identity embedding.
+* **Everything is on-device.** No sync, no accounts, no analytics, no network
+  calls beyond iCloud photo downloads handled by PhotoKit itself.
+* Because state is local, reinstalling the app or moving to a new device starts
+  the review history fresh — a deliberate trade-off for zero-server privacy.
+
+## Not included
+
+* **Person / face filtering.** Public PhotoKit doesn't expose Apple's People
+  album (`PHPerson`), and Vision has no public face-identity embedding, so
+  "photos of a person" can't be done accurately without a bundled model. It's
+  intentionally out of scope.
 
 ## Project Structure
 
 ```
 PhotoSwipe/
 ├── PhotoSwipe.xcodeproj
-├── PhotoSwipe/
-├── Design/
+├── PhotoSwipe/          # App, Models, Services, ViewModels, Views, Resources
+├── Design/             # Owner-supplied app-icon source SVGs
 └── project.yml
 ```
 
-`project.yml` is retained from the original XcodeGen bootstrap but is no longer used for day-to-day development.
+`project.yml` is retained from the original XcodeGen bootstrap; day-to-day
+development happens in the committed Xcode project.
