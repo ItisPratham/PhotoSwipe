@@ -58,7 +58,7 @@ struct PhotoZoomView: View {
             GeometryReader { proxy in
                 Color.clear
                     .onAppear { containerSize = proxy.size }
-                    .onChange(of: proxy.size) { containerSize = $0 }
+                    .onChange(of: proxy.size) { _, newSize in containerSize = newSize }
             }
         )
         .task(id: asset.id) {

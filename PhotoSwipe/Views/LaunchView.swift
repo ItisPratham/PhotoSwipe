@@ -53,7 +53,7 @@ struct LaunchView: View {
             .scaleEffect(appeared ? 1 : 0.96)
         }
         .onAppear(perform: animateIn)
-        .onChange(of: readyToReveal) { ready in
+        .onChange(of: readyToReveal) { _, ready in
             if ready { reveal() }
         }
     }
