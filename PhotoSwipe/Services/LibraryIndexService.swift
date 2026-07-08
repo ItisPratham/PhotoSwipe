@@ -1,3 +1,4 @@
+import Accelerate
 import Foundation
 import Photos
 import UIKit
@@ -5,20 +6,14 @@ import Vision
 
 /// Runs the opt-in duplicate scan and the grouping pass, both off the main
 /// actor (this type is intentionally *not* `@MainActor`, so its `async` methods
-/// hop to a background executor). The scan is cancelable via structured
-/// concurrency — `Task.checkCancellation()` between assets — and incremental:
-/// only not-yet-indexed assets are measured, and rows for deleted assets are
-/// purged at the end.
+/// hop to a background executor). Both are cancelable via structured
+/// concurrency (`Task.checkCancellation()`). The scan is incremental: only
+/// not-yet-indexed assets are measured, and rows for deleted assets are purged.
 final class LibraryIndexService {
 
     /// Downscale target for the feature-print thumbnail. Small on purpose —
     /// similarity doesn't need full resolution, and it keeps the scan light.
     private let thumbnailSize: CGFloat = 256
-
-    /// Grouping only compares shots taken close together (seconds) and within a
-    /// small neighbour window, so the pass stays near-linear on large libraries.
-    private let timeWindow: TimeInterval = 15
-    private let neighbourWindow = 12
 
     // MARK: - Scan
 
@@ -71,23 +66,27 @@ final class LibraryIndexService {
     // MARK: - Grouping
 
     /// Buckets assets into near-duplicate groups. Camera bursts group cheaply by
-    /// `burstIdentifier` (no ML); everything else is compared by feature-print
-    /// distance within a sliding time/neighbour window and unioned under the
-    /// threshold. Only groups of two or more are returned; each names its
-    /// highest-quality member as the suggested keeper. `distanceThreshold`
-    /// controls sensitivity — smaller = only near-identical.
+    /// `burstIdentifier` (no ML). Everything else is matched **library-wide** —
+    /// not just within a time window — so identical shots taken far apart (a
+    /// re-download, a screenshot saved twice, the same meme) still group. Each
+    /// feature print is decoded to its raw float vector once and compared with a
+    /// SIMD L2 distance (vDSP), so the full pairwise pass stays fast. Only
+    /// groups of two or more are returned; each names its highest-quality member
+    /// as the suggested keeper. `distanceThreshold` controls sensitivity —
+    /// smaller = only near-identical. Cancelable between rows.
     func groups(
         assets: [PhotoAsset],
         indexed: [IndexedAsset],
         distanceThreshold: Float
-    ) -> [DuplicateGroup] {
+    ) async throws -> [DuplicateGroup] {
         let indexedIDs = Set(indexed.map(\.localIdentifier))
         // Only consider assets we actually have a print for, oldest-first.
         let candidates = assets
             .filter { indexedIDs.contains($0.id) }
             .sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
+        let ids = candidates.map(\.id)
 
-        var uf = UnionFind(ids: candidates.map(\.id))
+        var uf = UnionFind(ids: ids)
 
         // 1) Bursts — union everything sharing a burstIdentifier.
         var burstBuckets: [String: [String]] = [:]
@@ -102,48 +101,39 @@ final class LibraryIndexService {
             }
         }
 
-        // 2) Near-duplicates — compare feature prints within a sliding window.
+        // 2) Near-duplicates — decode every print to a float vector once, then
+        //    compare all pairs with a SIMD squared-L2 distance. Comparing the
+        //    squared distance to the squared threshold avoids a sqrt per pair.
         let printByID = Dictionary(
             indexed.map { ($0.localIdentifier, $0.featurePrint) },
             uniquingKeysWith: { first, _ in first }
         )
-        var observationCache: [String: VNFeaturePrintObservation] = [:]
-        func observation(for id: String) -> VNFeaturePrintObservation? {
-            if let cached = observationCache[id] { return cached }
-            guard let data = printByID[id],
-                  let obs = try? NSKeyedUnarchiver.unarchivedObject(
-                    ofClass: VNFeaturePrintObservation.self, from: data)
-            else { return nil }
-            observationCache[id] = obs
-            return obs
-        }
+        let vectors: [[Float]] = ids.map { Self.vector(from: printByID[$0]) }
+        let threshold2 = distanceThreshold * distanceThreshold
+        let n = candidates.count
 
-        for i in candidates.indices {
-            let a = candidates[i]
-            guard let aDate = a.creationDate, let aObs = observation(for: a.id) else { continue }
-            var j = i + 1
-            var compared = 0
-            while j < candidates.count, compared < neighbourWindow {
-                let b = candidates[j]
-                let bDate = b.creationDate ?? .distantFuture
-                if bDate.timeIntervalSince(aDate) > timeWindow { break }
-                if uf.find(a.id) != uf.find(b.id), let bObs = observation(for: b.id) {
-                    var distance = Float.greatestFiniteMagnitude
-                    try? aObs.computeDistance(&distance, to: bObs)
-                    if distance < distanceThreshold {
-                        uf.union(a.id, b.id)
-                    }
-                }
-                compared += 1
-                j += 1
+        for i in 0..<n {
+            if i % 64 == 0 { try Task.checkCancellation() }
+            let vi = vectors[i]
+            if vi.isEmpty { continue }
+            let count = vDSP_Length(vi.count)
+            let rootI = uf.find(ids[i])
+            for j in (i + 1)..<n {
+                let vj = vectors[j]
+                if vj.count != vi.count { continue }
+                // Skip the distance math if they're already in the same set.
+                if uf.find(ids[j]) == rootI { continue }
+                var d2: Float = 0
+                vDSP_distancesq(vi, 1, vj, 1, &d2, count)
+                if d2 < threshold2 { uf.union(ids[i], ids[j]) }
             }
         }
 
         // 3) Materialise groups of 2+.
         let assetByID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var membersByRoot: [String: [String]] = [:]
-        for asset in candidates {
-            membersByRoot[uf.find(asset.id), default: []].append(asset.id)
+        for id in ids {
+            membersByRoot[uf.find(id), default: []].append(id)
         }
 
         return membersByRoot.values
@@ -160,6 +150,30 @@ final class LibraryIndexService {
             }
             // Biggest groups first, then by keeper id for stable ordering.
             .sorted { ($0.count, $0.id) > ($1.count, $1.id) }
+    }
+
+    /// Decodes an archived `VNFeaturePrintObservation` to its raw float vector.
+    /// Returns an empty array if the data is missing or an unexpected element
+    /// type (grouping then skips it).
+    private static func vector(from data: Data?) -> [Float] {
+        guard let data,
+              let obs = try? NSKeyedUnarchiver.unarchivedObject(
+                ofClass: VNFeaturePrintObservation.self, from: data)
+        else { return [] }
+        let count = obs.elementCount
+        switch obs.elementType {
+        case .float:
+            return obs.data.withUnsafeBytes { raw in
+                Array(raw.bindMemory(to: Float.self).prefix(count))
+            }
+        case .double:
+            return obs.data.withUnsafeBytes { raw in
+                let doubles = raw.bindMemory(to: Double.self)
+                return (0..<count).map { Float(doubles[$0]) }
+            }
+        @unknown default:
+            return []
+        }
     }
 
     /// Quality proxy for keeper selection: more pixels wins.

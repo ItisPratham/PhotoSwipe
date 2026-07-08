@@ -120,7 +120,7 @@ final class DuplicatesViewModel: ObservableObject {
             }
             if showProgress { phase = .grouping }
             let indexed = try await store.allIndexed()
-            let computed = await group(assets: assets, indexed: indexed)
+            let computed = try await group(assets: assets, indexed: indexed)
             apply(groups: computed, from: assets)
         } catch is CancellationError {
             if showProgress { phase = .idle }
@@ -140,15 +140,19 @@ final class DuplicatesViewModel: ObservableObject {
             : lastAssets
         lastAssets = assets
         let indexed = (try? await store.allIndexed()) ?? []
-        let computed = await group(assets: assets, indexed: indexed)
-        apply(groups: computed, from: assets)
+        // Don't clobber the current results if this regroup is cancelled.
+        if let computed = try? await group(assets: assets, indexed: indexed) {
+            apply(groups: computed, from: assets)
+        }
     }
 
-    private func group(assets: [PhotoAsset], indexed: [IndexedAsset]) async -> [DuplicateGroup] {
-        let threshold = Float(distanceThreshold)
-        return await Task.detached(priority: .utility) { [indexService] in
-            indexService.groups(assets: assets, indexed: indexed, distanceThreshold: threshold)
-        }.value
+    /// Runs the (cancelable, off-main) grouping pass at the current sensitivity.
+    private func group(assets: [PhotoAsset], indexed: [IndexedAsset]) async throws -> [DuplicateGroup] {
+        try await indexService.groups(
+            assets: assets,
+            indexed: indexed,
+            distanceThreshold: Float(distanceThreshold)
+        )
     }
 
     private func hasIndex() async -> Bool {
