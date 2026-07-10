@@ -25,6 +25,11 @@ struct SwipeView: View {
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
 
+    /// Fires once the deck finishes its first load. The Clean tab passes this so
+    /// RootView's launch splash can wait for real content before crossfading in;
+    /// every other entry point leaves it as the no-op default.
+    private let onLoaded: () -> Void
+
     /// What we actually offset the card by. During the drag we follow the
     /// gesture; while flinging the card off-screen we switch to the explicit
     /// exit offset so the GestureState reset doesn't snap us back to center.
@@ -36,11 +41,13 @@ struct SwipeView: View {
          store: ReviewStore,
          stats: StatsStore,
          sizes: SizeStore,
-         source: DeckSource) {
+         source: DeckSource,
+         onLoaded: @escaping () -> Void = {}) {
         self.service = service
         self.store = store
         self.stats = stats
         self.sizes = sizes
+        self.onLoaded = onLoaded
         self._viewModel = StateObject(
             wrappedValue: SwipeViewModel(store: store, stats: stats, sizes: sizes, source: source)
         )
@@ -87,6 +94,7 @@ struct SwipeView: View {
                    value: viewModel.lastFreedBytes)
         .task {
             await viewModel.load(using: service)
+            onLoaded()
         }
         .onChange(of: viewModel.lastFreedBytes) { _, newValue in
             scheduleFreedBannerDismiss(for: newValue)

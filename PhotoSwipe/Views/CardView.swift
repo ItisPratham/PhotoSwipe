@@ -19,8 +19,8 @@ struct CardView: View {
 
                 dateLabel
             }
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(Theme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.deckCard))
             .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Photo from \(asset.formattedDate)"))

@@ -16,16 +16,16 @@ struct RootView: View {
     /// ready *and* a minimum on-screen time has passed, then crossfades out.
     @State private var launchFinished = false
     @State private var minTimeElapsed = false
-    @State private var browseLoaded = false
+    @State private var homeLoaded = false
 
-    /// Only the Browse path has a library fetch to wait on; onboarding and the
-    /// permission screen have nothing to load.
+    /// Only the authorized home path has a library fetch to wait on; onboarding
+    /// and the permission screen have nothing to load.
     private var requiresLibraryLoad: Bool {
         hasSeenOnboarding && library.accessState == .authorized
     }
 
     private var contentReady: Bool {
-        !requiresLibraryLoad || browseLoaded
+        !requiresLibraryLoad || homeLoaded
     }
 
     private var readyToReveal: Bool {
@@ -76,26 +76,11 @@ struct RootView: View {
                     await library.requestAuthorization()
                 }
             case .authorized:
-                NavigationStack {
-                    BrowseView(service: library,
-                               store: reviewStore,
-                               stats: statsStore,
-                               onLoaded: { browseLoaded = true })
-                        .navigationDestination(for: AppRoute.self) { route in
-                            switch route {
-                            case .albums:
-                                AlbumListView(service: library)
-                            case .duplicates:
-                                DuplicatesView(service: library)
-                            case .swipe(let source):
-                                SwipeView(service: library,
-                                          store: reviewStore,
-                                          stats: statsStore,
-                                          sizes: sizeStore,
-                                          source: source)
-                            }
-                        }
-                }
+                AppTabView(library: library,
+                           reviewStore: reviewStore,
+                           statsStore: statsStore,
+                           sizeStore: sizeStore,
+                           onCleanLoaded: { homeLoaded = true })
             }
         }
     }

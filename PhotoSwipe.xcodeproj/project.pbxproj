@@ -12,6 +12,14 @@
 		9BC48C5D0C89E2E6CE8A62F9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF08B652DDDFCD1896529719 /* RootView.swift */; };
 		AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6BE4E90BA30B78E74778587 /* PhotoAsset.swift */; };
 		B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6338753D3A338BAA01A682 /* PermissionView.swift */; };
+		D748138E3000DCC60039DF72 /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138D3000DCC60039DF72 /* PeopleView.swift */; };
+		D74813903000DCE40039DF72 /* AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138F3000DCE40039DF72 /* AppTabView.swift */; };
+		D74813923000E96E0039DF72 /* BrowseEntryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813913000E96E0039DF72 /* BrowseEntryRow.swift */; };
+		D74813953000EAEC0039DF72 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813943000EAEC0039DF72 /* Theme.swift */; };
+		D74813973000EAF00039DF72 /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813963000EAF00039DF72 /* AppTab.swift */; };
+		D74813993000EAFD0039DF72 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813983000EAFD0039DF72 /* SettingsView.swift */; };
+		D748139B3000EB5F0039DF72 /* Thumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748139A3000EB5F0039DF72 /* Thumbnail.swift */; };
+		D748139D3000EB650039DF72 /* ThumbnailPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748139C3000EB650039DF72 /* ThumbnailPreview.swift */; };
 		D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */; };
 		D75FD6452FFC9C13003364D9 /* DuplicateGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */; };
 		D75FD6472FFC9C1F003364D9 /* AssetIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */; };
@@ -50,6 +58,14 @@
 		AF08B652DDDFCD1896529719 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PhotoSwipe_Instructions.md; sourceTree = "<group>"; };
 		C936CEB8131E36288FBA0D48 /* PhotoLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryService.swift; sourceTree = "<group>"; };
+		D748138D3000DCC60039DF72 /* PeopleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleView.swift; sourceTree = "<group>"; };
+		D748138F3000DCE40039DF72 /* AppTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabView.swift; sourceTree = "<group>"; };
+		D74813913000E96E0039DF72 /* BrowseEntryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseEntryRow.swift; sourceTree = "<group>"; };
+		D74813943000EAEC0039DF72 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D74813963000EAF00039DF72 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
+		D74813983000EAFD0039DF72 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D748139A3000EB5F0039DF72 /* Thumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thumbnail.swift; sourceTree = "<group>"; };
+		D748139C3000EB650039DF72 /* ThumbnailPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailPreview.swift; sourceTree = "<group>"; };
 		D754DBA82FFBEE9A00EDC5DB /* SizeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SizeStore.swift; sourceTree = "<group>"; };
 		D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroup.swift; sourceTree = "<group>"; };
 		D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetIndex.swift; sourceTree = "<group>"; };
@@ -101,6 +117,12 @@
 				D79CDCB02FFAE55F0012F45F /* LaunchView.swift */,
 				D79CDCB22FFAEA340012F45F /* VideoCardView.swift */,
 				D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */,
+				D748138D3000DCC60039DF72 /* PeopleView.swift */,
+				D748138F3000DCE40039DF72 /* AppTabView.swift */,
+				D74813913000E96E0039DF72 /* BrowseEntryRow.swift */,
+				D74813983000EAFD0039DF72 /* SettingsView.swift */,
+				D748139A3000EB5F0039DF72 /* Thumbnail.swift */,
+				D748139C3000EB650039DF72 /* ThumbnailPreview.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -131,6 +153,7 @@
 				E79EAACDAEB716487F29CC79 /* Services */,
 				00642D981975E754B3559990 /* Views */,
 				D7893D5D2FEE60C700AE08D1 /* ViewModels */,
+				D74813933000EAEC0039DF72 /* DesignSystem */,
 			);
 			path = PhotoSwipe;
 			sourceTree = "<group>";
@@ -156,8 +179,17 @@
 				D7DDEA402FFA8A9000E3ED52 /* AppRoute.swift */,
 				D75FD6442FFC9C13003364D9 /* DuplicateGroup.swift */,
 				D75FD6462FFC9C1F003364D9 /* AssetIndex.swift */,
+				D74813963000EAF00039DF72 /* AppTab.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		D74813933000EAEC0039DF72 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				D74813943000EAEC0039DF72 /* Theme.swift */,
+			);
+			path = DesignSystem;
 			sourceTree = "<group>";
 		};
 		D7893D5D2FEE60C700AE08D1 /* ViewModels */ = {
@@ -262,17 +294,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
+				D74813923000E96E0039DF72 /* BrowseEntryRow.swift in Sources */,
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
 				D754DBA92FFBEE9A00EDC5DB /* SizeStore.swift in Sources */,
 				D75FD6452FFC9C13003364D9 /* DuplicateGroup.swift in Sources */,
 				D75FD6492FFC9C30003364D9 /* IndexStore.swift in Sources */,
+				D74813993000EAFD0039DF72 /* SettingsView.swift in Sources */,
 				D7893D612FEE646800AE08D1 /* ReviewStore.swift in Sources */,
 				AB2EE06481AEE7E94121740B /* PhotoAsset.swift in Sources */,
 				D7DDEA3D2FFA7CDF00E3ED52 /* PhotoZoomView.swift in Sources */,
 				D7DDEA352FF9848600E3ED52 /* StatsView.swift in Sources */,
 				04D2CB040080EA9613C8A375 /* PhotoLibraryService.swift in Sources */,
+				D74813973000EAF00039DF72 /* AppTab.swift in Sources */,
 				D7DDEA2F2FF9819D00E3ED52 /* ContactLink.swift in Sources */,
+				D748138E3000DCC60039DF72 /* PeopleView.swift in Sources */,
 				D7DDEA332FF982A500E3ED52 /* StatsStore.swift in Sources */,
+				D748139B3000EB5F0039DF72 /* Thumbnail.swift in Sources */,
+				D748139D3000EB650039DF72 /* ThumbnailPreview.swift in Sources */,
 				D7A461432FF0E90D00F1DB7E /* CaughtUpView.swift in Sources */,
 				D79CDCB32FFAEA340012F45F /* VideoCardView.swift in Sources */,
 				D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */,
@@ -281,10 +319,12 @@
 				D7DDEA3B2FFA2A8000E3ED52 /* BrowseView.swift in Sources */,
 				D7DDEA392FFA2A6D00E3ED52 /* BrowseViewModel.swift in Sources */,
 				D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */,
+				D74813903000DCE40039DF72 /* AppTabView.swift in Sources */,
 				D75FD6472FFC9C1F003364D9 /* AssetIndex.swift in Sources */,
 				D7DDEA372FFA298600E3ED52 /* DeckSource.swift in Sources */,
 				1BBB0D70412A5C1396DB8A00 /* PhotoSwipeApp.swift in Sources */,
 				D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */,
+				D74813953000EAEC0039DF72 /* Theme.swift in Sources */,
 				D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */,
 				D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */,
 				D7DDEA412FFA8A9000E3ED52 /* AppRoute.swift in Sources */,

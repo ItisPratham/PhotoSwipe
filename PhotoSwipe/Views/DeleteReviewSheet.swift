@@ -192,38 +192,6 @@ private struct ThumbnailCell: View {
     }
 }
 
-/// Full-size preview shown when long-pressing a thumbnail. Loads a larger
-/// image than the grid cell so the user can actually see what they're about
-/// to delete.
-private struct ThumbnailPreview: View {
-    let asset: PhotoAsset
-    let service: PhotoLibraryService
-
-    @State private var image: UIImage?
-
-    var body: some View {
-        Group {
-            if let image {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                ProgressView()
-                    .controlSize(.large)
-                    .frame(width: 280, height: 280)
-            }
-        }
-        .task(id: asset.id) {
-            for await next in service.imageStream(
-                for: asset,
-                targetSize: CGSize(width: 1200, height: 1200)
-            ) {
-                image = next
-            }
-        }
-    }
-}
-
 /// Playable preview shown when long-pressing a marked *video* — the analog of
 /// the full-photo preview above. Poster first, then a muted, looping autoplay,
 /// shaped to the clip's own aspect ratio. Torn down when the preview closes.
