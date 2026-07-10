@@ -29,6 +29,7 @@ Carthage/Build/
 
 ## Editor / tooling local state
 .claude/
+.agents/
 
 ## macOS
 .DS_Store
