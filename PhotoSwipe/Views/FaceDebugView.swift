@@ -70,7 +70,7 @@ private final class FaceDebugModel: ObservableObject {
         let assets = await service.fetchImages(source: DeckSource(scope: .allPhotos, media: .photos))
         let sample = Array(assets.prefix(300))
         let result = await Task.detached(priority: .userInitiated) {
-            FaceDebugModel.buildGroups(assets: sample, faceLimit: 150)
+            FaceDebugModel.buildGroups(assets: sample, faceLimit: 2000)
         }.value
         groups = result.groups.map { Group(images: $0.map(UIImage.init(cgImage:))) }
         status = "\(result.faceCount) faces → \(groups.count) unique people "

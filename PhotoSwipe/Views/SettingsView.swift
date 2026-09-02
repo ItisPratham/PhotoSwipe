@@ -4,6 +4,7 @@ import SwiftUI
 /// utilities that used to live in Browse's overflow menu: the activity log, a
 /// tutorial replay, support contact, and the destructive review-history reset.
 struct SettingsView: View {
+    let service: PhotoLibraryService
     @ObservedObject var store: ReviewStore
     @ObservedObject var stats: StatsStore
 
@@ -13,6 +14,7 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showStats = false
     @State private var showResetConfirm = false
+    @State private var faceDataWiped = false
 
     var body: some View {
         NavigationStack {
@@ -43,6 +45,30 @@ struct SettingsView: View {
                         Label("Reset review history", systemImage: "arrow.counterclockwise")
                     }
                 }
+
+                Section {
+                    NavigationLink {
+                        AcknowledgementsView()
+                    } label: {
+                        Label("Acknowledgements", systemImage: "c.circle")
+                    }
+                }
+
+                Section("Developer") {
+                    NavigationLink {
+                        FaceDebugView(service: service)
+                    } label: {
+                        Label("Face grouping debug", systemImage: "face.dashed")
+                    }
+                    Button {
+                        Task {
+                            try? await FaceStore(modelContainer: FaceContainer.shared).wipeAll()
+                            faceDataWiped = true
+                        }
+                    } label: {
+                        Label("Reset face data", systemImage: "trash")
+                    }
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -63,6 +89,10 @@ struct SettingsView: View {
             } message: {
                 Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
             }
+            .alert("Face data reset", isPresented: $faceDataWiped) {
+            } message: {
+                Text("Open the People tab and scan to rebuild the face index from scratch.")
+            }
         }
     }
 
@@ -73,5 +103,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(store: ReviewStore(), stats: StatsStore())
+    SettingsView(service: PhotoLibraryService(), store: ReviewStore(), stats: StatsStore())
 }

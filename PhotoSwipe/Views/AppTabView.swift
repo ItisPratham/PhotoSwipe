@@ -38,7 +38,7 @@ struct AppTabView: View {
                 .tag(AppTab.people)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(store: reviewStore, stats: statsStore)
+            SettingsView(service: library, store: reviewStore, stats: statsStore)
         }
     }
 
@@ -70,8 +70,12 @@ struct AppTabView: View {
 
     private var peopleTab: some View {
         NavigationStack {
-            PeopleView()
+            PeopleView(service: library)
                 .toolbar { settingsToolbar }
+                .navigationDestination(for: PersonCluster.self) { cluster in
+                    PersonDetailView(cluster: cluster, service: library, stats: statsStore)
+                }
+                .navigationDestination(for: AppRoute.self) { destination(for: $0) }
         }
     }
 

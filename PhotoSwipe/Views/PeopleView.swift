@@ -95,9 +95,7 @@ struct PeopleView: View {
 
     private var grid: some View {
         ScrollView {
-            if viewModel.isRefreshing {
-                ProgressView().padding(.top, 8)
-            }
+            peopleHeader
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(viewModel.clusters) { cluster in
                     NavigationLink(value: cluster) {
@@ -108,6 +106,19 @@ struct PeopleView: View {
             }
             .padding()
         }
+    }
+
+    private var peopleHeader: some View {
+        HStack {
+            Text("\(viewModel.clusters.count) people")
+                .font(.headline)
+            Spacer()
+            if viewModel.isRefreshing {
+                ProgressView()
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.screenMargin)
+        .padding(.top, 8)
     }
 
     @ToolbarContentBuilder

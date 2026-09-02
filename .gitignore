@@ -31,6 +31,17 @@ Carthage/Build/
 .claude/
 .agents/
 
+## Face-model conversion tooling — local, one-time (scripts/convert_adaface.py,
+## scripts/convert_sface.py). Neither the large source models (AdaFace .ckpt
+## ~700 MB, SFace .onnx), the Python venv, nor the converted 83 MB .mlpackage
+## are tracked (non-commercial weights + repo bloat). Regenerate the model
+## locally with convert_adaface.py; the app gates on its presence in Resources/.
+.venv/
+*.onnx
+*.ckpt
+__pycache__/
+PhotoSwipe/Resources/FaceEmbedding.mlpackage/
+
 ## macOS
 .DS_Store
 
@@ -38,7 +49,8 @@ Carthage/Build/
 *.swp
 *.save
 
-## Markdown — keep only README.md tracked. Other .md files are local
-## reference notes (spec, scratchpads) and should stay out of the repo.
+## Markdown — keep README.md and THIRD_PARTY_LICENSES.md tracked. Other .md
+## files are local reference notes (spec, scratchpads) and stay out of the repo.
 *.md
 !README.md
+!THIRD_PARTY_LICENSES.md
