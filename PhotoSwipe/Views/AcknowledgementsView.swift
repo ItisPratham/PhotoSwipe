@@ -1,0 +1,79 @@
+import SwiftUI
+
+/// Settings ▸ Acknowledgements: surfaces third-party attribution required by
+/// the bundled AdaFace model. Mirrors THIRD_PARTY_LICENSES.md at the repo root.
+struct AcknowledgementsView: View {
+    var body: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("AdaFace IR-50")
+                        .font(.headline)
+                    Text("On-device face embedding model used by the People feature.")
+                        .foregroundStyle(.secondary)
+
+                    Link("github.com/mk-minchul/AdaFace",
+                         destination: URL(string: "https://github.com/mk-minchul/AdaFace")!)
+                        .font(.footnote)
+
+                    Divider()
+
+                    Group {
+                        Text("Code license: ").bold() + Text("MIT")
+                        Text("Weights license: ").bold() + Text("Non-commercial research use only")
+                        Text("Conversion: ").bold() + Text("PyTorch checkpoint → Core ML fp16")
+                    }
+                    .font(.footnote)
+                }
+                .padding(.vertical, 6)
+            } header: {
+                Text("Bundled model")
+            } footer: {
+                Text("The pretrained AdaFace weights are for non-commercial research use only. Bundling them forecloses selling or distributing this app commercially. See THIRD_PARTY_LICENSES.md at the repo root for the full MIT license text and weight-license terms.")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("MIT License")
+                        .font(.subheadline).bold()
+                    Text(mitLicenseText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            } header: {
+                Text("AdaFace code license")
+            }
+        }
+        .navigationTitle("Acknowledgements")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private let mitLicenseText = """
+        Copyright (c) 2022 mk-minchul
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy \
+        of this software and associated documentation files (the "Software"), to deal \
+        in the Software without restriction, including without limitation the rights \
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \
+        copies of the Software, and to permit persons to whom the Software is \
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in \
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE \
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN \
+        THE SOFTWARE.
+        """
+}
+
+#Preview {
+    NavigationStack {
+        AcknowledgementsView()
+    }
+}

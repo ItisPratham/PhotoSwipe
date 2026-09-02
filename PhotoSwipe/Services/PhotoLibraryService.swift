@@ -115,6 +115,11 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
                 // apply; just resolve the identifiers (still oldest-first).
                 options.predicate = nil
                 result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+            case .person(let ids):
+                // A person cluster's photos — an already-chosen set, resolved
+                // by identifier (oldest-first), no media/date filtering.
+                options.predicate = nil
+                result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
             }
 
             var assets: [PhotoAsset] = []
