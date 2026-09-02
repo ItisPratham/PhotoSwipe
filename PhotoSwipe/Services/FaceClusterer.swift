@@ -79,6 +79,96 @@ final class FaceClusterer: Sendable {
         return Result(newPersons: newPersons, assignments: assignments)
     }
 
+    /// Assigns unclustered `newFaces` to the nearest existing cluster (keyed by
+    /// `personID` on the faces in `existingFaces`) or creates new clusters for
+    /// them. Existing assignments are **never touched** — this is the normal
+    /// incremental path that preserves user names, merges, hides, and covers.
+    ///
+    /// Each new face (sorted best-quality first) checks every existing centroid
+    /// and joins the nearest one above `threshold`. Faces that don't fit any
+    /// existing cluster form new same-run buckets, which are merged to fixpoint
+    /// before being materialized as brand-new persons.
+    ///
+    /// Centroids are computed once from `existingFaces` and are not updated as
+    /// new faces are assigned — this keeps existing cluster identity stable and
+    /// prevents a misassignment from drifting an already-named centroid.
+    ///
+    /// Callers do **not** call `store.resetAssignments()` before this method.
+    func assign(
+        newFaces: [FaceObservation],
+        existingFaces: [FaceObservation],
+        threshold: Float = FaceClusterer.defaultThreshold
+    ) -> Result {
+        let validNew = newFaces.filter { !$0.embedding.isEmpty }
+        guard !validNew.isEmpty else { return Result(newPersons: [], assignments: [:]) }
+
+        // Compute one L2-normalized centroid per existing person from their
+        // stored face embeddings (sum → mean → normalize).
+        var sums: [String: [Float]] = [:]
+        var counts: [String: Int] = [:]
+        for face in existingFaces where !face.embedding.isEmpty {
+            guard let pid = face.personID else { continue }
+            if let existing = sums[pid] {
+                var added = [Float](repeating: 0, count: existing.count)
+                vDSP_vadd(existing, 1, face.embedding, 1, &added, 1, vDSP_Length(existing.count))
+                sums[pid] = added
+                counts[pid]! += 1
+            } else {
+                sums[pid] = face.embedding
+                counts[pid] = 1
+            }
+        }
+        let existingCentroids: [(pid: String, normMean: [Float])] = sums.compactMap { pid, sum in
+            guard let n = counts[pid] else { return nil }
+            var mean = [Float](repeating: 0, count: sum.count)
+            var divisor = Float(n)
+            vDSP_vsdiv(sum, 1, &divisor, &mean, 1, vDSP_Length(sum.count))
+            return (pid, FaceEmbedder.l2normalized(mean))
+        }
+
+        // Assign each new face (best quality first) to the nearest existing
+        // cluster, or accumulate into a fresh same-run bucket.
+        var newBuckets: [Bucket] = []
+        var assignments: [String: String] = [:]
+
+        for face in validNew.sorted(by: { $0.quality > $1.quality }) {
+            var bestPID: String? = nil
+            var bestSim: Float = -1
+            for entry in existingCentroids {
+                let s = dot(face.embedding, entry.normMean)
+                if s > bestSim { bestSim = s; bestPID = entry.pid }
+            }
+            if bestSim >= threshold, let pid = bestPID {
+                assignments[face.faceID] = pid
+                continue
+            }
+            var bestIdx = -1
+            bestSim = -1
+            for (i, b) in newBuckets.enumerated() {
+                let s = dot(face.embedding, b.normMean)
+                if s > bestSim { bestSim = s; bestIdx = i }
+            }
+            if bestIdx >= 0, bestSim >= threshold {
+                newBuckets[bestIdx].add(face)
+            } else {
+                newBuckets.append(Bucket(face: face))
+            }
+        }
+
+        let mergeThreshold = min(max(threshold + 0.12, 0.72), 0.90)
+        mergeToFixpoint(&newBuckets, threshold: mergeThreshold)
+
+        var newPersons: [PersonSeed] = []
+        for bucket in newBuckets {
+            let pid = UUID().uuidString
+            newPersons.append(PersonSeed(personID: pid,
+                                         coverAssetID: bucket.coverAssetID,
+                                         coverFaceID: bucket.coverFaceID))
+            for faceID in bucket.members { assignments[faceID] = pid }
+        }
+        return Result(newPersons: newPersons, assignments: assignments)
+    }
+
     private func mergeToFixpoint(_ buckets: inout [Bucket], threshold: Float) {
         var merged = true
         while merged {

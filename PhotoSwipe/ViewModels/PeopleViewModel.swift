@@ -106,7 +106,7 @@ final class PeopleViewModel: ObservableObject {
                 }
             }
             if showProgress { phase = .clustering }
-            await reclusterAll()
+            await reclusterIncremental()
         } catch is CancellationError {
             phase = clusters.isEmpty ? .idle : .results
         } catch FaceScanError.modelUnavailable {
@@ -116,12 +116,35 @@ final class PeopleViewModel: ObservableObject {
         }
     }
 
-    /// Re-clusters every stored face from scratch at the current threshold (off
-    /// the main actor), then publishes the result. Deterministic and
-    /// order-independent for the configured threshold.
-    private func reclusterAll() async {
-        guard let faces = try? await store.allFaces() else {
-            phase = clusters.isEmpty ? .empty : .results
+    /// Normal incremental path: only assigns faces that have no cluster yet.
+    /// Existing clusters (and their names, merges, hides, and covers) are
+    /// untouched. O(1) when nothing new has been scanned since the last run.
+    private func reclusterIncremental() async {
+        let unclustered = (try? await store.unclusteredFaces()) ?? []
+        guard !unclustered.isEmpty else {
+            await loadClusters()
+            return
+        }
+        let existing = (try? await store.clusteredFaces()) ?? []
+        let clusterer = self.clusterer
+        let threshold = similarityThreshold
+        let result = await Task.detached(priority: .utility) {
+            clusterer.assign(newFaces: unclustered, existingFaces: existing, threshold: threshold)
+        }.value
+        try? await store.applyClustering(
+            newPersons: result.newPersons,
+            assignments: result.assignments,
+            at: Date()
+        )
+        await loadClusters()
+    }
+
+    /// Hard re-cluster: wipes all person assignments and clusters from scratch.
+    /// Destroys user names, merges, hides, and covers — only call when the user
+    /// explicitly requests it (e.g., a "Re-cluster" debug button).
+    func reclusterFull() async {
+        guard let faces = try? await store.allFaces(), !faces.isEmpty else {
+            await loadClusters()
             return
         }
         let clusterer = self.clusterer
@@ -135,6 +158,10 @@ final class PeopleViewModel: ObservableObject {
             assignments: result.assignments,
             at: Date()
         )
+        await loadClusters()
+    }
+
+    private func loadClusters() async {
         let computed = (try? await store.clusters().filter { !$0.isHidden }) ?? []
         clusters = computed
         phase = computed.isEmpty ? .empty : .results
