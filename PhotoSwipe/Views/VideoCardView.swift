@@ -125,44 +125,13 @@ struct VideoCardView: View {
 
     // MARK: - Scrubber
 
-    /// Bottom seek bar. Its drag is a descendant gesture, so it takes priority
-    /// over the parent swipe-to-decide drag — dragging the bar seeks the clip
-    /// rather than flinging the card. A zero-distance drag also handles taps to
-    /// seek to a point.
+    /// Bottom seek bar, in its own view observing only the playback clock, so
+    /// the 20 Hz time updates re-render the bar and nothing else on the card.
     private var scrubber: some View {
-        GeometryReader { geo in
-            let width = geo.size.width
-            let progress = controller.progress
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(.white.opacity(0.3))
-                    .frame(height: 4)
-                Capsule()
-                    .fill(.white)
-                    .frame(width: max(0, width * progress), height: 4)
-                Circle()
-                    .fill(.white)
-                    .frame(width: 14, height: 14)
-                    .shadow(color: .black.opacity(0.35), radius: 2)
-                    .offset(x: width * progress - 7)
-            }
-            .frame(height: 24)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        controller.beginScrubbing()
-                        controller.scrub(toFraction: value.location.x / width)
-                    }
-                    .onEnded { value in
-                        controller.scrub(toFraction: value.location.x / width)
-                        controller.endScrubbing()
-                    }
-            )
-        }
-        .frame(height: 24)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        ScrubberView(clock: controller.clock,
+                     onBegin: { controller.beginScrubbing() },
+                     onScrub: { controller.scrub(toFraction: $0) },
+                     onEnd: { controller.endScrubbing() })
     }
 
     // MARK: - Lifecycle
@@ -193,10 +162,13 @@ struct VideoCardView: View {
 /// time observer fires on the main queue.
 final class VideoPlaybackController: ObservableObject {
     @Published private(set) var isPlaying = false
-    @Published private(set) var currentTime: Double = 0
     /// Muted by default; the user can unmute per card. Resets to muted on each
     /// new card, since a fresh controller is built when the deck advances.
     @Published private(set) var isMuted = true
+    /// The high-rate playback position lives on its own object so only the
+    /// scrubber observes it; the card observes this controller for the
+    /// low-rate play/mute state.
+    let clock = PlaybackClock()
 
     private(set) var player: AVQueuePlayer?
     private var looper: AVPlayerLooper?
@@ -204,14 +176,9 @@ final class VideoPlaybackController: ObservableObject {
     private var duration: Double = 0
     private var isScrubbing = false
 
-    /// 0…1 playback position for the scrubber fill/knob.
-    var progress: Double {
-        guard duration > 0 else { return 0 }
-        return min(max(currentTime / duration, 0), 1)
-    }
-
     func start(item: AVPlayerItem, duration: Double) {
         self.duration = duration
+        clock.duration = duration
         isMuted = true
         configureSession(muted: true)
 
@@ -231,7 +198,7 @@ final class VideoPlaybackController: ObservableObject {
             queue: .main
         ) { [weak self] time in
             guard let self, !self.isScrubbing else { return }
-            self.currentTime = time.seconds
+            self.clock.currentTime = time.seconds
         }
     }
 
@@ -266,7 +233,7 @@ final class VideoPlaybackController: ObservableObject {
 
     func scrub(toFraction fraction: Double) {
         let clamped = min(max(fraction, 0), 1)
-        currentTime = clamped * duration
+        clock.currentTime = clamped * duration
         seek(to: clamped * duration)
     }
 
@@ -291,11 +258,74 @@ final class VideoPlaybackController: ObservableObject {
         looper = nil
         player = nil
         isPlaying = false
-        currentTime = 0
+        clock.currentTime = 0
+        clock.duration = 0
         duration = 0
         // Let any audio we interrupted (by unmuting into .playback) resume.
         try? AVAudioSession.sharedInstance()
             .setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+/// The playback position, published 20 times a second while a clip plays.
+/// Kept separate from `VideoPlaybackController` so that churn invalidates
+/// only the scrubber. Like the controller, it is only ever touched on the
+/// main queue (the time observer is registered there).
+final class PlaybackClock: ObservableObject {
+    @Published var currentTime: Double = 0
+    var duration: Double = 0
+
+    /// 0…1 playback position for the scrubber fill/knob.
+    var progress: Double {
+        guard duration > 0 else { return 0 }
+        return min(max(currentTime / duration, 0), 1)
+    }
+}
+
+/// Bottom seek bar. Its drag is a descendant gesture, so it takes priority
+/// over the parent swipe-to-decide drag — dragging the bar seeks the clip
+/// rather than flinging the card. A zero-distance drag also handles taps to
+/// seek to a point. Observes only the clock.
+private struct ScrubberView: View {
+    @ObservedObject var clock: PlaybackClock
+    let onBegin: () -> Void
+    let onScrub: (Double) -> Void
+    let onEnd: () -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let progress = clock.progress
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.3))
+                    .frame(height: 4)
+                Capsule()
+                    .fill(.white)
+                    .frame(width: max(0, width * progress), height: 4)
+                Circle()
+                    .fill(.white)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: .black.opacity(0.35), radius: 2)
+                    .offset(x: width * progress - 7)
+            }
+            .frame(height: 24)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        onBegin()
+                        onScrub(value.location.x / width)
+                    }
+                    .onEnded { value in
+                        onScrub(value.location.x / width)
+                        onEnd()
+                    }
+            )
+        }
+        .frame(height: 24)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
 }
 
