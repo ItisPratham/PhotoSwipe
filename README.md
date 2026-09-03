@@ -41,9 +41,9 @@ tracking — your library never leaves your phone.
   shots; open a group to review just those, with the best shot suggested as the
   keeper.
 * **People** — an opt-in on-device face scan clusters your photos by the people
-  in them. Open a person to swipe through only their photos, or multi-select
-  and batch-delete from a grid. A grouping-strength slider tunes how tightly
-  faces group, and you can rename, merge, or hide people.
+  in them. Open a person to swipe through only their photos — the whole set,
+  a single day, or from a chosen photo onward. A grouping-strength slider tunes
+  how tightly faces group, and you can rename, merge, or hide people.
 
 **Safe, batched deletion**
 * Swiping only *marks* photos. A **Review** screen lets you spare anything before

@@ -218,14 +218,6 @@ actor FaceStore {
         try modelContext.save()
     }
 
-    func setCover(personID: String, assetID: String, faceID: String) throws {
-        if let row = try person(personID) {
-            row.coverAssetID = assetID
-            row.coverFaceID = faceID
-        }
-        try modelContext.save()
-    }
-
     /// Merges `source` into `dest`: reassigns the source's faces and deletes the
     /// now-empty source person. The user's name/cover on `dest` are kept.
     func merge(_ source: String, into dest: String) throws {
@@ -235,19 +227,6 @@ actor FaceStore {
         for face in faces { face.personID = dest }
         if let sourceRow = try person(source) {
             modelContext.delete(sourceRow)
-        }
-        try modelContext.save()
-    }
-
-    /// Hides a single stray face: drops it from its cluster and excludes it from
-    /// future re-clustering.
-    func ignoreFace(faceID: String) throws {
-        let rows = try modelContext.fetch(
-            FetchDescriptor<FaceRow>(predicate: #Predicate { $0.faceID == faceID })
-        )
-        if let row = rows.first {
-            row.isIgnored = true
-            row.personID = nil
         }
         try modelContext.save()
     }

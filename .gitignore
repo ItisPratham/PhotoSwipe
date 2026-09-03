@@ -54,3 +54,6 @@ PhotoSwipe/Resources/FaceEmbedding.mlpackage/
 *.md
 !README.md
 !THIRD_PARTY_LICENSES.md
+
+## Claude skills lock (local tooling state, like .agents/)
+skills-lock.json
