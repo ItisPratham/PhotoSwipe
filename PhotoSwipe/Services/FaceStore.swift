@@ -240,13 +240,22 @@ actor FaceStore {
     }
 
     /// Merges `source` into `dest`: reassigns the source's faces and deletes the
-    /// now-empty source person. The user's name/cover on `dest` are kept.
+    /// now-empty source person. The user's name and cover on `dest` are kept;
+    /// where `dest` has none, the source's carry over so a merge never loses
+    /// a name the user typed.
     func merge(_ source: String, into dest: String) throws {
         guard source != dest else { return }
         var descriptor = FetchDescriptor<FaceRow>(predicate: #Predicate { $0.personID == source })
         descriptor.propertiesToFetch = [\.faceID, \.personID]
         for face in try modelContext.fetch(descriptor) { face.personID = dest }
         if let sourceRow = try person(source) {
+            if let destRow = try person(dest) {
+                if destRow.name == nil { destRow.name = sourceRow.name }
+                if destRow.coverAssetID == nil {
+                    destRow.coverAssetID = sourceRow.coverAssetID
+                    destRow.coverFaceID = sourceRow.coverFaceID
+                }
+            }
             modelContext.delete(sourceRow)
         }
         try modelContext.save()
