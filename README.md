@@ -8,7 +8,7 @@ without fear.
 PhotoSwipe runs entirely on your device. There's no account, no upload, and no
 tracking — your library never leaves your phone.
 
-Current version: **4.1** (iOS 17+). The repository is named `PhotoTinder`; the
+Current version: **5.2** (iOS 17+). The repository is named `PhotoTinder`; the
 app, target, and bundle identifier are `PhotoSwipe`.
 
 ---
@@ -30,12 +30,13 @@ tab's toolbar.
 | Tab | What it does |
 | --- | --- |
 | **Clean** | Lands straight in the default deck: every photo, oldest first, skipping anything you've already judged. |
-| **Browse** | A day-grouped grid of the library. Tap a photo or a day header to start swiping from there. Entry points at the top for **Albums**, **Videos**, **Biggest files**, and **Duplicates**. |
-| **People** | Opt-in on-device face scan. A grid of people; open one to swipe through their photos. Rename, merge, hide, and tune grouping strength. |
+| **Browse** | A day-grouped grid of the library. Tap a photo or a day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, **Videos**, **Screenshots**, **Biggest files**, **Duplicates**, and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes, Blurry). |
+| **People** | Opt-in on-device face scan. A grid of people; open one to swipe through their photos, or through the photos two people share ("Also with…"). Rename, merge, hide, answer merge suggestions, and tune grouping strength. |
 
-**Settings** (gear) holds the read-only **Activity** log, a replay of the
-first-run tutorial, **Contact support** (pre-fills app and iOS version),
-**Reset review history**, and **Acknowledgements**.
+**Settings** (gear) holds the read-only **Activity** log, the **Swipe up
+does…** choice (favorite, or add to a chosen album), a replay of the first-run
+tutorial, **Contact support** (pre-fills app and iOS version), **Reset review
+history**, and **Acknowledgements**.
 
 Every entry point feeds the same deck engine through a `DeckSource` value, so
 reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
@@ -44,7 +45,11 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
 
 **The swipe deck**
 * Fast Tinder-style review with direction tint, Keep/Delete stamps, drag-to-tilt,
-  and one-step undo.
+  and multi-step undo (up to 50 swipes back).
+* **Swipe up** keeps the photo and favorites it in Photos, or adds it to an
+  album you pick once in Settings. No system prompt; undo reverts it.
+* **More like this** on any photo card opens a deck of its nearest neighbours
+  (from the Duplicates index), nearest first.
 * Decisions persist, so a photo you've judged never comes back.
 * Fullscreen pinch-to-zoom inspector with clamped, rubber-banded panning.
 * Decks and grids keep your place across tab switches and refresh silently
@@ -55,14 +60,21 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
 **Ways in**
 * The whole library, oldest first (the Clean tab).
 * Any **album**, or jump into the timeline from a specific **day** or photo.
+* **Screenshots** — every system screenshot, oldest first (metadata, no ML).
+* **On this day** — photos taken on today's date in earlier years, when there
+  are any.
+* **Categories** — an opt-in on-device pass sorts photos into Receipts,
+  Documents, Whiteboards, Food, Pets, Memes, and Blurry; each opens its own
+  deck. See *Categories* below.
 * **Videos** — reviewed right in the deck: poster first, then muted looping
   autoplay, a duration badge, tap to play/pause, a scrubber to seek, and a
   per-card mute toggle. Videos get a playable preview in the review grid too.
 * **Biggest files** — sort by on-device size (photos and videos together) to
   reclaim the most space fastest.
 * **Duplicates** — an on-device scan groups camera bursts and near-identical
-  shots; open a group to review just those, with the best shot suggested as the
-  keeper.
+  shots; open a group to review just those, with the keeper suggested by a
+  weighted score (sharpness, face quality, pixel count, and on iOS 18 Vision's
+  aesthetics) rather than pixel count alone.
 * **People** — an opt-in on-device face scan clusters your photos by the people
   in them. Open a person to swipe through only their photos — the whole set,
   a single day, or from a chosen photo onward. A grouping-strength slider tunes
@@ -80,6 +92,19 @@ iOS never lets an app silently delete photos — every deletion is confirmed
 through the system Photos dialog, by design. So PhotoSwipe marks as you swipe,
 then deletes the whole batch behind **one** system prompt. Deleted photos go to
 the system's *Recently Deleted*, recoverable for ~30 days.
+
+## Categories
+
+The Categories section on Browse is opt-in and runs entirely on-device. It
+rides on the Duplicates scan's 256 px thumbnail: for each photo it runs
+Vision's built-in scene classifier (`VNClassifyImageRequest`), the cat/dog
+detector, and text-rectangle detection, and measures sharpness (Laplacian
+variance) and, on iOS 18, aesthetics. The results are stored as optional
+columns on the duplicate index — no second library walk, no bundled model, no
+new license. Rules over those signals bucket each photo into its first
+matching category (receipt before document, never a meme if it's a system
+screenshot). "Blurry" is the least-sharp 10% of the library. Once opted in,
+the Duplicates scan measures new photos too, so the two never diverge.
 
 ## Duplicate detection
 
@@ -114,7 +139,9 @@ remembered as "no faces").
 Grouping is tunable: a strength slider re-groups from the cached embeddings with
 no re-scan, so you can dial in how tightly the same person collapses across
 poses and lighting. Because tuning re-partitions everyone, do it before you
-start renaming. Once you're happy, rename people, merge two clusters, or hide
+start renaming. For the everyday case of one person split in two, the People
+screen lists **possible matches** (cluster centroids just under the merge
+floor) and asks "Same person?" — Yes merges, No is remembered per pair. Once you're happy, rename people, merge two clusters, or hide
 ones you don't care about — normal navigation and incremental re-scans keep
 those edits (only the slider resets them). Hidden people stay reachable from a
 row above the grid so they can be restored. Each person's cover crops to their
@@ -196,9 +223,10 @@ Where each piece of state lives:
 | --- | --- |
 | Reviewed and marked-for-deletion photo IDs | JSON file, `Application Support/review.json` (debounced writes; migrated from `UserDefaults` on first launch after 4.1) |
 | Activity log and total space freed | `UserDefaults` |
+| Swipe-up choice (favorite / album id + title), categories opt-in, blur threshold | `UserDefaults` |
 | Per-asset byte-size cache (Biggest files) | `UserDefaults` |
-| Duplicate index (feature prints, sizes) | SwiftData, `Application Support/duplicates.store` |
-| Face index (embeddings, people, names, hides) | SwiftData, `Application Support/faces.store` |
+| Duplicate index (feature prints, sizes, sharpness, aesthetics, category signals) | SwiftData, `Application Support/duplicates.store` |
+| Face index (embeddings, people, names, hides, declined merges) | SwiftData, `Application Support/faces.store` |
 
 The two SwiftData indexes deliberately use separate files: a shared default
 store would let each container migrate the other's tables away on open.
