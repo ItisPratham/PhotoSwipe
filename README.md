@@ -8,6 +8,9 @@ without fear.
 PhotoSwipe runs entirely on your device. There's no account, no upload, and no
 tracking — your library never leaves your phone.
 
+Current version: **4.1** (iOS 17+). The repository is named `PhotoTinder`; the
+app, target, and bundle identifier are `PhotoSwipe`.
+
 ---
 
 > **License notice:** This project is **not licensed for reuse** (all rights
@@ -19,6 +22,24 @@ tracking — your library never leaves your phone.
 
 ---
 
+## How the app is organised
+
+Three tabs, each with its own navigation stack, plus a settings gear in every
+tab's toolbar.
+
+| Tab | What it does |
+| --- | --- |
+| **Clean** | Lands straight in the default deck: every photo, oldest first, skipping anything you've already judged. |
+| **Browse** | A day-grouped grid of the library. Tap a photo or a day header to start swiping from there. Entry points at the top for **Albums**, **Videos**, **Biggest files**, and **Duplicates**. |
+| **People** | Opt-in on-device face scan. A grid of people; open one to swipe through their photos. Rename, merge, hide, and tune grouping strength. |
+
+**Settings** (gear) holds the read-only **Activity** log, a replay of the
+first-run tutorial, **Contact support** (pre-fills app and iOS version),
+**Reset review history**, and **Acknowledgements**.
+
+Every entry point feeds the same deck engine through a `DeckSource` value, so
+reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
+
 ## Highlights
 
 **The swipe deck**
@@ -26,12 +47,14 @@ tracking — your library never leaves your phone.
   and one-step undo.
 * Decisions persist, so a photo you've judged never comes back.
 * Fullscreen pinch-to-zoom inspector with clamped, rubber-banded panning.
+* Decks and grids keep your place across tab switches and refresh silently
+  when the library changes underneath them.
 * Fully VoiceOver-accessible, with an interactive first-launch tutorial and an
   animated launch screen.
 
 **Ways in**
-* The whole library, oldest first.
-* Any **album**, or jump into the timeline from a specific **day**.
+* The whole library, oldest first (the Clean tab).
+* Any **album**, or jump into the timeline from a specific **day** or photo.
 * **Videos** — reviewed right in the deck: poster first, then muted looping
   autoplay, a duration badge, tap to play/pause, a scrubber to seek, and a
   per-card mute toggle. Videos get a playable preview in the review grid too.
@@ -64,9 +87,10 @@ The Duplicates finder is opt-in and runs entirely on-device. It warns before
 starting, shows cancelable progress, and caches its work so re-scans are
 incremental. It uses PhotoKit burst grouping plus Vision image feature prints
 (`VNGenerateImageFeaturePrintRequest`) — whole-image similarity, **not** face
-recognition. A Sensitivity control tunes how aggressively shots are grouped, and
-the screen auto-refreshes as your library changes (photos added, deleted, or
-captured).
+recognition. Matching is library-wide, so the same shot saved twice years apart
+still groups. A Sensitivity control tunes how aggressively shots are grouped
+(re-grouping only, no rescan), and the screen auto-refreshes as your library
+changes.
 
 ## People / face clustering
 
@@ -83,15 +107,18 @@ The People feature uses an on-device face-embedding pipeline:
 
 All processing is **on-device**. Nothing about your faces is sent anywhere.
 The scan is opt-in, warns you before it runs, shows determinate progress, can
-be cancelled, and is incremental (only new photos are scanned on re-runs).
+be cancelled, and is incremental (only new photos are scanned on re-runs; a
+photo whose image could not be loaded is retried next time rather than
+remembered as "no faces").
 
 Grouping is tunable: a strength slider re-groups from the cached embeddings with
 no re-scan, so you can dial in how tightly the same person collapses across
 poses and lighting. Because tuning re-partitions everyone, do it before you
 start renaming. Once you're happy, rename people, merge two clusters, or hide
-ones you don't care about — normal navigation keeps those edits (only the slider
-resets them). Each person's cover crops to their detected face, chosen by a
-capture-quality score.
+ones you don't care about — normal navigation and incremental re-scans keep
+those edits (only the slider resets them). Hidden people stay reachable from a
+row above the grid so they can be restored. Each person's cover crops to their
+detected face, chosen by a capture-quality score.
 
 ### Producing the face model (one-time, owner action)
 
@@ -117,7 +144,8 @@ python scripts/convert_adaface.py \
 Then add `FaceEmbedding.mlpackage` to the Xcode target (drag into the
 Resources group, "Copy items if needed", target = PhotoSwipe). Without it
 the People scan shows a "face model not installed" state — all other features
-work normally.
+work normally. The checkpoint, the ONNX alternative, and the converted package
+are all git-ignored.
 
 ### Attribution
 
@@ -127,7 +155,7 @@ only. Full terms in `THIRD_PARTY_LICENSES.md` and in-app under
 
 ## Requirements
 
-* Xcode 16 or later
+* Xcode 16 or later (developed against Xcode 26)
 * iOS 17.0 or later
 * A physical iPhone or iPad — the Simulator has no real photo library
 
@@ -139,39 +167,61 @@ open PhotoSwipe.xcodeproj
 
 In Xcode: select the **PhotoSwipe** target → **Signing & Capabilities** → choose
 your Apple Developer Team, then build and run on a connected device. The
-committed Xcode project is the source of truth.
+committed Xcode project is the source of truth. The marketing version is set
+once at the project level (`MARKETING_VERSION`) and `Info.plist` reads it from
+there, so a release bump is a single edit.
 
 ## Tech Stack
 
 * Swift + SwiftUI (MVVM, async/await — no Combine, no third-party dependencies)
-* PhotoKit — fetch, thumbnail-first loading, and batched delete
+* PhotoKit — fetch, thumbnail-first loading, library-change observation, and
+  batched delete
 * AVFoundation / AVKit — video playback in the deck
 * Vision — face detection/landmarks (People) and feature prints (Duplicates)
 * Core ML — AdaFace IR-50 face embedding (fp16, on-device)
-* Accelerate / vDSP — cosine-similarity clustering
-* SwiftData — on-disk store for the duplicate index and the face/people index
+* Accelerate / vDSP — feature-print distances and cosine-similarity clustering
+* SwiftData — on-disk stores for the duplicate index and the face/people index
 
 ## Privacy & data
 
 * **Everything is on-device.** No sync, no accounts, no analytics, no network
   calls beyond iCloud photo downloads handled by PhotoKit itself.
-* Face embeddings and cluster assignments are stored in a local SwiftData
-  database on the device and are never transmitted anywhere.
 * Because state is local, reinstalling the app or moving to a new device starts
-  the review history and face index fresh — a deliberate trade-off for
+  the review history and indexes fresh — a deliberate trade-off for
   zero-server privacy.
+
+Where each piece of state lives:
+
+| State | Storage |
+| --- | --- |
+| Reviewed and marked-for-deletion photo IDs | `UserDefaults` |
+| Activity log and total space freed | `UserDefaults` |
+| Per-asset byte-size cache (Biggest files) | `UserDefaults` |
+| Duplicate index (feature prints, sizes) | SwiftData, `Application Support/duplicates.store` |
+| Face index (embeddings, people, names, hides) | SwiftData, `Application Support/faces.store` |
+
+The two SwiftData indexes deliberately use separate files: a shared default
+store would let each container migrate the other's tables away on open.
 
 ## Project Structure
 
 ```
-PhotoSwipe/
+PhotoTinder/
 ├── PhotoSwipe.xcodeproj
-├── PhotoSwipe/              # App, Models, Services, ViewModels, Views, Resources
+├── PhotoSwipe/
+│   ├── App/                 # @main entry
+│   ├── DesignSystem/        # Theme tokens
+│   ├── Models/              # DeckSource, PhotoAsset, SwiftData rows, UI aggregates
+│   ├── Services/            # PhotoKit, stores, scan + grouping pipelines
+│   ├── ViewModels/          # Per-screen state, serialized scan queue
+│   ├── Views/               # SwiftUI screens and components
+│   └── Resources/           # Assets, Info.plist, FaceEmbedding.mlpackage (ignored)
 ├── scripts/                 # convert_adaface.py, convert_sface.py
 ├── Design/                  # Owner-supplied app-icon source SVGs
 ├── THIRD_PARTY_LICENSES.md  # AdaFace attribution (required)
-└── project.yml
+└── project.yml              # Original XcodeGen seed, kept in sync for reference
 ```
 
-`project.yml` is retained from the original XcodeGen bootstrap; day-to-day
-development happens in the committed Xcode project.
+Only `README.md` and `THIRD_PARTY_LICENSES.md` are tracked among Markdown
+files; other notes at the repo root and under `docs/` are local reference
+material and stay out of the repository.
