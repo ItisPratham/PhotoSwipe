@@ -39,6 +39,20 @@ private final class AssetChangeTracker: @unchecked Sendable {
         fetchResult = PHAsset.fetchAssets(with: nil)
         lock.unlock()
     }
+
+    /// Re-fetches the asset set and reports whether it drifted from what we
+    /// were tracking. Used on return to the foreground: PhotoKit doesn't
+    /// reliably deliver notifications for changes made while the app was
+    /// suspended (a photo taken in Camera, say), so the count is compared
+    /// directly. Same-count edits are still caught by normal notifications.
+    func reconcile() -> Bool {
+        let fresh = PHAsset.fetchAssets(with: nil)
+        lock.lock()
+        defer { lock.unlock() }
+        let drifted = fresh.count != fetchResult.count
+        fetchResult = fresh
+        return drifted
+    }
 }
 
 /// Owns photo-library authorization, asset fetching, image loading, and the
@@ -107,6 +121,28 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
     /// Re-reads the current status — call when returning from Settings.
     func refreshAccessState() {
         updateAccessState(Self.map(PHPhotoLibrary.authorizationStatus(for: .readWrite)))
+    }
+
+    /// Call on return to the foreground. Checks, off the main actor, whether
+    /// the library changed while we were suspended and bumps the version if
+    /// so, since the change notification for that may never have arrived.
+    func checkForMissedChanges() {
+        guard accessState == .authorized else { return }
+        let tracker = assetTracker
+        // Strong capture: a main-actor class is Sendable, and the task is
+        // short-lived.
+        Task.detached(priority: .userInitiated) {
+            guard tracker.reconcile() else { return }
+            await MainActor.run { self.libraryVersion &+= 1 }
+        }
+    }
+
+    /// Forgets the shared per-version fetch results, so the next
+    /// `fetchImages` enumerates PhotoKit again even at the same version. Used
+    /// by explicit reload buttons, which must see the library as it is now
+    /// regardless of whether a change notification was delivered.
+    func invalidateFetchCache() {
+        sharedFetches.removeAll()
     }
 
     /// Gaining access changes what the tracked fetch can see, so the tracker

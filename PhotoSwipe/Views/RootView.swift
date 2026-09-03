@@ -59,8 +59,10 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
-                // Re-check after the user may have changed access in Settings.
+                // Re-check after the user may have changed access in Settings,
+                // and catch library changes made while we were suspended.
                 library.refreshAccessState()
+                library.checkForMissedChanges()
             case .background:
                 // Land any debounced decision write before we can be killed.
                 stores.review.flush()

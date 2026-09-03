@@ -85,11 +85,14 @@ final class DuplicatesViewModel: ObservableObject {
 
     /// The explainer's "Scan library" button — the opt-in first pass.
     func startFirstScan(using service: PhotoLibraryService) {
+        service.invalidateFetchCache()
         enqueueRun(using: service, onlyIfIndexed: false)
     }
 
-    /// Manual reload button on the results/empty screen.
+    /// Manual reload button on the results/empty screen. Drops the shared
+    /// fetch cache first so the run sees the library as it is now.
     func reload(using service: PhotoLibraryService) {
+        service.invalidateFetchCache()
         enqueueRun(using: service, onlyIfIndexed: false)
     }
 

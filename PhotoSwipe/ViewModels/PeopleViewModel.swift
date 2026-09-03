@@ -79,10 +79,15 @@ final class PeopleViewModel: ObservableObject {
     /// The explainer's "Scan library" button — the opt-in first pass.
     func startFirstScan(using service: PhotoLibraryService) {
         guard embedder.isAvailable else { phase = .unavailable; return }
+        service.invalidateFetchCache()
         enqueueRun(using: service, onlyIfScanned: false)
     }
 
+    /// Manual reload: must see the library as it is now, so the shared fetch
+    /// cache is dropped first — a photo taken while the app was suspended
+    /// may never have produced a change notification.
     func reload(using service: PhotoLibraryService) {
+        service.invalidateFetchCache()
         enqueueRun(using: service, onlyIfScanned: false)
     }
 
