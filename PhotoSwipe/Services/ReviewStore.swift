@@ -8,19 +8,23 @@ import SwiftUI
 /// - `markedForDeletionIDs`: subset awaiting batch deletion. Drives the
 ///   Delete(N) button and the review sheet.
 ///
-/// Storage is a JSON file in Application Support (`review.json`). Writes are
-/// debounced and happen on a serial background queue, so a swipe never pays
-/// for serialising tens of thousands of IDs on the main thread. `flush()`
-/// writes synchronously and is called when the app leaves the foreground, and
-/// after the rare, important changes (batch delete, reset). Reinstall or new
-/// device = fresh start; that trade-off is documented in the README.
+/// Storage is a JSON file in Application Support (`review.json`). The file is
+/// read off the main thread at construction; anything that depends on the
+/// sets being complete (building a deck, the review sheet, pruning) calls
+/// `waitUntilLoaded()` first. Writes are debounced and happen on a serial
+/// background queue, so a swipe never pays for serialising tens of thousands
+/// of IDs on the main thread. `flush()` writes synchronously and is called
+/// when the app leaves the foreground, and after the rare, important changes
+/// (batch delete, reset). Nothing is written before the load has finished, so
+/// an early flush can never clobber the file with an empty set. Reinstall or
+/// new device = fresh start; that trade-off is documented in the README.
 ///
 /// Up to 4.1 the sets lived in UserDefaults. The first launch after the
 /// upgrade migrates them into the file and clears the old keys.
 @MainActor
 final class ReviewStore: ObservableObject {
-    @Published private(set) var reviewedIDs: Set<String>
-    @Published private(set) var markedForDeletionIDs: Set<String>
+    @Published private(set) var reviewedIDs: Set<String> = []
+    @Published private(set) var markedForDeletionIDs: Set<String> = []
 
     private struct Snapshot: Codable {
         var reviewed: [String]
@@ -34,6 +38,14 @@ final class ReviewStore: ObservableObject {
     private var pendingWrite: Task<Void, Never>?
     private static let writeDelay: Duration = .milliseconds(300)
 
+    /// The background read plus its main-actor application. `isLoaded`
+    /// flips when it completes; writes are suppressed until then.
+    private var loading: Task<Void, Never>?
+    private(set) var isLoaded = false
+    /// Set if a write was requested while still loading, so the load
+    /// finishes by writing the merged state.
+    private var writeAfterLoad = false
+
     private static let legacyReviewedKey = "PhotoSwipe.reviewedIDs"
     private static let legacyDeletionKey = "PhotoSwipe.markedForDeletionIDs"
 
@@ -41,19 +53,41 @@ final class ReviewStore: ObservableObject {
 
     init(defaults: UserDefaults = .standard, fileURL: URL = ReviewStore.defaultFileURL) {
         self.fileURL = fileURL
-        if let data = try? Data(contentsOf: fileURL),
-           let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) {
-            reviewedIDs = Set(snapshot.reviewed)
-            markedForDeletionIDs = Set(snapshot.marked)
+        let url = fileURL
+        let read = Task.detached(priority: .userInitiated) { Self.read(from: url) }
+        loading = Task { [weak self] in
+            let snapshot = await read.value
+            self?.finishLoading(snapshot, defaults: defaults)
+        }
+    }
+
+    /// Resolves once the persisted sets have been applied. Cheap after the
+    /// first call.
+    func waitUntilLoaded() async {
+        await loading?.value
+    }
+
+    /// Applies what was on disk (or, on first launch after 4.1, what was in
+    /// UserDefaults) underneath any decisions already made this session.
+    private func finishLoading(_ snapshot: Snapshot?, defaults: UserDefaults) {
+        var migrated = false
+        if let snapshot {
+            reviewedIDs.formUnion(snapshot.reviewed)
+            markedForDeletionIDs.formUnion(snapshot.marked)
         } else {
-            // One-time migration from the UserDefaults layout used up to 4.1.
-            reviewedIDs = Set(defaults.stringArray(forKey: Self.legacyReviewedKey) ?? [])
-            markedForDeletionIDs = Set(defaults.stringArray(forKey: Self.legacyDeletionKey) ?? [])
-            if !reviewedIDs.isEmpty || !markedForDeletionIDs.isEmpty {
-                flush()
-                defaults.removeObject(forKey: Self.legacyReviewedKey)
-                defaults.removeObject(forKey: Self.legacyDeletionKey)
-            }
+            let legacyReviewed = defaults.stringArray(forKey: Self.legacyReviewedKey) ?? []
+            let legacyMarked = defaults.stringArray(forKey: Self.legacyDeletionKey) ?? []
+            reviewedIDs.formUnion(legacyReviewed)
+            markedForDeletionIDs.formUnion(legacyMarked)
+            migrated = !legacyReviewed.isEmpty || !legacyMarked.isEmpty
+        }
+        isLoaded = true
+        if migrated || writeAfterLoad {
+            flush()
+        }
+        if migrated {
+            defaults.removeObject(forKey: Self.legacyReviewedKey)
+            defaults.removeObject(forKey: Self.legacyDeletionKey)
         }
     }
 
@@ -112,6 +146,7 @@ final class ReviewStore: ObservableObject {
     /// deleted in Photos.app. The lookup runs off the main actor; only the
     /// IDs confirmed missing are removed, so decisions made meanwhile survive.
     func pruneMissing(using service: PhotoLibraryService) async {
+        await waitUntilLoaded()
         let candidates = reviewedIDs
         guard !candidates.isEmpty else { return }
         let existing = await service.existingIdentifiers(among: candidates)
@@ -121,10 +156,12 @@ final class ReviewStore: ObservableObject {
     // MARK: - Persistence
 
     /// Writes the current state to disk now, in order behind any write that
-    /// is already queued. Call before the app leaves the foreground.
+    /// is already queued. Call before the app leaves the foreground. A no-op
+    /// until the load has finished (it then runs as part of the load).
     func flush() {
         pendingWrite?.cancel()
         pendingWrite = nil
+        guard isLoaded else { writeAfterLoad = true; return }
         let snapshot = currentSnapshot()
         let url = fileURL
         writeQueue.sync { Self.write(snapshot, to: url) }
@@ -135,6 +172,7 @@ final class ReviewStore: ObservableObject {
     /// readers never see the delay.
     private func persist(immediately: Bool = false) {
         pendingWrite?.cancel()
+        guard isLoaded else { writeAfterLoad = true; return }
         if immediately {
             flush()
             return
@@ -150,6 +188,11 @@ final class ReviewStore: ObservableObject {
 
     private func currentSnapshot() -> Snapshot {
         Snapshot(reviewed: Array(reviewedIDs), marked: Array(markedForDeletionIDs))
+    }
+
+    nonisolated private static func read(from url: URL) -> Snapshot? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Snapshot.self, from: data)
     }
 
     nonisolated private static func write(_ snapshot: Snapshot, to url: URL) {

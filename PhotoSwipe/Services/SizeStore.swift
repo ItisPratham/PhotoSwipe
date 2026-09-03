@@ -7,26 +7,46 @@ import SwiftUI
 /// are measured — and persisted to UserDefaults alongside the other small
 /// local stores. Sizes are read from metadata (no asset download).
 ///
-/// The duplicate scan measures the same number for every asset it indexes;
-/// `adoptIndexedSizes()` folds those in first so an asset is never measured
-/// twice. Persisting encodes the whole dictionary, so it happens on a serial
-/// background queue and never on the main thread.
+/// The cache is decoded off the main thread at construction; the one reader
+/// that needs it complete (`SwipeViewModel.sortedByLargest`) calls
+/// `waitUntilLoaded()` first. The duplicate scan measures the same number for
+/// every asset it indexes; `adoptIndexedSizes()` folds those in so an asset is
+/// never measured twice. Persisting encodes the whole dictionary, so it
+/// happens on a serial background queue, never before the load has finished.
 @MainActor
 final class SizeStore: ObservableObject {
-    @Published private(set) var sizes: [String: Int64]
+    @Published private(set) var sizes: [String: Int64] = [:]
 
     private let defaults: UserDefaults
     private let key = "PhotoSwipe.assetSizes"
     private let writeQueue = DispatchQueue(label: "PhotoSwipe.SizeStore.write", qos: .utility)
+    private var loading: Task<Void, Never>?
+    private(set) var isLoaded = false
+    private var writeAfterLoad = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let data = defaults.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String: Int64].self, from: data) {
-            self.sizes = decoded
-        } else {
-            self.sizes = [:]
+        let data = defaults.data(forKey: key)
+        let read = Task.detached(priority: .userInitiated) { () -> [String: Int64] in
+            guard let data else { return [:] }
+            return (try? JSONDecoder().decode([String: Int64].self, from: data)) ?? [:]
         }
+        loading = Task { [weak self] in
+            let stored = await read.value
+            self?.finishLoading(stored)
+        }
+    }
+
+    /// Resolves once the persisted sizes have been applied.
+    func waitUntilLoaded() async {
+        await loading?.value
+    }
+
+    /// Anything measured before the load finished wins over the stored value.
+    private func finishLoading(_ stored: [String: Int64]) {
+        sizes.merge(stored) { current, _ in current }
+        isLoaded = true
+        if writeAfterLoad { persist() }
     }
 
     func size(for id: String) -> Int64? {
@@ -52,6 +72,7 @@ final class SizeStore: ObservableObject {
     /// blob is handed back to the main actor for the `UserDefaults` write,
     /// which is a cheap dictionary set that the framework syncs on its own.
     private func persist() {
+        guard isLoaded else { writeAfterLoad = true; return }
         let snapshot = sizes
         let key = key
         writeQueue.async { [weak self] in

@@ -119,6 +119,7 @@ struct DeleteReviewSheet: View {
 
     private func reload() async {
         isLoading = true
+        await store.waitUntilLoaded()
         let marked = store.markedForDeletionIDs
         let fetched = await service.fetchAssets(withIDs: marked)
         pendingAssets = fetched

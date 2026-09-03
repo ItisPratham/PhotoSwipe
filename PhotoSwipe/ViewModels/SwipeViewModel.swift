@@ -129,7 +129,11 @@ final class SwipeViewModel: ObservableObject {
     /// largest-first measurement was cancelled.
     private func buildDeck(using service: PhotoLibraryService,
                            keeping: Set<String>) async -> [PhotoAsset]? {
-        let fetched = await service.fetchImages(source: source)
+        async let fetch = service.fetchImages(source: source)
+        // The decision file is read in the background at launch; the deck
+        // can't be filtered until it's in.
+        await store.waitUntilLoaded()
+        let fetched = await fetch
         let deck = fetched.filter { keeping.contains($0.id) || !store.isReviewed($0.id) }
         if source.order == .largestFirst {
             return await sortedByLargest(deck, using: service)
@@ -143,6 +147,7 @@ final class SwipeViewModel: ObservableObject {
     /// Cancel, and folded back into the cache for next time. Nil if cancelled.
     private func sortedByLargest(_ deck: [PhotoAsset],
                                  using service: PhotoLibraryService) async -> [PhotoAsset]? {
+        await sizes.waitUntilLoaded()
         var missing = deck.filter { sizes.size(for: $0.id) == nil }
         if !missing.isEmpty {
             await sizes.adoptIndexedSizes()
