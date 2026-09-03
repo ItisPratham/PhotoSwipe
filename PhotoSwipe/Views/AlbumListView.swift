@@ -56,7 +56,9 @@ struct AlbumListView: View {
     }
 
     private func load() async {
-        isLoading = true
+        // Spinner only for the first load; popping back from an album's deck
+        // re-runs this task and should just refresh the list in place.
+        if albums.isEmpty { isLoading = true }
         albums = await service.fetchUserAlbums()
         isLoading = false
     }

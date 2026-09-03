@@ -16,16 +16,28 @@ final class BrowseViewModel: ObservableObject {
     @Published private(set) var sections: [DaySection] = []
     @Published private(set) var isLoading: Bool = true
 
-    func load(using service: PhotoLibraryService) async {
-        isLoading = true
+    /// The `libraryVersion` the grid was built from; nil until the first load.
+    private var loadedLibraryVersion: Int?
+
+    /// Called on every appearance and on library changes. Fetches only when
+    /// the library changed since the last build, and shows the loading state
+    /// only for the very first load, so switching tabs or popping back from a
+    /// deck neither flashes the spinner nor resets the scroll position.
+    func loadIfNeeded(using service: PhotoLibraryService) async {
+        guard loadedLibraryVersion != service.libraryVersion else { return }
+        let version = service.libraryVersion
+        if sections.isEmpty { isLoading = true }
         let fetched = await service.fetchImages(source: .allPhotos)
-        sections = Self.group(assets: fetched)
+        sections = await Task.detached(priority: .userInitiated) {
+            Self.group(assets: fetched)
+        }.value
+        loadedLibraryVersion = version
         isLoading = false
     }
 
     /// Buckets by start-of-day and returns newest-first sections with
     /// newest-first assets inside — matches Photos.app browsing.
-    private static func group(assets: [PhotoAsset]) -> [DaySection] {
+    nonisolated private static func group(assets: [PhotoAsset]) -> [DaySection] {
         let calendar = Calendar.current
         var buckets: [Date: [PhotoAsset]] = [:]
         for asset in assets {

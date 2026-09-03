@@ -6,7 +6,7 @@ import SwiftUI
 /// deck starting at that photo/day. Settings live behind the tab's gear (see
 /// `AppTabView`); the default oldest-first deck is the Clean tab.
 struct BrowseView: View {
-    let service: PhotoLibraryService
+    @ObservedObject var service: PhotoLibraryService
 
     @StateObject private var viewModel = BrowseViewModel()
 
@@ -20,7 +20,10 @@ struct BrowseView: View {
             .navigationTitle("Browse")
             .navigationBarTitleDisplayMode(.inline)
             .task {
-                await viewModel.load(using: service)
+                await viewModel.loadIfNeeded(using: service)
+            }
+            .onChange(of: service.libraryVersion) { _, _ in
+                Task { await viewModel.loadIfNeeded(using: service) }
             }
     }
 

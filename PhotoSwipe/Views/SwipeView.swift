@@ -93,8 +93,11 @@ struct SwipeView: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.85),
                    value: viewModel.lastFreedBytes)
         .task {
-            await viewModel.load(using: service)
+            await viewModel.loadIfNeeded(using: service)
             onLoaded()
+        }
+        .onChange(of: service.libraryVersion) { _, _ in
+            Task { await viewModel.refreshIfStale(using: service) }
         }
         .onChange(of: viewModel.lastFreedBytes) { _, newValue in
             scheduleFreedBannerDismiss(for: newValue)

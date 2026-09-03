@@ -48,20 +48,74 @@ final class SwipeViewModel: ObservableObject {
         store.markedForDeletionIDs.count
     }
 
-    /// Loads the deck for the configured source and filters out already-reviewed
-    /// assets. Safe to call repeatedly — the next call rebuilds the deck from
-    /// scratch.
+    /// The `PhotoLibraryService.libraryVersion` the current deck was built
+    /// from. Nil until the first load.
+    private var loadedLibraryVersion: Int?
+    /// The asset the last swipe decided, so undo can be validated after a
+    /// silent refresh rebuilds the deck.
+    private var lastDecidedID: String?
+    private var isRefreshing = false
+
+    /// Called on every appearance. Builds the deck on the first call; later
+    /// calls (switching tabs, popping back) keep the deck and the user's place
+    /// and only refresh silently if the library changed in the meantime.
+    func loadIfNeeded(using service: PhotoLibraryService) async {
+        if loadedLibraryVersion == nil {
+            await load(using: service)
+        } else {
+            await refreshIfStale(using: service)
+        }
+    }
+
+    /// Full (re)load behind the loading indicator: rebuilds the deck from
+    /// scratch and resets the cursor and undo.
     func load(using service: PhotoLibraryService) async {
         isLoading = true
-        let fetched = await service.fetchImages(source: self.source)
-        var deck = fetched.filter { !store.isReviewed($0.id) }
-        if source.order == .largestFirst {
-            deck = await sortedByLargest(deck, using: service)
-        }
+        let version = service.libraryVersion
+        let deck = await buildDeck(using: service, keeping: [])
         assets = deck
         currentIndex = 0
         canUndo = false
+        lastDecidedID = nil
+        loadedLibraryVersion = version
         isLoading = false
+    }
+
+    /// The library changed (our own batch delete, iCloud sync, a new photo):
+    /// rebuild the deck without a loading flash and without losing the place.
+    /// Cards already shown this session stay in the deck so the cursor and the
+    /// single-step undo keep pointing at the right cards; assets that vanished
+    /// from the library drop out; new unreviewed assets slot in.
+    func refreshIfStale(using service: PhotoLibraryService) async {
+        guard loadedLibraryVersion != nil, !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        while let loaded = loadedLibraryVersion, loaded != service.libraryVersion {
+            let version = service.libraryVersion
+            let shownBefore = Set(assets.prefix(currentIndex).map(\.id))
+            let fresh = await buildDeck(using: service, keeping: shownBefore)
+            // The user may have swiped while we were fetching — re-read the place.
+            let shown = Set(assets.prefix(currentIndex).map(\.id))
+            let newIndex = fresh.firstIndex { !shown.contains($0.id) } ?? fresh.count
+            assets = fresh
+            currentIndex = newIndex
+            if canUndo, !(newIndex > 0 && fresh[newIndex - 1].id == lastDecidedID) {
+                canUndo = false
+            }
+            loadedLibraryVersion = version
+        }
+    }
+
+    /// Fetches the source and filters out already-reviewed assets, except the
+    /// ids in `keeping` (cards already shown this session).
+    private func buildDeck(using service: PhotoLibraryService,
+                           keeping: Set<String>) async -> [PhotoAsset] {
+        let fetched = await service.fetchImages(source: source)
+        var deck = fetched.filter { keeping.contains($0.id) || !store.isReviewed($0.id) }
+        if source.order == .largestFirst {
+            deck = await sortedByLargest(deck, using: service)
+        }
+        return deck
     }
 
     /// Sorts the deck by on-device byte size, descending. Sizes come from the
@@ -83,6 +137,7 @@ final class SwipeViewModel: ObservableObject {
     func keep() {
         guard let asset = currentAsset else { return }
         store.markKept(asset.id)
+        lastDecidedID = asset.id
         currentIndex += 1
         canUndo = true
     }
@@ -91,6 +146,7 @@ final class SwipeViewModel: ObservableObject {
     func markForDeletion() {
         guard let asset = currentAsset else { return }
         store.markForDeletion(asset.id)
+        lastDecidedID = asset.id
         currentIndex += 1
         canUndo = true
     }

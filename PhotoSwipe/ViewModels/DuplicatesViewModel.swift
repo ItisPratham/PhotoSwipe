@@ -50,6 +50,10 @@ final class DuplicatesViewModel: ObservableObject {
     /// requester asked for it unconditionally.
     private var isRunQueued = false
     private var queuedRunIsConditional = true
+    /// The `libraryVersion` the last run started from. Re-appearing with an
+    /// unchanged library (popping back from a deck, switching tabs) is then a
+    /// no-op instead of another fetch + incremental scan + regroup.
+    private var lastRunLibraryVersion: Int?
     /// A regroup is waiting; slider ticks fold into it and it reads the latest
     /// threshold when it starts, so the final value is never dropped.
     private var isRegroupQueued = false
@@ -64,6 +68,7 @@ final class DuplicatesViewModel: ObservableObject {
     /// On first appearance: auto-refresh if we've scanned before, otherwise
     /// leave the explainer up so the first scan stays opt-in.
     func onAppear(using service: PhotoLibraryService) {
+        guard lastRunLibraryVersion != service.libraryVersion else { return }
         enqueueRun(using: service, onlyIfIndexed: true)
     }
 
@@ -125,6 +130,7 @@ final class DuplicatesViewModel: ObservableObject {
     private func run(using service: PhotoLibraryService) async {
         guard !isRunning, !Task.isCancelled else { return }
         isRunning = true
+        lastRunLibraryVersion = service.libraryVersion
         defer { isRunning = false; isRefreshing = false }
 
         // Keep results visible during a background refresh; show full progress
