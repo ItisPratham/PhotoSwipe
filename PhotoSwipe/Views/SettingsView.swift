@@ -15,6 +15,10 @@ struct SettingsView: View {
     @State private var showStats = false
     @State private var showResetConfirm = false
 
+    @AppStorage(SwipeUpAction.kindKey) private var swipeUpKind = "favorite"
+    @AppStorage(SwipeUpAction.albumIDKey) private var swipeUpAlbumID = ""
+    @AppStorage(SwipeUpAction.albumTitleKey) private var swipeUpAlbumTitle = ""
+
     var body: some View {
         NavigationStack {
             List {
@@ -24,6 +28,31 @@ struct SettingsView: View {
                     } label: {
                         Label("Activity", systemImage: "chart.bar")
                     }
+                }
+
+                Section {
+                    Picker(selection: $swipeUpKind) {
+                        Label("Favorite", systemImage: "heart.fill").tag("favorite")
+                        Label("Add to album", systemImage: "rectangle.stack.badge.plus").tag("album")
+                    } label: {
+                        Label("Swipe up does", systemImage: "arrow.up")
+                    }
+                    if swipeUpKind == "album" {
+                        NavigationLink {
+                            SwipeUpAlbumPicker(service: service,
+                                               selectedID: $swipeUpAlbumID,
+                                               selectedTitle: $swipeUpAlbumTitle)
+                        } label: {
+                            LabeledContent("Album") {
+                                Text(swipeUpAlbumTitle.isEmpty ? "Choose…" : swipeUpAlbumTitle)
+                                    .foregroundStyle(swipeUpAlbumTitle.isEmpty ? .secondary : .primary)
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(swipeUpKind == "album" && swipeUpAlbumTitle.isEmpty
+                         ? "Swiping up keeps the photo. Pick an album to also add it there; until then it favorites."
+                         : "Swiping up keeps the photo and \(swipeUpKind == "album" ? "adds it to the album" : "marks it as a favorite in Photos"). Undo reverts both.")
                 }
 
                 Section {
@@ -79,6 +108,53 @@ struct SettingsView: View {
     private func openSupport() {
         guard let url = ContactLink.makeSupportURL() else { return }
         openURL(url)
+    }
+}
+
+/// Lists the user's writable albums so swipe-up can add to one. Picking a
+/// row stores the album's id and title; the deck reads both.
+private struct SwipeUpAlbumPicker: View {
+    let service: PhotoLibraryService
+    @Binding var selectedID: String
+    @Binding var selectedTitle: String
+
+    @State private var albums: [PhotoLibraryService.AlbumSummary] = []
+    @State private var isLoading = true
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView().controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if albums.isEmpty {
+                ContentUnavailableView("No albums",
+                                       systemImage: "rectangle.stack",
+                                       description: Text("Create an album in the Photos app first."))
+            } else {
+                List(albums) { album in
+                    Button {
+                        selectedID = album.id
+                        selectedTitle = album.title
+                        dismiss()
+                    } label: {
+                        HStack {
+                            Text(album.title).foregroundStyle(.primary)
+                            Spacer()
+                            if album.id == selectedID {
+                                Image(systemName: "checkmark").foregroundStyle(.tint)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Swipe-up album")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            albums = await service.fetchWritableAlbums()
+            isLoading = false
+        }
     }
 }
 

@@ -575,6 +575,89 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         }
     }
 
+    /// Adds the asset to a user album (swipe-up in album mode). No system
+    /// confirmation is needed. Returns false if the album is gone or can't
+    /// take content. A no-op (true) when the photo is already in it.
+    @discardableResult
+    func addToAlbum(id: String, albumID: String) async -> Bool {
+        guard let (asset, collection) = Self.resolve(assetID: id, albumID: albumID) else { return false }
+        guard !Self.album(collection, contains: asset) else { return true }
+        assetTracker.noteSelfEdit(id)
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetCollectionChangeRequest(for: collection)?.addAssets([asset] as NSArray)
+            } completionHandler: { success, _ in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+
+    /// Reverts `addToAlbum` on Undo.
+    @discardableResult
+    func removeFromAlbum(id: String, albumID: String) async -> Bool {
+        guard let (asset, collection) = Self.resolve(assetID: id, albumID: albumID) else { return false }
+        assetTracker.noteSelfEdit(id)
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetCollectionChangeRequest(for: collection)?.removeAssets([asset] as NSArray)
+            } completionHandler: { success, _ in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+
+    /// Whether the album still exists and accepts content — used by the
+    /// Settings picker to validate a remembered choice.
+    nonisolated func albumAcceptsContent(id albumID: String) -> Bool {
+        let collections = PHAssetCollection.fetchAssetCollections(
+            withLocalIdentifiers: [albumID], options: nil)
+        guard let collection = collections.firstObject else { return false }
+        return collection.canPerform(.addContent)
+    }
+
+    nonisolated private static func resolve(assetID: String, albumID: String) -> (PHAsset, PHAssetCollection)? {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [assetID], options: nil).firstObject,
+              let collection = PHAssetCollection.fetchAssetCollections(
+                withLocalIdentifiers: [albumID], options: nil).firstObject,
+              collection.canPerform(.addContent)
+        else { return nil }
+        return (asset, collection)
+    }
+
+    nonisolated private static func album(_ collection: PHAssetCollection, contains asset: PHAsset) -> Bool {
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "localIdentifier == %@", asset.localIdentifier)
+        options.fetchLimit = 1
+        return PHAsset.fetchAssets(in: collection, options: options).count > 0
+    }
+
+    /// Every user album that can take content, including empty ones, for the
+    /// swipe-up album picker. Sorted alphabetically.
+    nonisolated func fetchWritableAlbums() async -> [AlbumSummary] {
+        await Task.detached(priority: .userInitiated) {
+            let albumOptions = PHFetchOptions()
+            albumOptions.sortDescriptors = [NSSortDescriptor(key: "localizedTitle", ascending: true)]
+            let collections = PHAssetCollection.fetchAssetCollections(
+                with: .album, subtype: .albumRegular, options: albumOptions)
+            let coverOptions = PHFetchOptions()
+            coverOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            coverOptions.fetchLimit = 1
+            var summaries: [AlbumSummary] = []
+            collections.enumerateObjects { collection, _, _ in
+                guard collection.canPerform(.addContent) else { return }
+                let cover = PHAsset.fetchAssets(in: collection, options: coverOptions).firstObject
+                summaries.append(AlbumSummary(
+                    id: collection.localIdentifier,
+                    title: collection.localizedTitle ?? "Untitled",
+                    count: collection.estimatedAssetCount,
+                    cover: cover.map(PhotoAsset.init(phAsset:)),
+                    collection: collection
+                ))
+            }
+            return summaries
+        }.value
+    }
+
     /// Deletes the supplied assets via a single batched PhotoKit request. iOS
     /// always shows a system confirmation dialog — there's no silent path.
     /// Returns `true` only when the user confirmed and the delete succeeded.

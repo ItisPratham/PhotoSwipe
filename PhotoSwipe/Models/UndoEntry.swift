@@ -9,6 +9,8 @@ struct UndoEntry: Equatable {
     enum SideEffect: Equatable {
         /// The photo was not a favorite before and we made it one.
         case favorited
+        /// The photo was added to the album with this local identifier.
+        case addedToAlbum(String)
     }
 
     /// The card that was decided. Undo re-validates this against the live

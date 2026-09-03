@@ -28,12 +28,16 @@ struct SwipeView: View {
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
-    /// What swipe-up does; chosen in Settings.
-    @AppStorage(SwipeUpAction.storageKey) private var swipeUpRaw = "favorite"
+    /// What swipe-up does; chosen in Settings. All three keys are observed so
+    /// a change made while a deck is open takes effect on the next swipe.
+    @AppStorage(SwipeUpAction.kindKey) private var swipeUpKind = "favorite"
+    @AppStorage(SwipeUpAction.albumIDKey) private var swipeUpAlbumID = ""
+    @AppStorage(SwipeUpAction.albumTitleKey) private var swipeUpAlbumTitle = ""
     private var swipeUpAction: SwipeUpAction {
-        switch swipeUpRaw {
-        default: return .favorite
+        if swipeUpKind == "album", !swipeUpAlbumID.isEmpty, !swipeUpAlbumTitle.isEmpty {
+            return .album(id: swipeUpAlbumID, title: swipeUpAlbumTitle)
         }
+        return .favorite
     }
 
     /// How many cards past the current one are kept warm in the image cache.

@@ -205,6 +205,8 @@ final class SwipeViewModel: ObservableObject {
         switch action {
         case .favorite:
             effect = asset.isFavorite ? nil : .favorited
+        case .album(let albumID, _):
+            effect = .addedToAlbum(albumID)
         }
         advance(recording: UndoEntry(assetID: asset.id, sideEffect: effect))
         if effect != nil {
@@ -217,6 +219,7 @@ final class SwipeViewModel: ObservableObject {
                               using service: PhotoLibraryService) async {
         switch effect {
         case .favorited: await service.setFavorite(id: id, true)
+        case .addedToAlbum(let albumID): await service.addToAlbum(id: id, albumID: albumID)
         case nil: break
         }
     }
@@ -225,6 +228,7 @@ final class SwipeViewModel: ObservableObject {
                                using service: PhotoLibraryService) async {
         switch effect {
         case .favorited: await service.setFavorite(id: id, false)
+        case .addedToAlbum(let albumID): await service.removeFromAlbum(id: id, albumID: albumID)
         case nil: break
         }
     }
