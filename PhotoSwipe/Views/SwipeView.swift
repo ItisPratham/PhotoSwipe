@@ -28,6 +28,13 @@ struct SwipeView: View {
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
+    /// What swipe-up does; chosen in Settings.
+    @AppStorage(SwipeUpAction.storageKey) private var swipeUpRaw = "favorite"
+    private var swipeUpAction: SwipeUpAction {
+        switch swipeUpRaw {
+        default: return .favorite
+        }
+    }
 
     /// How many cards past the current one are kept warm in the image cache.
     /// Small on purpose: each entry is a screen-sized decoded image.
@@ -234,6 +241,7 @@ struct SwipeView: View {
     private func card(for asset: PhotoAsset) -> some View {
         deckCard(for: asset)
             .overlay(alignment: .top) { cardStamps }
+            .overlay { upStamp }
             .overlay(alignment: .bottom) {
                 if asset.id == viewModel.source.suggestedKeeperID {
                     keeperBadge
@@ -267,12 +275,15 @@ struct SwipeView: View {
                         }
                     }
             )
-            .accessibilityHint("Swipe right to keep, swipe left to mark for deletion")
+            .accessibilityHint("Swipe right to keep, swipe left to mark for deletion, swipe up to \(swipeUpAction.title.lowercased())")
             .accessibilityAction(named: Text("Keep")) {
                 viewModel.keep()
             }
             .accessibilityAction(named: Text("Mark for deletion")) {
                 viewModel.markForDeletion()
+            }
+            .accessibilityAction(named: Text(swipeUpAction.title)) {
+                viewModel.swipeUp(action: swipeUpAction, using: service)
             }
             // Identity tied to the asset so SwiftUI rebuilds (and the card's
             // .task reloads) when the deck advances.
@@ -322,6 +333,15 @@ struct SwipeView: View {
         .accessibilityHidden(true)
     }
 
+    /// Centre stamp for the vertical swipe (Favorite / album), fading in with
+    /// the upward drag the same way the side stamps follow the horizontal one.
+    private var upStamp: some View {
+        stamp(text: swipeUpAction.title, systemImage: swipeUpAction.systemImage, color: .yellow)
+            .opacity(Double(upProgress))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
     private func stamp(text: String, systemImage: String, color: Color) -> some View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
@@ -339,13 +359,27 @@ struct SwipeView: View {
     /// release through the same spring animation as `dragOffset`.
     private var swipeTint: some View {
         let progress = swipeProgress
-        let tint: Color = progress > 0 ? .green : .red
-        return tint.opacity(Double(abs(progress)) * 0.18)
+        let up = upProgress
+        let tint: Color = up > abs(progress) ? .yellow : (progress > 0 ? .green : .red)
+        return tint.opacity(Double(max(up, abs(progress))) * 0.18)
     }
 
+    /// Horizontal progress toward a commit, −1…1. Suppressed while the drag is
+    /// clearly vertical so the side stamps don't flicker during a swipe-up.
     private var swipeProgress: CGFloat {
-        guard swipeThreshold > 0 else { return 0 }
+        guard swipeThreshold > 0, !isVerticalDrag else { return 0 }
         return max(-1, min(1, displayOffset.width / swipeThreshold))
+    }
+
+    /// Upward progress toward a commit, 0…1. Only while the drag is vertical.
+    private var upProgress: CGFloat {
+        guard swipeThreshold > 0, isVerticalDrag else { return 0 }
+        return max(0, min(1, -displayOffset.height / swipeThreshold))
+    }
+
+    /// The drag's dominant axis decides which gesture this is.
+    private var isVerticalDrag: Bool {
+        displayOffset.height < 0 && abs(displayOffset.height) > abs(displayOffset.width)
     }
 
     // MARK: - Gesture handling
@@ -355,26 +389,36 @@ struct SwipeView: View {
         // off would schedule a second decision, which then applies to the next
         // card before the user has seen it. Ignore it until the swap completes.
         guard !isExiting else { return }
-        guard abs(translation.width) > swipeThreshold else {
+        let vertical = translation.height < 0
+            && abs(translation.height) > abs(translation.width)
+        let committed = vertical
+            ? -translation.height > swipeThreshold
+            : abs(translation.width) > swipeThreshold
+        guard committed else {
             // GestureState resets automatically; the .animation modifier
             // springs the card back to centre.
             return
         }
-        completeSwipe(translation: translation)
+        completeSwipe(translation: translation, vertical: vertical)
     }
 
-    private enum SwipeDirection { case left, right }
+    private enum SwipeDirection { case left, right, up }
 
-    private func completeSwipe(translation: CGSize) {
-        let direction: SwipeDirection = translation.width > 0 ? .right : .left
-        let exitX: CGFloat = direction == .right ? exitDistance : -exitDistance
+    private func completeSwipe(translation: CGSize, vertical: Bool) {
+        let direction: SwipeDirection = vertical ? .up : (translation.width > 0 ? .right : .left)
+        let exit: CGSize
+        switch direction {
+        case .right: exit = CGSize(width: exitDistance, height: translation.height)
+        case .left:  exit = CGSize(width: -exitDistance, height: translation.height)
+        case .up:    exit = CGSize(width: translation.width, height: -exitDistance)
+        }
 
         // Anchor exitOffset to the lift-off point so swapping the displayOffset
         // source (dragTranslation → exitOffset) doesn't snap the card.
         exitOffset = translation
         isExiting = true
         withAnimation(.easeOut(duration: 0.25)) {
-            exitOffset = CGSize(width: exitX, height: translation.height)
+            exitOffset = exit
         }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 250_000_000)
@@ -384,6 +428,7 @@ struct SwipeView: View {
             switch direction {
             case .right: viewModel.keep()
             case .left:  viewModel.markForDeletion()
+            case .up:    viewModel.swipeUp(action: swipeUpAction, using: service)
             }
             isExiting = false
             exitOffset = .zero
@@ -414,7 +459,7 @@ struct SwipeView: View {
             Spacer()
 
             Button {
-                viewModel.undo()
+                viewModel.undo(using: service)
             } label: {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.title3.weight(.semibold))

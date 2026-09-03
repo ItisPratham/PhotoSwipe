@@ -194,6 +194,41 @@ final class SwipeViewModel: ObservableObject {
         advance(recording: UndoEntry(assetID: asset.id))
     }
 
+    /// Swipe up — a keep plus a library write chosen in Settings (favorite by
+    /// default). The write runs after the card has advanced so it never delays
+    /// the fly-off; Undo reverts it. A photo that is already a favorite gets
+    /// no write and no reversal.
+    func swipeUp(action: SwipeUpAction, using service: PhotoLibraryService) {
+        guard let asset = currentAsset else { return }
+        store.markKept(asset.id)
+        var effect: UndoEntry.SideEffect?
+        switch action {
+        case .favorite:
+            effect = asset.isFavorite ? nil : .favorited
+        }
+        advance(recording: UndoEntry(assetID: asset.id, sideEffect: effect))
+        if effect != nil {
+            let id = asset.id
+            Task { await Self.apply(effect, to: id, using: service) }
+        }
+    }
+
+    private static func apply(_ effect: UndoEntry.SideEffect?, to id: String,
+                              using service: PhotoLibraryService) async {
+        switch effect {
+        case .favorited: await service.setFavorite(id: id, true)
+        case nil: break
+        }
+    }
+
+    private static func revert(_ effect: UndoEntry.SideEffect?, on id: String,
+                               using service: PhotoLibraryService) async {
+        switch effect {
+        case .favorited: await service.setFavorite(id: id, false)
+        case nil: break
+        }
+    }
+
     /// Moves past the current card and records the decision for Undo, keeping
     /// the stack within `undoLimit`.
     private func advance(recording entry: UndoEntry) {
@@ -209,12 +244,15 @@ final class SwipeViewModel: ObservableObject {
     /// Cards between it and the cursor (unreviewed ones a silent refresh may
     /// have slotted in) are simply shown again. Entries whose card is gone —
     /// batch-deleted, or removed by a refresh — are dropped, never replayed.
-    func undo() {
+    func undo(using service: PhotoLibraryService) {
         while let entry = undoStack.popLast() {
             guard let index = assets.prefix(currentIndex).lastIndex(where: { $0.id == entry.assetID })
             else { continue }
             currentIndex = index
             store.clearDecision(for: entry.assetID)
+            if let effect = entry.sideEffect {
+                Task { await Self.revert(effect, on: entry.assetID, using: service) }
+            }
             return
         }
     }

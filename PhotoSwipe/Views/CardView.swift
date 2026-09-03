@@ -45,6 +45,11 @@ struct CardView: View {
 
                 dateLabel
             }
+            .overlay(alignment: .topTrailing) {
+                if asset.isFavorite {
+                    favoriteBadge
+                }
+            }
             .background(Theme.cardSurface)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.deckCard))
             .shadow(color: .black.opacity(0.18), radius: 14, x: 0, y: 6)
@@ -77,6 +82,18 @@ struct CardView: View {
             .padding(.vertical, 8)
             .background(.black.opacity(0.45), in: Capsule())
             .padding(16)
+    }
+
+    /// Small filled heart for photos that are already favorites in Photos, so
+    /// a swipe-up on them reads as a no-op rather than a surprise.
+    private var favoriteBadge: some View {
+        Image(systemName: "heart.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(8)
+            .background(.black.opacity(0.45), in: Circle())
+            .padding(16)
+            .accessibilityHidden(true)
     }
 
     private func loadImage(targetSize: CGSize) async {

@@ -17,19 +17,37 @@ private let cachingImageManager = PHCachingImageManager()
 private final class AssetChangeTracker: @unchecked Sendable {
     private let lock = NSLock()
     private var fetchResult = PHAsset.fetchAssets(with: nil)
+    /// Assets the app itself just edited in place (a swipe-up favorite). The
+    /// resulting change notification only "changes" those assets; it is
+    /// swallowed so a metadata write of ours doesn't refetch every deck.
+    private var selfEdited: Set<String> = []
 
     /// Applies `change` to the tracked result. Returns true when assets were
-    /// inserted, removed, changed, or moved.
+    /// inserted, removed, changed, or moved — except when the only changes
+    /// are to assets we edited ourselves.
     func apply(_ change: PHChange) -> Bool {
         lock.lock()
         defer { lock.unlock() }
         guard let details = change.changeDetails(for: fetchResult) else { return false }
         fetchResult = details.fetchResultAfterChanges
         guard details.hasIncrementalChanges else { return true }
-        return !details.removedObjects.isEmpty
+        let structural = !details.removedObjects.isEmpty
             || !details.insertedObjects.isEmpty
-            || !details.changedObjects.isEmpty
             || details.hasMoves
+        let changedIDs = details.changedObjects.map(\.localIdentifier)
+        let onlySelfEdits = !changedIDs.isEmpty
+            && changedIDs.allSatisfy(selfEdited.contains)
+        selfEdited.subtract(changedIDs)
+        if structural { return true }
+        return !changedIDs.isEmpty && !onlySelfEdits
+    }
+
+    /// Records that the app is about to edit `id` in place, so the matching
+    /// change notification is not treated as a library change.
+    func noteSelfEdit(_ id: String) {
+        lock.lock()
+        selfEdited.insert(id)
+        lock.unlock()
     }
 
     /// Re-baselines after access is granted, when the library first becomes
@@ -536,6 +554,25 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             }
             return summaries
         }.value
+    }
+
+    /// Sets or clears the Photos favorite flag. Unlike deletion this needs no
+    /// system confirmation, so it completes silently and quickly. The change
+    /// is noted with the tracker first so our own edit doesn't bump
+    /// `libraryVersion` and refetch every deck. Returns whether it applied.
+    @discardableResult
+    func setFavorite(id: String, _ favorite: Bool) async -> Bool {
+        let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil)
+        guard let asset = fetch.firstObject else { return false }
+        guard asset.isFavorite != favorite else { return true }
+        assetTracker.noteSelfEdit(id)
+        return await withCheckedContinuation { continuation in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest(for: asset).isFavorite = favorite
+            } completionHandler: { success, _ in
+                continuation.resume(returning: success)
+            }
+        }
     }
 
     /// Deletes the supplied assets via a single batched PhotoKit request. iOS

@@ -13,6 +13,10 @@ struct PhotoAsset: Identifiable, Equatable, @unchecked Sendable {
     /// as stills — only true movies count as video here.
     var isVideo: Bool { phAsset.mediaType == .video }
 
+    /// Favorite flag as of the fetch. A swipe-up that favorites the photo
+    /// doesn't refresh this wrapper; the card has already advanced by then.
+    var isFavorite: Bool { phAsset.isFavorite }
+
     /// Set by the system for images captured with the screenshot gesture.
     /// Metadata, not a visual guess — see the Screenshots browse entry.
     var isScreenshot: Bool { phAsset.mediaSubtypes.contains(.photoScreenshot) }
