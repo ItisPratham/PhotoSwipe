@@ -123,16 +123,16 @@ struct BrowseView: View {
                                 HStack(spacing: 6) {
                                     Text(section.id, format: .dateTime.month(.wide).day().year())
                                         .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.tertiary)
+                                        .foregroundStyle(.white)
                                     Spacer()
                                     Image(systemName: "chevron.right")
                                         .font(.caption2)
-                                        .foregroundStyle(.quaternary)
+                                        .foregroundStyle(.white.opacity(0.5))
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, Theme.Spacing.screenMargin)
                                 .padding(.vertical, 6)
-                                .background(Color.white)
+                                .background(Color.black)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
