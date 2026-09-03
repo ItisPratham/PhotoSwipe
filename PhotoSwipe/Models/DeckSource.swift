@@ -17,6 +17,9 @@ struct DeckSource: Hashable {
         /// from a tapped photo backward); otherwise PhotoKit's oldest-first
         /// creation-date order applies.
         case person([String], preservesOrder: Bool)
+        /// "More like this": the feature-print neighbours of `seedID`, in
+        /// ascending-distance order (preserved in the deck).
+        case similar(seedID: String, ids: [String])
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
             switch (lhs, rhs) {
@@ -29,6 +32,8 @@ struct DeckSource: Hashable {
                 return a == b
             case (.person(let a, let pa), .person(let b, let pb)):
                 return a == b && pa == pb
+            case (.similar(let sa, let a), .similar(let sb, let b)):
+                return sa == sb && a == b
             default:
                 return false
             }
@@ -48,6 +53,10 @@ struct DeckSource: Hashable {
                 hasher.combine("person")
                 hasher.combine(ids)
                 hasher.combine(preservesOrder)
+            case .similar(let seedID, let ids):
+                hasher.combine("similar")
+                hasher.combine(seedID)
+                hasher.combine(ids)
             }
         }
     }
@@ -121,6 +130,12 @@ struct DeckSource: Hashable {
     /// grid's context menu, whose ids come from a Set — to get oldest-first.
     static func person(_ photoIDs: [String], preservesOrder: Bool = true) -> DeckSource {
         DeckSource(scope: .person(photoIDs, preservesOrder: preservesOrder), media: .all)
+    }
+
+    /// Builds the "More like this" deck for a seed photo. Neighbours arrive
+    /// nearest-first from `SimilarPhotosFinder` and the deck keeps that order.
+    static func similar(to seedID: String, ids: [String]) -> DeckSource {
+        DeckSource(scope: .similar(seedID: seedID, ids: ids), media: .all)
     }
 
     func hash(into hasher: inout Hasher) {

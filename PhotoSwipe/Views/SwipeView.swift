@@ -28,6 +28,12 @@ struct SwipeView: View {
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
+    /// "More like this" support: whether the current card has a feature
+    /// print, the in-flight lookup, and the deck to push once it resolves.
+    @State private var similarFinder = SimilarPhotosFinder()
+    @State private var currentIsIndexed = false
+    @State private var isFindingSimilar = false
+    @State private var similarRoute: AppRoute?
     /// What swipe-up does; chosen in Settings. All three keys are observed so
     /// a change made while a deck is open takes effect on the next swipe.
     @AppStorage(SwipeUpAction.kindKey) private var swipeUpKind = "favorite"
@@ -160,6 +166,18 @@ struct SwipeView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $similarRoute) { route in
+            if case .swipe(let source) = route {
+                SwipeView(service: service, store: store, stats: stats, sizes: sizes, source: source)
+            }
+        }
+        .task(id: "\(viewModel.currentAsset?.id ?? "")|\(service.libraryVersion)") {
+            guard let asset = viewModel.currentAsset, !asset.isVideo else {
+                currentIsIndexed = false
+                return
+            }
+            currentIsIndexed = await similarFinder.isIndexed(asset.id, libraryVersion: service.libraryVersion)
+        }
         .fullScreenCover(item: $zoomAsset) { asset in
             PhotoZoomView(asset: asset, service: service)
         }
@@ -246,6 +264,11 @@ struct SwipeView: View {
         deckCard(for: asset)
             .overlay(alignment: .top) { cardStamps }
             .overlay { upStamp }
+            .overlay(alignment: .bottomTrailing) {
+                if !asset.isVideo {
+                    moreLikeThisButton(for: asset)
+                }
+            }
             .overlay(alignment: .bottom) {
                 if asset.id == viewModel.source.suggestedKeeperID {
                     keeperBadge
@@ -302,6 +325,46 @@ struct SwipeView: View {
             VideoCardView(asset: asset, service: service)
         } else {
             CardView(asset: asset, service: service)
+        }
+    }
+
+    /// Opens a deck of this photo's nearest neighbours in feature-print
+    /// space. Enabled only once the photo has been through the Duplicates
+    /// scan, which is where the prints come from.
+    private func moreLikeThisButton(for asset: PhotoAsset) -> some View {
+        Button {
+            findSimilar(to: asset)
+        } label: {
+            Group {
+                if isFindingSimilar {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(.black.opacity(0.45), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!currentIsIndexed || isFindingSimilar)
+        .opacity(currentIsIndexed ? 1 : 0.35)
+        .padding(16)
+        .accessibilityLabel("More like this")
+        .accessibilityHint(currentIsIndexed
+                           ? "Opens a deck of similar photos"
+                           : "Run the Duplicates scan first to enable")
+    }
+
+    private func findSimilar(to asset: PhotoAsset) {
+        guard !isFindingSimilar else { return }
+        isFindingSimilar = true
+        Task {
+            defer { isFindingSimilar = false }
+            guard let ids = await similarFinder.neighbours(of: asset.id, libraryVersion: service.libraryVersion)
+            else { return }
+            similarRoute = .swipe(.similar(to: asset.id, ids: ids))
         }
     }
 

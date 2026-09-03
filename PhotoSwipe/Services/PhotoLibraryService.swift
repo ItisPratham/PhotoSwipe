@@ -264,6 +264,12 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             options.predicate = nil
             if preservesOrder { options.sortDescriptors = nil }
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .similar(_, let ids):
+            // Nearest-first order from the finder is authoritative; re-ordered
+            // after the fetch like a person deck.
+            options.predicate = nil
+            options.sortDescriptors = nil
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
         }
 
         var assets: [PhotoAsset] = []
@@ -276,9 +282,15 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         // and sorts by options.sortDescriptors. For person scope we re-order
         // the result to match the caller's sequence exactly (e.g. newest→oldest
         // per day, or from a tapped photo backward through the rest of that day).
-        if case .person(let ids, true) = source.scope {
+        let orderedIDs: [String]?
+        switch source.scope {
+        case .person(let ids, true): orderedIDs = ids
+        case .similar(_, let ids): orderedIDs = ids
+        default: orderedIDs = nil
+        }
+        if let orderedIDs {
             let byID = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, $0) })
-            assets = ids.compactMap { byID[$0] }
+            assets = orderedIDs.compactMap { byID[$0] }
         }
 
         return assets
