@@ -10,11 +10,17 @@ enum FaceScanError: Error {
 
 /// Runs the opt-in face scan off the main actor (this type is intentionally not
 /// `@MainActor`, so its `async` methods hop to a background executor). For each
-/// not-yet-scanned photo it detects faces + landmarks (Vision), aligns and
-/// embeds each face (`FaceAligner` → `FaceEmbedder`), and upserts the results in
-/// batches. Cancelable via `Task.checkCancellation()`; incremental — only new
-/// assets are processed, and rows for deleted assets are purged.
-final class FaceIndexService {
+/// not-yet-scanned photo it fetches a working-size image, detects faces +
+/// landmarks (Vision), aligns and embeds each face (`FaceAligner` →
+/// `FaceEmbedder`), and upserts the results in batches. Cancelable via
+/// `Task.checkCancellation()`; incremental — only new assets are processed, and
+/// rows for deleted assets are purged.
+///
+/// Up to `maxConcurrency` assets are in-flight at once. Bridging
+/// `PHImageManager.requestImage` to an async continuation frees cooperative
+/// threads while iCloud photos download, so the next fetch starts immediately
+/// instead of waiting for the previous one to finish.
+final class FaceIndexService: @unchecked Sendable {
 
     /// Working resolution for detection + alignment. Big enough for accurate
     /// landmarks, small enough to keep the scan light. Faces are re-sampled to
@@ -24,6 +30,11 @@ final class FaceIndexService {
     /// Ignore faces smaller than this fraction of the image — too small to embed
     /// reliably, and they only pollute clusters.
     private let minFaceFraction: CGFloat = 0.05
+
+    /// How many assets to fetch + detect + embed simultaneously. Bounded to keep
+    /// memory pressure reasonable; 4 is enough to saturate a typical iCloud
+    /// fetch pipeline without overwhelming the Neural Engine.
+    private let maxConcurrency = 4
 
     /// Detects and embeds faces for every not-yet-scanned photo, reporting
     /// `(processed, total)`. Throws `FaceScanError.modelUnavailable` if the
@@ -46,21 +57,38 @@ final class FaceIndexService {
         var scannedBatch: [String] = []
         var processed = 0
 
-        for asset in pending {
-            try Task.checkCancellation()
-            autoreleasepool {
-                faceBatch.append(contentsOf: detectAndEmbed(asset: asset, embedder: embedder))
-                scannedBatch.append(asset.id)
-            }
-            processed += 1
-            onProgress(processed, total)
+        try await withThrowingTaskGroup(of: (String, [FaceObservation]).self) { group in
+            var iter = pending.makeIterator()
 
-            if scannedBatch.count >= 40 {
-                try await store.insert(faces: faceBatch, scannedAssetIDs: scannedBatch, at: Date())
-                faceBatch.removeAll(keepingCapacity: true)
-                scannedBatch.removeAll(keepingCapacity: true)
+            // Enqueues the next pending asset as a child task, if any remain.
+            func enqueueNext() {
+                guard let asset = iter.next() else { return }
+                group.addTask { [self] in
+                    let faces = await self.detectAndEmbed(asset: asset, embedder: embedder)
+                    return (asset.id, faces)
+                }
+            }
+
+            // Seed with up to maxConcurrency concurrent tasks.
+            for _ in 0..<min(maxConcurrency, total) { enqueueNext() }
+
+            // As each task finishes, batch the result and top up the pool.
+            for try await (assetID, faces) in group {
+                try Task.checkCancellation()
+                faceBatch.append(contentsOf: faces)
+                scannedBatch.append(assetID)
+                processed += 1
+                onProgress(processed, total)
+
+                if scannedBatch.count >= 40 {
+                    try await store.insert(faces: faceBatch, scannedAssetIDs: scannedBatch, at: Date())
+                    faceBatch.removeAll(keepingCapacity: true)
+                    scannedBatch.removeAll(keepingCapacity: true)
+                }
+                enqueueNext()
             }
         }
+
         if !scannedBatch.isEmpty {
             try await store.insert(faces: faceBatch, scannedAssetIDs: scannedBatch, at: Date())
         }
@@ -70,61 +98,62 @@ final class FaceIndexService {
 
     // MARK: - Detection + embedding
 
-    private func detectAndEmbed(asset: PhotoAsset, embedder: FaceEmbedder) -> [FaceObservation] {
-        guard let cgImage = thumbnail(for: asset.phAsset) else { return [] }
-        let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+    private func detectAndEmbed(asset: PhotoAsset, embedder: FaceEmbedder) async -> [FaceObservation] {
+        guard let cgImage = await thumbnail(for: asset.phAsset) else { return [] }
+        // Vision detect + CoreML embed are synchronous CPU work; wrap in an
+        // autoreleasepool so CGImages from PHImageManager don't linger on the
+        // cooperative thread between assets.
+        return autoreleasepool {
+            let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
+            let request = VNDetectFaceLandmarksRequest()
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do { try handler.perform([request]) } catch { return [] }
+            guard let results = request.results, !results.isEmpty else { return [] }
 
-        let request = VNDetectFaceLandmarksRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            return []
-        }
-        guard let results = request.results, !results.isEmpty else { return [] }
-
-        var faces: [FaceObservation] = []
-        var index = 0
-        for observation in results
-        where observation.boundingBox.width >= minFaceFraction
-            && observation.boundingBox.height >= minFaceFraction {
-            guard let input = FaceAligner.alignedMultiArray(
-                    cgImage: cgImage, imageSize: imageSize, observation: observation),
-                  let embedding = embedder.embed(input)
-            else { continue }
-
-            faces.append(
-                FaceObservation(
+            var faces: [FaceObservation] = []
+            var index = 0
+            for observation in results
+            where observation.boundingBox.width >= minFaceFraction
+                && observation.boundingBox.height >= minFaceFraction {
+                guard let input = FaceAligner.alignedMultiArray(
+                        cgImage: cgImage, imageSize: imageSize, observation: observation),
+                      let embedding = embedder.embed(input)
+                else { continue }
+                faces.append(FaceObservation(
                     localIdentifier: asset.id,
                     faceIndex: index,
                     embedding: embedding,
                     quality: Float(observation.boundingBox.width * observation.boundingBox.height),
                     boundingBox: observation.boundingBox,
                     personID: nil
-                )
-            )
-            index += 1
+                ))
+                index += 1
+            }
+            return faces
         }
-        return faces
     }
 
-    /// Synchronous, downscaled image for Vision + alignment. Runs inside the
-    /// scan's background task, so blocking here is fine.
-    private func thumbnail(for asset: PHAsset) -> CGImage? {
-        let options = PHImageRequestOptions()
-        options.isSynchronous = true
-        options.deliveryMode = .highQualityFormat
-        options.isNetworkAccessAllowed = true
-        options.resizeMode = .exact
-        var result: CGImage?
-        PHImageManager.default().requestImage(
-            for: asset,
-            targetSize: CGSize(width: workingImageSize, height: workingImageSize),
-            contentMode: .aspectFit,
-            options: options
-        ) { image, _ in
-            result = image?.cgImage
+    /// Async image fetch: `isSynchronous: false` frees the cooperative thread
+    /// while PhotoKit downloads the asset from iCloud, enabling concurrent fetches.
+    /// With `highQualityFormat`, Photos may call back twice — once with a degraded
+    /// placeholder (skipped) and once with the final full-quality image.
+    private func thumbnail(for asset: PHAsset) async -> CGImage? {
+        await withCheckedContinuation { continuation in
+            let options = PHImageRequestOptions()
+            options.isSynchronous = false
+            options.deliveryMode = .highQualityFormat
+            options.isNetworkAccessAllowed = true
+            options.resizeMode = .exact
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: CGSize(width: workingImageSize, height: workingImageSize),
+                contentMode: .aspectFit,
+                options: options
+            ) { image, info in
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                guard !isDegraded else { return }
+                continuation.resume(returning: image?.cgImage)
+            }
         }
-        return result
     }
 }

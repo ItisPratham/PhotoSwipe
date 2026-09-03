@@ -3,7 +3,7 @@ import Photos
 
 /// Thin value-type wrapper around `PHAsset`. We key all persisted state on
 /// `localIdentifier`, so identity travels with the photo across fetches.
-struct PhotoAsset: Identifiable, Equatable {
+struct PhotoAsset: Identifiable, Equatable, @unchecked Sendable {
     let phAsset: PHAsset
 
     var id: String { phAsset.localIdentifier }
