@@ -9,6 +9,7 @@ struct BrowseView: View {
     let service: PhotoLibraryService
 
     @StateObject private var viewModel = BrowseViewModel()
+    @State private var scrolledDay: Date?
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 4),
@@ -140,6 +141,7 @@ struct BrowseView: View {
             .padding(.bottom, 16)
         }
         .scrollIndicators(.visible)
+        .scrollPosition(id: $scrolledDay, anchor: .top)
     }
 
     private var emptyState: some View {

@@ -10,16 +10,18 @@ struct PeopleView: View {
 
     /// Grouping strength, 1 (stricter → more, smaller clusters) … 10 (looser →
     /// merges the same person across poses/lighting). Persisted per install.
-    @AppStorage("PhotoSwipe.peopleSensitivity") private var sensitivity: Double = 4
+    @AppStorage("PhotoSwipe.peopleSensitivity") private var sensitivity: Double = 1
+    @AppStorage("PhotoSwipe.groupingExpanded") private var groupingExpanded: Bool = false
+    @State private var showHidden = false
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 16),
         count: 3
     )
 
-    /// Maps the 1…10 slider to a cosine floor: 1 → 0.70 (strict), 10 → 0.43
+    /// Maps the 1…10 slider to a cosine floor: 1 → 0.69 (strict), 10 → 0.42
     /// (loose). Higher sensitivity = lower floor = more merging.
-    private func threshold(for s: Double) -> Float { Float(0.70 - (s - 1) * 0.03) }
+    private func threshold(for s: Double) -> Float { Float(0.69 - (s - 1) * 0.03) }
 
     var body: some View {
         content
@@ -104,84 +106,106 @@ struct PeopleView: View {
         }
     }
 
+    // Header and hidden-people row live outside the ScrollView so the grid's
+    // NavigationLink tap areas can't bleed up into the controls above.
     private var grid: some View {
-        ScrollView {
+        VStack(spacing: 0) {
             peopleHeader
-            sensitivityBar
-            hiddenLink
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(viewModel.clusters) { cluster in
-                    NavigationLink(value: cluster) {
-                        PersonCell(cluster: cluster, service: service)
+            hiddenSection
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(viewModel.clusters) { cluster in
+                        NavigationLink(value: cluster) {
+                            PersonCell(cluster: cluster, service: service)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .padding()
             }
-            .padding()
+        }
+        .navigationDestination(isPresented: $showHidden) {
+            HiddenPeopleView(viewModel: viewModel, service: service)
         }
     }
 
-    /// Live grouping-strength control. Re-groups from cached embeddings on
-    /// release — no re-scan. A full re-cluster, so it clears any names.
-    private var sensitivityBar: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Grouping strength").font(.subheadline.bold())
-                Spacer()
-                Text(sensitivity >= 7 ? "Looser" : sensitivity <= 3 ? "Stricter" : "Balanced")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            HStack(spacing: 10) {
-                Image(systemName: "person.2.badge.plus").foregroundStyle(.secondary)
-                Slider(value: $sensitivity, in: 1...10, step: 1)
-                    .accessibilityLabel("Grouping strength")
-                    .accessibilityValue("\(Int(sensitivity)) of 10")
-                Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(.secondary)
-            }
-            Text("Higher merges the same person across poses & lighting. Re-groups everyone — clears any names you've set.")
-                .font(.caption2).foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, Theme.Spacing.screenMargin)
-        .padding(.top, 4)
-        .disabled(viewModel.isRefreshing)
-        .onChange(of: sensitivity) { _, s in
-            viewModel.regroup(threshold: threshold(for: s))
-        }
-    }
-
-    /// Entry to the hidden-people list, shown only when some are hidden.
+    /// Section row for hidden people. Uses a plain Button so the tap area is
+    /// bounded to the explicit row height and can't bleed into the grid below.
     @ViewBuilder
-    private var hiddenLink: some View {
+    private var hiddenSection: some View {
         if !viewModel.hiddenClusters.isEmpty {
-            NavigationLink {
-                HiddenPeopleView(viewModel: viewModel, service: service)
-            } label: {
+            Button { showHidden = true } label: {
                 HStack {
                     Image(systemName: "eye.slash")
+                        .foregroundStyle(.secondary)
                     Text("Hidden people")
+                        .foregroundStyle(.primary)
                     Spacer()
-                    Text("\(viewModel.hiddenClusters.count)").foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    Text("\(viewModel.hiddenClusters.count)")
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
                 .padding(.horizontal, Theme.Spacing.screenMargin)
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
+                .frame(height: 44)
             }
             .buttonStyle(.plain)
+            Divider()
+                .padding(.horizontal, Theme.Spacing.screenMargin)
         }
     }
 
+    /// People count + inline grouping-strength toggle. The slider expands below
+    /// when tapped so it doesn't clutter the grid by default.
     private var peopleHeader: some View {
-        HStack {
-            Text("\(viewModel.clusters.count) people")
-                .font(.headline)
-            Spacer()
-            if viewModel.isRefreshing {
-                ProgressView()
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text("\(viewModel.clusters.count) people")
+                    .font(.headline)
+                if viewModel.isRefreshing {
+                    ProgressView().scaleEffect(0.75)
+                }
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { groupingExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(sensitivity >= 7 ? "Looser" : sensitivity <= 3 ? "Stricter" : "Balanced")
+                            .font(.caption)
+                        Image(systemName: groupingExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isRefreshing)
+            }
+            .padding(.horizontal, Theme.Spacing.screenMargin)
+            .padding(.top, 8)
+            .padding(.bottom, groupingExpanded ? 2 : 6)
+
+            if groupingExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.2.badge.plus").foregroundStyle(.secondary)
+                        Slider(value: $sensitivity, in: 1...10, step: 1)
+                            .accessibilityLabel("Grouping strength")
+                            .accessibilityValue("\(Int(sensitivity)) of 10")
+                        Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(.secondary)
+                    }
+                    Text("Higher merges the same person across poses & lighting. Re-groups everyone — clears any names you've set.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, Theme.Spacing.screenMargin)
+                .padding(.bottom, 8)
+                .disabled(viewModel.isRefreshing)
+                .onChange(of: sensitivity) { _, s in
+                    viewModel.regroup(threshold: threshold(for: s))
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.horizontal, Theme.Spacing.screenMargin)
-        .padding(.top, 8)
     }
 
     @ToolbarContentBuilder

@@ -20,7 +20,7 @@ final class FaceClusterer: Sendable {
 
     /// Default cosine floor for grouping. Higher = stricter = more, smaller
     /// clusters. Tunable from the People screen's sensitivity slider.
-    static let defaultThreshold: Float = 0.62
+    static let defaultThreshold: Float = 0.69
 
     /// Stage-2 centroid-merge floor. Tracks the assignment threshold with a
     /// small margin (merging uses *averaged*, denoised centroids, so it can be

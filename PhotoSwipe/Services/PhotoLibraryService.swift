@@ -116,9 +116,10 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
                 options.predicate = nil
                 result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
             case .person(let ids):
-                // A person cluster's photos — an already-chosen set, resolved
-                // by identifier (oldest-first), no media/date filtering.
+                // No sort needed — we re-order to match the caller's sequence
+                // after fetching, so any PhotoKit sort order is overridden.
                 options.predicate = nil
+                options.sortDescriptors = nil
                 result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
             }
 
@@ -127,6 +128,16 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             result.enumerateObjects { asset, _, _ in
                 assets.append(PhotoAsset(phAsset: asset))
             }
+
+            // PHAsset.fetchAssets(withLocalIdentifiers:) ignores the input order
+            // and sorts by options.sortDescriptors. For person scope we re-order
+            // the result to match the caller's sequence exactly (e.g. newest→oldest
+            // per day, or from a tapped photo backward through the rest of that day).
+            if case .person(let ids) = source.scope {
+                let byID = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, $0) })
+                assets = ids.compactMap { byID[$0] }
+            }
+
             return assets
         }.value
     }

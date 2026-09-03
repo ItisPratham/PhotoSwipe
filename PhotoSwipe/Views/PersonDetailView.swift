@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// A person's detail screen. Offers both outcomes the spec calls for: **Clean**
-/// (a swipe deck scoped to this person via `DeckSource.person`) and **Select**
-/// (a multi-select grid with batched delete). Also renames or hides the cluster.
+/// A person's detail screen. Photos are grouped by calendar day (newest-first
+/// by default). Each date section has a swipe-this-day button. The "Clean all"
+/// entry at the top launches the full swipe deck for the person. Tapping the
+/// navigation title renames the person inline.
 struct PersonDetailView: View {
     let service: PhotoLibraryService
     @StateObject private var viewModel: PersonDetailViewModel
@@ -13,18 +14,17 @@ struct PersonDetailView: View {
     @State private var showMerge = false
     @State private var mergeCandidates: [PersonCluster] = []
 
-    init(cluster: PersonCluster, service: PhotoLibraryService, stats: StatsStore) {
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
+
+    init(cluster: PersonCluster, service: PhotoLibraryService) {
         self.service = service
-        _viewModel = StateObject(
-            wrappedValue: PersonDetailViewModel(cluster: cluster, stats: stats)
-        )
+        _viewModel = StateObject(wrappedValue: PersonDetailViewModel(cluster: cluster))
     }
 
     var body: some View {
         content
-            .navigationTitle(viewModel.name ?? "Unnamed")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { optionsMenu }
+            .toolbar { principalTitle; sortButton; optionsMenu }
             .task { await viewModel.load(using: service) }
             .alert("Name this person", isPresented: $showRename) {
                 TextField("Name", text: $draftName)
@@ -34,22 +34,12 @@ struct PersonDetailView: View {
             .sheet(isPresented: $showMerge) {
                 MergePickerView(candidates: mergeCandidates, service: service) { dest in
                     showMerge = false
-                    Task {
-                        await viewModel.merge(into: dest.personID)
-                        dismiss()
-                    }
-                }
-            }
-            .overlay(alignment: .top) { freedBanner }
-            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: viewModel.lastFreedBytes)
-            .onChange(of: viewModel.lastFreedBytes) { _, value in
-                guard value != nil else { return }
-                Task {
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    viewModel.lastFreedBytes = nil
+                    Task { await viewModel.merge(into: dest.personID); dismiss() }
                 }
             }
     }
+
+    // MARK: - Body
 
     @ViewBuilder
     private var content: some View {
@@ -59,57 +49,104 @@ struct PersonDetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                VStack(spacing: 16) {
-                    cleanLink
-                    MultiSelectGrid(assets: viewModel.assets,
-                                    service: service,
-                                    selection: $viewModel.selection)
-                        .padding(.horizontal, 4)
+                VStack(spacing: 0) {
+                    cleanAllRow
+                    dateGrid
                 }
-                .padding(.vertical, 12)
-            }
-            .safeAreaInset(edge: .bottom) {
-                if viewModel.hasSelection { deleteBar }
             }
         }
     }
 
-    private var cleanLink: some View {
-        NavigationLink(value: AppRoute.swipe(.person(viewModel.assets.map(\.id)))) {
+    // MARK: - Subviews
+
+    private var cleanAllRow: some View {
+        NavigationLink(value: AppRoute.swipe(.person(viewModel.allSortedIDs))) {
             BrowseEntryRow(title: "Clean these photos",
                            subtitle: "Swipe through \(viewModel.assets.count) photos",
                            systemImage: "hand.tap.fill")
         }
         .buttonStyle(.plain)
         .padding(.horizontal, Theme.Spacing.screenMargin)
+        .padding(.vertical, 12)
         .disabled(viewModel.assets.isEmpty)
     }
 
-    private var deleteBar: some View {
-        HStack {
-            Button("Deselect") { viewModel.clearSelection() }
-            Spacer()
-            Button(role: .destructive) {
-                Task { await viewModel.deleteSelected(using: service) }
-            } label: {
-                Text("Delete (\(viewModel.selection.count))").bold()
+    private var dateGrid: some View {
+        LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+            ForEach(viewModel.groupedByDate) { group in
+                Section {
+                    LazyVGrid(columns: columns, spacing: 2) {
+                        ForEach(group.assets) { asset in
+                            NavigationLink(value: AppRoute.swipe(.person(
+                                viewModel.idsFrom(asset: asset, backwardIn: group)
+                            ))) {
+                                Thumbnail(asset: asset, service: service)
+                                    .aspectRatio(1, contentMode: .fill)
+                                    .clipped()
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } header: {
+                    dateSectionHeader(group)
+                }
             }
-            .buttonStyle(.borderedProminent)
         }
-        .padding()
-        .background(.regularMaterial)
+    }
+
+    // Tapping the date header swipes only that day's photos, newest → oldest.
+    private func dateSectionHeader(_ group: PersonDetailViewModel.DateGroup) -> some View {
+        NavigationLink(value: AppRoute.swipe(.person(viewModel.idsForDay(group)))) {
+            HStack {
+                Text(group.dateLabel)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, Theme.Spacing.screenMargin)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(.background)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var principalTitle: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Button {
+                draftName = viewModel.name ?? ""
+                showRename = true
+            } label: {
+                Text(viewModel.name ?? "Unnamed")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var sortButton: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                viewModel.sortAscending.toggle()
+            } label: {
+                Image(systemName: viewModel.sortAscending ? "arrow.up" : "arrow.down")
+                    .accessibilityLabel(viewModel.sortAscending ? "Oldest first" : "Newest first")
+            }
+        }
     }
 
     @ToolbarContentBuilder
     private var optionsMenu: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button {
-                    draftName = viewModel.name ?? ""
-                    showRename = true
-                } label: {
-                    Label("Rename", systemImage: "pencil")
-                }
                 Button {
                     Task {
                         mergeCandidates = await viewModel.mergeCandidates()
@@ -119,10 +156,7 @@ struct PersonDetailView: View {
                     Label("Merge into…", systemImage: "arrow.triangle.merge")
                 }
                 Button(role: .destructive) {
-                    Task {
-                        await viewModel.hidePerson()
-                        dismiss()
-                    }
+                    Task { await viewModel.hidePerson(); dismiss() }
                 } label: {
                     Label("Hide person", systemImage: "eye.slash")
                 }
@@ -132,26 +166,10 @@ struct PersonDetailView: View {
             }
         }
     }
-
-    @ViewBuilder
-    private var freedBanner: some View {
-        if let bytes = viewModel.lastFreedBytes {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles").foregroundStyle(.green)
-                Text("Freed ~\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))")
-                    .font(.headline)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(.regularMaterial, in: Capsule())
-            .padding(.top, 8)
-            .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
 }
 
-/// Picks a destination person to merge the current one into. Shows covers
-/// because most clusters are still "Unnamed".
+// MARK: - Merge picker
+
 private struct MergePickerView: View {
     let candidates: [PersonCluster]
     let service: PhotoLibraryService
@@ -163,8 +181,8 @@ private struct MergePickerView: View {
             Group {
                 if candidates.isEmpty {
                     ContentUnavailableView("No other people",
-                                           systemImage: "person.2.slash",
-                                           description: Text("There's no one else to merge into yet."))
+                                          systemImage: "person.2.slash",
+                                          description: Text("There's no one else to merge into yet."))
                 } else {
                     List(candidates) { cluster in
                         Button { onPick(cluster) } label: {
@@ -185,7 +203,6 @@ private struct MergePickerView: View {
     }
 }
 
-/// A candidate row: cover + name + photo count.
 private struct MergeRow: View {
     let cluster: PersonCluster
     let service: PhotoLibraryService

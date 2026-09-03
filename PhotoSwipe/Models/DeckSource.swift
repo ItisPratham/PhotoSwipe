@@ -12,7 +12,7 @@ struct DeckSource: Hashable {
         case album(PHAssetCollection)
         /// A specific set of assets (a duplicate group), by localIdentifier.
         case duplicateGroup([String])
-        /// A person cluster's photos, by localIdentifier (oldest-first).
+        /// A person cluster's photos, in the order supplied by the caller.
         case person([String])
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
@@ -98,7 +98,7 @@ struct DeckSource: Hashable {
                    suggestedKeeperID: group.suggestedKeeperID)
     }
 
-    /// Builds the deck scoped to a person cluster's photos, oldest-first.
+    /// Builds the deck scoped to a person cluster's photos, in the order provided.
     static func person(_ photoIDs: [String]) -> DeckSource {
         DeckSource(scope: .person(photoIDs), media: .all)
     }

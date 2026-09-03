@@ -73,7 +73,7 @@ struct AppTabView: View {
             PeopleView(service: library)
                 .toolbar { settingsToolbar }
                 .navigationDestination(for: PersonCluster.self) { cluster in
-                    PersonDetailView(cluster: cluster, service: library, stats: statsStore)
+                    PersonDetailView(cluster: cluster, service: library)
                 }
                 .navigationDestination(for: AppRoute.self) { destination(for: $0) }
         }

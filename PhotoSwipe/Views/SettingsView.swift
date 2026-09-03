@@ -14,7 +14,6 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showStats = false
     @State private var showResetConfirm = false
-    @State private var faceDataWiped = false
 
     var body: some View {
         NavigationStack {
@@ -54,21 +53,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Developer") {
-                    NavigationLink {
-                        FaceDebugView(service: service)
-                    } label: {
-                        Label("Face grouping debug", systemImage: "face.dashed")
-                    }
-                    Button {
-                        Task {
-                            try? await FaceStore(modelContainer: FaceContainer.shared).wipeAll()
-                            faceDataWiped = true
-                        }
-                    } label: {
-                        Label("Reset face data", systemImage: "trash")
-                    }
-                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -88,10 +72,6 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
-            }
-            .alert("Face data reset", isPresented: $faceDataWiped) {
-            } message: {
-                Text("Open the People tab and scan to rebuild the face index from scratch.")
             }
         }
     }
