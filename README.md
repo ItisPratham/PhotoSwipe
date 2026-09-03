@@ -42,7 +42,8 @@ tracking — your library never leaves your phone.
   keeper.
 * **People** — an opt-in on-device face scan clusters your photos by the people
   in them. Open a person to swipe through only their photos, or multi-select
-  and batch-delete from a grid.
+  and batch-delete from a grid. A grouping-strength slider tunes how tightly
+  faces group, and you can rename, merge, or hide people.
 
 **Safe, batched deletion**
 * Swiping only *marks* photos. A **Review** screen lets you spare anything before
@@ -83,6 +84,14 @@ The People feature uses an on-device face-embedding pipeline:
 All processing is **on-device**. Nothing about your faces is sent anywhere.
 The scan is opt-in, warns you before it runs, shows determinate progress, can
 be cancelled, and is incremental (only new photos are scanned on re-runs).
+
+Grouping is tunable: a strength slider re-groups from the cached embeddings with
+no re-scan, so you can dial in how tightly the same person collapses across
+poses and lighting. Because tuning re-partitions everyone, do it before you
+start renaming. Once you're happy, rename people, merge two clusters, or hide
+ones you don't care about — normal navigation keeps those edits (only the slider
+resets them). Each person's cover crops to their detected face, chosen by a
+capture-quality score.
 
 ### Producing the face model (one-time, owner action)
 
