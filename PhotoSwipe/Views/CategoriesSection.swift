@@ -83,7 +83,7 @@ struct CategoriesSection: View {
     private var grid: some View {
         let populated = AssetCategory.allCases.filter { viewModel.count(for: $0) > 0 }
         if populated.isEmpty {
-            Text("Nothing sorted yet — new photos are categorized as they arrive.")
+            Text("Nothing matched yet. New photos are sorted as they arrive.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } else {

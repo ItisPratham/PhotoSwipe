@@ -148,6 +148,13 @@ struct DeckSource: Hashable {
         DeckSource(scope: .person(photoIDs, preservesOrder: preservesOrder), media: .all)
     }
 
+    /// True inside a "More like this" deck, which offers no further "More
+    /// like this" — one hop, not a chain.
+    var isSimilarDeck: Bool {
+        if case .similar = scope { return true }
+        return false
+    }
+
     /// Builds the "More like this" deck for a seed photo. Neighbours arrive
     /// nearest-first from `SimilarPhotosFinder` and the deck keeps that order.
     static func similar(to seedID: String, ids: [String]) -> DeckSource {

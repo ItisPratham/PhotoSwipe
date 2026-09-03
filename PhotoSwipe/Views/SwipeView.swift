@@ -34,6 +34,9 @@ struct SwipeView: View {
     @State private var currentIsIndexed = false
     @State private var isFindingSimilar = false
     @State private var similarRoute: AppRoute?
+    /// The first tap explains the feature before running it.
+    @AppStorage("PhotoSwipe.hasSeenMoreLikeThis") private var hasSeenMoreLikeThis = false
+    @State private var similarExplainerAsset: PhotoAsset?
     /// What swipe-up does; chosen in Settings. All three keys are observed so
     /// a change made while a deck is open takes effect on the next swipe.
     @AppStorage(SwipeUpAction.kindKey) private var swipeUpKind = "favorite"
@@ -166,6 +169,19 @@ struct SwipeView: View {
             )
         }
         .navigationBarTitleDisplayMode(.inline)
+        .alert("More like this", isPresented: Binding(
+            get: { similarExplainerAsset != nil },
+            set: { if !$0 { similarExplainerAsset = nil } }
+        ), presenting: similarExplainerAsset) { asset in
+            Button("Show similar") {
+                hasSeenMoreLikeThis = true
+                similarExplainerAsset = nil
+                findSimilar(to: asset)
+            }
+            Button("Cancel", role: .cancel) { similarExplainerAsset = nil }
+        } message: { _ in
+            Text("Shows up to 30 photos that look like this one: the same scene, or the same shot saved twice. It uses the index from the Duplicates scan, so nothing leaves your phone. Photos you've already sorted are left out.")
+        }
         .navigationDestination(item: $similarRoute) { route in
             if case .swipe(let source) = route {
                 SwipeView(service: service, store: store, stats: stats, sizes: sizes, source: source)
@@ -247,7 +263,7 @@ struct SwipeView: View {
             .progressViewStyle(.linear)
             .padding(.horizontal, 40)
 
-            Text("Only once — sizes are remembered for next time.")
+            Text("This only happens once. Sizes are remembered for next time.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -265,7 +281,9 @@ struct SwipeView: View {
             .overlay(alignment: .top) { cardStamps }
             .overlay { upStamp }
             .overlay(alignment: .bottomTrailing) {
-                if !asset.isVideo {
+                // Photos only, and never inside a "More like this" deck —
+                // the feature is one hop from a photo, not a chain.
+                if !asset.isVideo, !viewModel.source.isSimilarDeck {
                     moreLikeThisButton(for: asset)
                 }
             }
@@ -333,13 +351,17 @@ struct SwipeView: View {
     /// scan, which is where the prints come from.
     private func moreLikeThisButton(for asset: PhotoAsset) -> some View {
         Button {
-            findSimilar(to: asset)
+            if hasSeenMoreLikeThis {
+                findSimilar(to: asset)
+            } else {
+                similarExplainerAsset = asset
+            }
         } label: {
             Group {
                 if isFindingSimilar {
                     ProgressView().tint(.white)
                 } else {
-                    Image(systemName: "sparkle.magnifyingglass")
+                    Image(systemName: "photo.stack")
                         .font(.subheadline.weight(.semibold))
                 }
             }

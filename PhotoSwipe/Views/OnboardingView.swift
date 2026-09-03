@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Four-slide first-run tutorial. The first three slides teach the swipe deck
+/// Five-slide first-run tutorial. The first three slides teach the swipe deck
 /// by being one: the slide card follows the finger, tilts, and flies off with
 /// the same red/green/yellow directional tint as the real deck (left = mark,
-/// right = keep, up = favorite). The final "review" slide is a static card
-/// with a Get-started button.
+/// right = keep, up = favorite). A static "ways in" slide introduces More
+/// like this, Screenshots, Categories, and On this day, and the final
+/// "review" slide is a static card with a Get-started button.
 ///
 /// Shown once before the permission prompt on first launch (RootView owns the
 /// seen-flag), and re-openable from the menu afterwards. `onFinish` is called
@@ -42,6 +43,14 @@ struct OnboardingView: View {
             body: "Swiping up keeps the photo and marks it as a favorite in Photos. You can switch this to \"add to an album\" in Settings.",
             hint: "Swipe up to continue",
             allowed: .up
+        ),
+        Slide(
+            symbol: "photo.stack",
+            symbolColor: .purple,
+            title: "Smarter ways in",
+            body: "Tap the stack icon on a photo to see its closest look-alikes. Browse can also pull out your screenshots, show what you shot on this day in past years, and sort photos into categories like receipts, food, pets, and blurry shots. It all happens on your phone.",
+            hint: nil,
+            allowed: nil
         ),
         Slide(
             symbol: "tray.full.fill",
@@ -205,6 +214,19 @@ struct OnboardingView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        } else if !isSwipableSlide {
+            // A static, informational slide advances with a button.
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    currentSlide = min(currentSlide + 1, slides.count - 1)
+                }
+            } label: {
+                Text("Next")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
             .controlSize(.large)
         } else if let hint = slides[currentSlide].hint {
             Text(hint)
