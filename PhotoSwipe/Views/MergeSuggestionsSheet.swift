@@ -62,11 +62,19 @@ struct MergeSuggestionsSheet: View {
         .accessibilityLabel("\(suggestion.a.displayName) and \(suggestion.b.displayName), same person?")
     }
 
+    /// Long-press a cover to see the full photo before deciding, like every
+    /// other thumbnail in the app.
     private func person(_ cluster: PersonCluster) -> some View {
         VStack(spacing: 6) {
             PersonCoverView(cluster: cluster, service: service)
                 .frame(width: 88, height: 88)
                 .clipShape(Circle())
+                .contentShape(.contextMenuPreview, Circle())
+                .contextMenu {
+                    Text(cluster.displayName)
+                } preview: {
+                    PersonCoverPreview(cluster: cluster, service: service)
+                }
             Text(cluster.displayName)
                 .font(.caption)
                 .lineLimit(1)

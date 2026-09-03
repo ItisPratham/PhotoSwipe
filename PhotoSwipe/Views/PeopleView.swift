@@ -307,7 +307,7 @@ private struct HiddenPeopleView: View {
 
 /// Full-photo preview shown when long-pressing a person cell. Loads at
 /// high resolution so the cover photo is legible before the user acts.
-private struct PersonCoverPreview: View {
+struct PersonCoverPreview: View {
     let cluster: PersonCluster
     let service: PhotoLibraryService
 
