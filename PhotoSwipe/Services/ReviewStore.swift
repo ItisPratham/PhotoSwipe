@@ -8,21 +8,53 @@ import SwiftUI
 /// - `markedForDeletionIDs`: subset awaiting batch deletion. Drives the
 ///   Delete(N) button and the review sheet.
 ///
-/// Storage is UserDefaults — small, simple, fits MVP scope. Reinstall or new
+/// Storage is a JSON file in Application Support (`review.json`). Writes are
+/// debounced and happen on a serial background queue, so a swipe never pays
+/// for serialising tens of thousands of IDs on the main thread. `flush()`
+/// writes synchronously and is called when the app leaves the foreground, and
+/// after the rare, important changes (batch delete, reset). Reinstall or new
 /// device = fresh start; that trade-off is documented in the README.
+///
+/// Up to 4.1 the sets lived in UserDefaults. The first launch after the
+/// upgrade migrates them into the file and clears the old keys.
 @MainActor
 final class ReviewStore: ObservableObject {
     @Published private(set) var reviewedIDs: Set<String>
     @Published private(set) var markedForDeletionIDs: Set<String>
 
-    private let defaults: UserDefaults
-    private let reviewedKey = "PhotoSwipe.reviewedIDs"
-    private let deletionKey = "PhotoSwipe.markedForDeletionIDs"
+    private struct Snapshot: Codable {
+        var reviewed: [String]
+        var marked: [String]
+    }
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        self.reviewedIDs = Set(defaults.stringArray(forKey: reviewedKey) ?? [])
-        self.markedForDeletionIDs = Set(defaults.stringArray(forKey: deletionKey) ?? [])
+    private let fileURL: URL
+    /// All disk writes go through this queue in order, so a debounced write
+    /// still in flight can never land after a later `flush()`.
+    private let writeQueue = DispatchQueue(label: "PhotoSwipe.ReviewStore.write", qos: .utility)
+    private var pendingWrite: Task<Void, Never>?
+    private static let writeDelay: Duration = .milliseconds(300)
+
+    private static let legacyReviewedKey = "PhotoSwipe.reviewedIDs"
+    private static let legacyDeletionKey = "PhotoSwipe.markedForDeletionIDs"
+
+    nonisolated static var defaultFileURL: URL { LocalStores.fileURL(named: "review.json") }
+
+    init(defaults: UserDefaults = .standard, fileURL: URL = ReviewStore.defaultFileURL) {
+        self.fileURL = fileURL
+        if let data = try? Data(contentsOf: fileURL),
+           let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) {
+            reviewedIDs = Set(snapshot.reviewed)
+            markedForDeletionIDs = Set(snapshot.marked)
+        } else {
+            // One-time migration from the UserDefaults layout used up to 4.1.
+            reviewedIDs = Set(defaults.stringArray(forKey: Self.legacyReviewedKey) ?? [])
+            markedForDeletionIDs = Set(defaults.stringArray(forKey: Self.legacyDeletionKey) ?? [])
+            if !reviewedIDs.isEmpty || !markedForDeletionIDs.isEmpty {
+                flush()
+                defaults.removeObject(forKey: Self.legacyReviewedKey)
+                defaults.removeObject(forKey: Self.legacyDeletionKey)
+            }
+        }
     }
 
     func isReviewed(_ id: String) -> Bool {
@@ -58,10 +90,12 @@ final class ReviewStore: ObservableObject {
     }
 
     /// Drop IDs after a successful batch delete — the assets no longer exist.
+    /// Also used to prune decisions for photos deleted outside the app.
     func forget(ids: Set<String>) {
+        guard !ids.isEmpty else { return }
         reviewedIDs.subtract(ids)
         markedForDeletionIDs.subtract(ids)
-        persist()
+        persist(immediately: true)
     }
 
     /// Wipes every kept/marked decision so the whole library re-enters the
@@ -70,11 +104,56 @@ final class ReviewStore: ObservableObject {
     func resetAll() {
         reviewedIDs.removeAll()
         markedForDeletionIDs.removeAll()
-        persist()
+        persist(immediately: true)
     }
 
-    private func persist() {
-        defaults.set(Array(reviewedIDs), forKey: reviewedKey)
-        defaults.set(Array(markedForDeletionIDs), forKey: deletionKey)
+    /// Drops decisions for assets that no longer exist in the library, so the
+    /// Review pill and the delete count stop over-reporting after photos are
+    /// deleted in Photos.app. The lookup runs off the main actor; only the
+    /// IDs confirmed missing are removed, so decisions made meanwhile survive.
+    func pruneMissing(using service: PhotoLibraryService) async {
+        let candidates = reviewedIDs
+        guard !candidates.isEmpty else { return }
+        let existing = await service.existingIdentifiers(among: candidates)
+        forget(ids: candidates.subtracting(existing))
+    }
+
+    // MARK: - Persistence
+
+    /// Writes the current state to disk now, in order behind any write that
+    /// is already queued. Call before the app leaves the foreground.
+    func flush() {
+        pendingWrite?.cancel()
+        pendingWrite = nil
+        let snapshot = currentSnapshot()
+        let url = fileURL
+        writeQueue.sync { Self.write(snapshot, to: url) }
+    }
+
+    /// Debounced by default: a run of swipes produces one write, a short
+    /// moment after the last one. In-memory state is always current, so
+    /// readers never see the delay.
+    private func persist(immediately: Bool = false) {
+        pendingWrite?.cancel()
+        if immediately {
+            flush()
+            return
+        }
+        pendingWrite = Task { [weak self] in
+            try? await Task.sleep(for: Self.writeDelay)
+            guard !Task.isCancelled, let self else { return }
+            let snapshot = self.currentSnapshot()
+            let url = self.fileURL
+            self.writeQueue.async { Self.write(snapshot, to: url) }
+        }
+    }
+
+    private func currentSnapshot() -> Snapshot {
+        Snapshot(reviewed: Array(reviewedIDs), marked: Array(markedForDeletionIDs))
+    }
+
+    nonisolated private static func write(_ snapshot: Snapshot, to url: URL) {
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        try? data.write(to: url, options: .atomic)
     }
 }

@@ -119,8 +119,13 @@ struct DeleteReviewSheet: View {
 
     private func reload() async {
         isLoading = true
-        pendingAssets = await service.fetchAssets(withIDs: store.markedForDeletionIDs)
+        let marked = store.markedForDeletionIDs
+        let fetched = await service.fetchAssets(withIDs: marked)
+        pendingAssets = fetched
         isLoading = false
+        // Anything marked that PhotoKit no longer knows was deleted outside
+        // the app; drop it so the count matches what's on screen.
+        store.forget(ids: marked.subtracting(fetched.map(\.id)))
     }
 }
 

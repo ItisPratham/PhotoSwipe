@@ -194,7 +194,7 @@ Where each piece of state lives:
 
 | State | Storage |
 | --- | --- |
-| Reviewed and marked-for-deletion photo IDs | `UserDefaults` |
+| Reviewed and marked-for-deletion photo IDs | JSON file, `Application Support/review.json` (debounced writes; migrated from `UserDefaults` on first launch after 4.1) |
 | Activity log and total space freed | `UserDefaults` |
 | Per-asset byte-size cache (Biggest files) | `UserDefaults` |
 | Duplicate index (feature prints, sizes) | SwiftData, `Application Support/duplicates.store` |

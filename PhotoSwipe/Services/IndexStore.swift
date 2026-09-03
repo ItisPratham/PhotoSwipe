@@ -15,10 +15,17 @@ struct IndexedAsset: Sendable, Hashable {
 /// schemas would migrate that one file back and forth and drop each other's
 /// tables on every open.
 enum LocalStores {
+    /// A SwiftData store file, `<name>.store`.
     static func url(named name: String) -> URL {
+        fileURL(named: "\(name).store")
+    }
+
+    /// Any app-owned file in Application Support (the review-decision JSON,
+    /// for example). Creates the directory on first use.
+    static func fileURL(named fileName: String) -> URL {
         let directory = URL.applicationSupportDirectory
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory.appending(path: "\(name).store")
+        return directory.appending(path: fileName)
     }
 
     /// Removes the legacy shared `default.store` (and its SQLite sidecars) left

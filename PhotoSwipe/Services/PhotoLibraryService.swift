@@ -268,6 +268,32 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         }.value
     }
 
+    /// Which of `ids` still resolve to an asset. Used to prune decisions for
+    /// photos deleted outside the app. Fetched in chunks so the identifier
+    /// predicate stays a sane size for very large sets, at utility priority
+    /// off the main actor.
+    nonisolated func existingIdentifiers(among ids: Set<String>) async -> Set<String> {
+        guard !ids.isEmpty else { return [] }
+        return await Task.detached(priority: .utility) {
+            let all = Array(ids)
+            var found = Set<String>()
+            found.reserveCapacity(all.count)
+            var start = 0
+            while start < all.count {
+                let end = min(all.count, start + 500)
+                let result = PHAsset.fetchAssets(
+                    withLocalIdentifiers: Array(all[start..<end]),
+                    options: nil
+                )
+                result.enumerateObjects { asset, _, _ in
+                    found.insert(asset.localIdentifier)
+                }
+                start = end
+            }
+            return found
+        }.value
+    }
+
     /// Sums on-device file sizes for the given assets. Uses
     /// PHAssetResource.fileSize via KVC — the only practical way to read size
     /// metadata without downloading the asset data itself. Some assets carry

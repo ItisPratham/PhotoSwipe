@@ -17,6 +17,9 @@ struct RootView: View {
     @State private var launchFinished = false
     @State private var minTimeElapsed = false
     @State private var homeLoaded = false
+    /// The stale-decision prune runs once per launch, after the first deck is
+    /// up, so it never competes with the launch fetch.
+    @State private var hasPrunedDecisions = false
 
     /// Only the authorized home path has a library fetch to wait on; onboarding
     /// and the permission screen have nothing to load.
@@ -52,9 +55,15 @@ struct RootView: View {
             minTimeElapsed = true
         }
         .onChange(of: scenePhase) { _, phase in
-            // Re-check after the user may have changed access in Settings.
-            if phase == .active {
+            switch phase {
+            case .active:
+                // Re-check after the user may have changed access in Settings.
                 library.refreshAccessState()
+            case .background:
+                // Land any debounced decision write before we can be killed.
+                reviewStore.flush()
+            default:
+                break
             }
         }
     }
@@ -80,7 +89,12 @@ struct RootView: View {
                            reviewStore: reviewStore,
                            statsStore: statsStore,
                            sizeStore: sizeStore,
-                           onCleanLoaded: { homeLoaded = true })
+                           onCleanLoaded: {
+                               homeLoaded = true
+                               guard !hasPrunedDecisions else { return }
+                               hasPrunedDecisions = true
+                               Task { await reviewStore.pruneMissing(using: library) }
+                           })
             }
         }
     }
