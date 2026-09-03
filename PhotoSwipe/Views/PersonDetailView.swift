@@ -21,6 +21,10 @@ struct PersonDetailView: View {
     /// "Also with…": pick a second person, then push a deck of the photos
     /// both appear in.
     @State private var showAlsoWith = false
+    /// The person picked in the "Also with…" sheet. The deck is pushed from
+    /// the sheet's onDismiss, not from inside it: pushing while the sheet is
+    /// still animating away can leave the destination blank.
+    @State private var alsoWithPick: PersonCluster?
     @State private var alsoWithRoute: AppRoute?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
@@ -52,11 +56,15 @@ struct PersonDetailView: View {
                     Task { await viewModel.merge(into: dest.personID); dismiss() }
                 }
             }
-            .sheet(isPresented: $showAlsoWith) {
+            .sheet(isPresented: $showAlsoWith, onDismiss: {
+                guard let other = alsoWithPick else { return }
+                alsoWithPick = nil
+                let shared = viewModel.photoIDs(sharedWith: other)
+                alsoWithRoute = .swipe(.person(shared, preservesOrder: false))
+            }) {
                 MergePickerView(title: "Also with", candidates: mergeCandidates, service: service) { other in
+                    alsoWithPick = other
                     showAlsoWith = false
-                    let shared = viewModel.photoIDs(sharedWith: other)
-                    alsoWithRoute = .swipe(.person(shared, preservesOrder: false))
                 }
             }
             .navigationDestination(item: $alsoWithRoute) { route in
@@ -250,22 +258,24 @@ private struct MergePickerView: View {
     }
 }
 
+/// One person in the merge / "Also with…" pickers: the face-cropped cover
+/// (same as the People grid, so a person is recognisable) with name and
+/// count. Long-press previews the full cover photo.
 private struct MergeRow: View {
     let cluster: PersonCluster
     let service: PhotoLibraryService
-    @State private var asset: PhotoAsset?
 
     var body: some View {
         HStack(spacing: 12) {
-            Group {
-                if let asset {
-                    Thumbnail(asset: asset, service: service)
-                } else {
-                    Circle().fill(.secondary.opacity(0.2))
+            PersonCoverView(cluster: cluster, service: service)
+                .frame(width: 44, height: 44)
+                .clipShape(Circle())
+                .contentShape(.contextMenuPreview, Circle())
+                .contextMenu {
+                    Text(cluster.displayName)
+                } preview: {
+                    PersonCoverPreview(cluster: cluster, service: service)
                 }
-            }
-            .frame(width: 44, height: 44)
-            .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(cluster.displayName)
@@ -273,10 +283,6 @@ private struct MergeRow: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-        }
-        .task(id: cluster.coverAssetID) {
-            guard let id = cluster.coverAssetID else { return }
-            asset = await service.fetchAssets(withIDs: [id]).first
         }
     }
 }
