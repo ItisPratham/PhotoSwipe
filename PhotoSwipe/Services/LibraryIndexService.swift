@@ -34,6 +34,7 @@ final class LibraryIndexService: @unchecked Sendable {
     func scan(
         assets: [PhotoAsset],
         store: IndexStore,
+        includeCategories: Bool = false,
         onProgress: @escaping @Sendable (Int, Int) -> Void
     ) async throws {
         let alreadyIndexed = try await store.indexedIdentifiers()
@@ -45,7 +46,7 @@ final class LibraryIndexService: @unchecked Sendable {
         var processed = 0
 
         try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] asset in
-            await self.index(asset)
+            await self.index(asset, includeCategories: includeCategories)
         } onResult: { _, indexed in
             if let indexed { batch.append(indexed) }
             processed += 1
@@ -65,8 +66,10 @@ final class LibraryIndexService: @unchecked Sendable {
     }
 
     /// One asset: fetch, print, measure. Nil when the image couldn't be
-    /// loaded or the print couldn't be produced.
-    private func index(_ asset: PhotoAsset) async -> IndexedAsset? {
+    /// loaded or the print couldn't be produced. With `includeCategories` the
+    /// category signals are measured on the same thumbnail, so a library
+    /// whose duplicate index is current never needs a second walk.
+    private func index(_ asset: PhotoAsset, includeCategories: Bool) async -> IndexedAsset? {
         guard let cgImage = await PhotoKitImages.workingImage(
             for: asset.phAsset, side: thumbnailSize, resizeMode: .fast
         ) else { return nil }
@@ -75,12 +78,112 @@ final class LibraryIndexService: @unchecked Sendable {
         return autoreleasepool {
             guard let vector = featurePrintVector(from: cgImage) else { return nil }
             // Quality signals for the keeper score ride on the same thumbnail.
-            return IndexedAsset(localIdentifier: asset.id,
-                                vector: vector,
-                                byteSize: resourceSize(for: asset.phAsset),
-                                sharpness: ImageQuality.sharpness(of: cgImage),
-                                aestheticScore: ImageQuality.aestheticScore(of: cgImage))
+            let aesthetics = ImageQuality.aesthetics(of: cgImage)
+            let sharpness = ImageQuality.sharpness(of: cgImage)
+            var indexed = IndexedAsset(localIdentifier: asset.id,
+                                       vector: vector,
+                                       byteSize: resourceSize(for: asset.phAsset),
+                                       sharpness: sharpness,
+                                       aestheticScore: aesthetics?.score)
+            if includeCategories {
+                indexed.categories = measureCategories(from: cgImage,
+                                                       sharpness: sharpness,
+                                                       aesthetics: aesthetics)
+            }
+            return indexed
         }
+    }
+
+    // MARK: - Categorize
+
+    /// Fills the category columns for indexed assets that haven't been through
+    /// this pass yet (rows written before 5.1, or by a scan that ran without
+    /// categories). Same contract as `scan`: incremental, progress in order,
+    /// cancelable, an asset whose image can't be loaded is retried next time.
+    /// Only assets still in `assets` are visited; stale rows are left to the
+    /// scan's purge.
+    func categorize(
+        assets: [PhotoAsset],
+        store: IndexStore,
+        onProgress: @escaping @Sendable (Int, Int) -> Void
+    ) async throws {
+        let pendingIDs = Set(try await store.uncategorizedIdentifiers())
+        let pending = assets.filter { pendingIDs.contains($0.id) }
+        let total = pending.count
+        onProgress(0, total)
+
+        var batch: [String: CategoryMeasurement] = [:]
+        var processed = 0
+
+        try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] asset in
+            await self.measureCategories(for: asset)
+        } onResult: { asset, measurement in
+            if let measurement { batch[asset.id] = measurement }
+            processed += 1
+            onProgress(processed, total)
+            if batch.count >= 40 {
+                try await store.applyCategories(batch, at: Date())
+                batch.removeAll(keepingCapacity: true)
+            }
+        }
+        if !batch.isEmpty {
+            try await store.applyCategories(batch, at: Date())
+        }
+    }
+
+    /// The library's "blurry" cut: the 10th percentile of sharpness over the
+    /// categorized photos. Nil until enough rows carry a sharpness value.
+    static func blurThreshold(from signals: [CategorySignals]) -> Float? {
+        let values = signals.compactMap(\.sharpness).sorted()
+        guard values.count >= 20 else { return nil }
+        return values[values.count / 10]
+    }
+
+    private func measureCategories(for asset: PhotoAsset) async -> CategoryMeasurement? {
+        guard let cgImage = await PhotoKitImages.workingImage(
+            for: asset.phAsset, side: thumbnailSize, resizeMode: .fast
+        ) else { return nil }
+        return autoreleasepool {
+            measureCategories(from: cgImage,
+                              sharpness: ImageQuality.sharpness(of: cgImage),
+                              aesthetics: ImageQuality.aesthetics(of: cgImage))
+        }
+    }
+
+    /// Scene labels, cat/dog presence, and text coverage from one handler
+    /// pass over the thumbnail, plus the quality signals already measured.
+    private func measureCategories(from cgImage: CGImage,
+                                   sharpness: Float?,
+                                   aesthetics: (score: Float, isUtility: Bool)?) -> CategoryMeasurement {
+        let classify = VNClassifyImageRequest()
+        let animals = VNRecognizeAnimalsRequest()
+        let text = VNDetectTextRectanglesRequest()
+        text.reportCharacterBoxes = false
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        try? handler.perform([classify, animals, text])
+
+        // Keep labels Vision is confident about: either they pass the
+        // precision gate at a small recall, or they are simply strong.
+        let labels = (classify.results ?? [])
+            .filter { $0.hasMinimumRecall(0.01, forPrecision: 0.9) || $0.confidence >= 0.5 }
+            .sorted { $0.confidence > $1.confidence }
+            .prefix(8)
+            .map { ($0.identifier, $0.confidence) }
+
+        let hasAnimal = (animals.results ?? []).contains { observation in
+            observation.labels.contains { $0.confidence >= 0.5 }
+        }
+
+        let coverage = (text.results ?? []).reduce(Float(0)) { sum, observation in
+            sum + Float(observation.boundingBox.width * observation.boundingBox.height)
+        }
+
+        return CategoryMeasurement(labels: CategorySignals.encode(labels: Array(labels)),
+                                   textCoverage: min(1, coverage),
+                                   isUtility: aesthetics?.isUtility,
+                                   hasAnimal: hasAnimal,
+                                   sharpness: sharpness,
+                                   aestheticScore: aesthetics?.score)
     }
 
     // MARK: - Grouping

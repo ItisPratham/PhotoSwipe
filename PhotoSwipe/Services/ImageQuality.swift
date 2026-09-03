@@ -50,15 +50,20 @@ enum ImageQuality {
         return standardDeviation * standardDeviation
     }
 
-    /// Vision's overall aesthetics score (−1…1), iOS 18 and later. Nil on
-    /// earlier systems or when the request fails.
-    static func aestheticScore(of cgImage: CGImage) -> Float? {
+    /// Vision's aesthetics judgement, iOS 18 and later: the overall score
+    /// (−1…1) and whether the image is a "utility" shot (receipt, document,
+    /// screenshot-like). Nil on earlier systems or when the request fails.
+    static func aesthetics(of cgImage: CGImage) -> (score: Float, isUtility: Bool)? {
         guard #available(iOS 18.0, *) else { return nil }
         let request = VNCalculateImageAestheticsScoresRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         guard (try? handler.perform([request])) != nil,
               let observation = request.results?.first
         else { return nil }
-        return observation.overallScore
+        return (observation.overallScore, observation.isUtility)
+    }
+
+    static func aestheticScore(of cgImage: CGImage) -> Float? {
+        aesthetics(of: cgImage)?.score
     }
 }
