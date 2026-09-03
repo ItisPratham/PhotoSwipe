@@ -19,8 +19,11 @@ enum FaceContainer {
 /// `ModelContext` off the main actor, so scanning a large library never touches
 /// the UI context. All methods return Sendable snapshots rather than model
 /// objects. Writes are incremental (upsert by unique `faceID`); rows for assets
-/// that no longer exist are purged, and user names/merges/hides persist across
-/// re-scans because they live on `PersonRow`, keyed by `personID`.
+/// that no longer exist are purged. User names, merges, hides, and covers survive
+/// the normal incremental scan path because they live on `PersonRow` — and
+/// `applyClustering` only ever inserts new persons, never deletes existing ones.
+/// The one exception is `resetAssignments()`, which is the explicit full
+/// re-cluster path and intentionally destroys all PersonRows.
 @ModelActor
 actor FaceStore {
 
@@ -148,9 +151,10 @@ actor FaceStore {
         try modelContext.save()
     }
 
-    /// Clears every cluster assignment and removes all person rows — used before
-    /// a from-scratch re-cluster (e.g. when the sensitivity changes). User names
-    /// don't survive a re-cluster; that's expected while tuning.
+    /// Clears every cluster assignment and removes all PersonRows. This is the
+    /// explicit full re-cluster path (`PeopleViewModel.reclusterFull`) — names,
+    /// merges, hides, and covers are intentionally lost. The normal incremental
+    /// path never calls this.
     func resetAssignments() throws {
         for face in try modelContext.fetch(FetchDescriptor<FaceRow>()) {
             face.personID = nil
