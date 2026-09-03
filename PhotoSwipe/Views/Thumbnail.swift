@@ -53,7 +53,7 @@ struct DecisionBadge: View {
 
     var body: some View {
         Image(systemName: decision == .kept ? "checkmark.circle.fill" : "trash.circle.fill")
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: 13.5, weight: .semibold))
             .symbolRenderingMode(.palette)
             .foregroundStyle(.white, decision == .kept ? Color.green : Color.red)
             .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
