@@ -22,6 +22,9 @@ final class PeopleViewModel: ObservableObject {
     @Published private(set) var processed = 0
     @Published private(set) var total = 0
     @Published private(set) var clusters: [PersonCluster] = []
+    /// Hidden people — kept out of the main grid but reachable so they can be
+    /// unhidden. Without this the hide action would be a one-way trip.
+    @Published private(set) var hiddenClusters: [PersonCluster] = []
     /// True while re-running in the background with results already on screen.
     @Published private(set) var isRefreshing = false
 
@@ -178,9 +181,19 @@ final class PeopleViewModel: ObservableObject {
     }
 
     private func loadClusters() async {
-        let computed = (try? await store.clusters().filter { !$0.isHidden }) ?? []
-        clusters = computed
-        phase = computed.isEmpty ? .empty : .results
+        let all = (try? await store.clusters()) ?? []
+        clusters = all.filter { !$0.isHidden }
+        hiddenClusters = all.filter { $0.isHidden }
+        phase = (clusters.isEmpty && hiddenClusters.isEmpty) ? .empty : .results
+    }
+
+    /// Restores a hidden person back into the main grid.
+    func unhide(_ personID: String) {
+        Task { [weak self] in
+            guard let self else { return }
+            try? await self.store.setHidden(personID: personID, false)
+            await self.loadClusters()
+        }
     }
 
     private func hasFaces() async -> Bool {

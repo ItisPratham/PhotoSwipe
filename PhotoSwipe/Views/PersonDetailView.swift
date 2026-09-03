@@ -10,6 +10,8 @@ struct PersonDetailView: View {
 
     @State private var showRename = false
     @State private var draftName = ""
+    @State private var showMerge = false
+    @State private var mergeCandidates: [PersonCluster] = []
 
     init(cluster: PersonCluster, service: PhotoLibraryService, stats: StatsStore) {
         self.service = service
@@ -28,6 +30,15 @@ struct PersonDetailView: View {
                 TextField("Name", text: $draftName)
                 Button("Save") { Task { await viewModel.rename(to: draftName) } }
                 Button("Cancel", role: .cancel) {}
+            }
+            .sheet(isPresented: $showMerge) {
+                MergePickerView(candidates: mergeCandidates, service: service) { dest in
+                    showMerge = false
+                    Task {
+                        await viewModel.merge(into: dest.personID)
+                        dismiss()
+                    }
+                }
             }
             .overlay(alignment: .top) { freedBanner }
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: viewModel.lastFreedBytes)
@@ -99,6 +110,14 @@ struct PersonDetailView: View {
                 } label: {
                     Label("Rename", systemImage: "pencil")
                 }
+                Button {
+                    Task {
+                        mergeCandidates = await viewModel.mergeCandidates()
+                        showMerge = true
+                    }
+                } label: {
+                    Label("Merge into…", systemImage: "arrow.triangle.merge")
+                }
                 Button(role: .destructive) {
                     Task {
                         await viewModel.hidePerson()
@@ -127,6 +146,73 @@ struct PersonDetailView: View {
             .background(.regularMaterial, in: Capsule())
             .padding(.top, 8)
             .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+}
+
+/// Picks a destination person to merge the current one into. Shows covers
+/// because most clusters are still "Unnamed".
+private struct MergePickerView: View {
+    let candidates: [PersonCluster]
+    let service: PhotoLibraryService
+    let onPick: (PersonCluster) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if candidates.isEmpty {
+                    ContentUnavailableView("No other people",
+                                           systemImage: "person.2.slash",
+                                           description: Text("There's no one else to merge into yet."))
+                } else {
+                    List(candidates) { cluster in
+                        Button { onPick(cluster) } label: {
+                            MergeRow(cluster: cluster, service: service)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .navigationTitle("Merge into")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// A candidate row: cover + name + photo count.
+private struct MergeRow: View {
+    let cluster: PersonCluster
+    let service: PhotoLibraryService
+    @State private var asset: PhotoAsset?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let asset {
+                    Thumbnail(asset: asset, service: service)
+                } else {
+                    Circle().fill(.secondary.opacity(0.2))
+                }
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cluster.displayName)
+                Text("\(cluster.photoCount) photos")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .task(id: cluster.coverAssetID) {
+            guard let id = cluster.coverAssetID else { return }
+            asset = await service.fetchAssets(withIDs: [id]).first
         }
     }
 }

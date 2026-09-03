@@ -108,6 +108,7 @@ struct PeopleView: View {
         ScrollView {
             peopleHeader
             sensitivityBar
+            hiddenLink
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(viewModel.clusters) { cluster in
                     NavigationLink(value: cluster) {
@@ -148,6 +149,28 @@ struct PeopleView: View {
         }
     }
 
+    /// Entry to the hidden-people list, shown only when some are hidden.
+    @ViewBuilder
+    private var hiddenLink: some View {
+        if !viewModel.hiddenClusters.isEmpty {
+            NavigationLink {
+                HiddenPeopleView(viewModel: viewModel, service: service)
+            } label: {
+                HStack {
+                    Image(systemName: "eye.slash")
+                    Text("Hidden people")
+                    Spacer()
+                    Text("\(viewModel.hiddenClusters.count)").foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, Theme.Spacing.screenMargin)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private var peopleHeader: some View {
         HStack {
             Text("\(viewModel.clusters.count) people")
@@ -174,6 +197,44 @@ struct PeopleView: View {
                 .disabled(viewModel.isRefreshing)
             }
         }
+    }
+}
+
+/// Lists hidden people so they can be restored. Reuses `PersonCoverView` from
+/// this file. Updates live as the shared view model reloads on unhide.
+private struct HiddenPeopleView: View {
+    @ObservedObject var viewModel: PeopleViewModel
+    let service: PhotoLibraryService
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
+
+    var body: some View {
+        Group {
+            if viewModel.hiddenClusters.isEmpty {
+                ContentUnavailableView("No hidden people", systemImage: "eye")
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(viewModel.hiddenClusters) { cluster in
+                            VStack(spacing: 6) {
+                                PersonCoverView(assetID: cluster.coverAssetID, service: service)
+                                    .aspectRatio(1, contentMode: .fill)
+                                    .clipShape(Circle())
+                                    .opacity(0.55)
+                                Text(cluster.displayName)
+                                    .font(.caption).lineLimit(1)
+                                Button("Unhide") { viewModel.unhide(cluster.personID) }
+                                    .font(.caption2)
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .navigationTitle("Hidden people")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

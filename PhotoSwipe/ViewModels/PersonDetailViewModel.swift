@@ -71,4 +71,16 @@ final class PersonDetailViewModel: ObservableObject {
     func hidePerson() async {
         try? await store.setHidden(personID: personID, true)
     }
+
+    /// Other (non-hidden) people this cluster can be merged into.
+    func mergeCandidates() async -> [PersonCluster] {
+        let all = (try? await store.clusters()) ?? []
+        return all.filter { $0.personID != personID && !$0.isHidden }
+    }
+
+    /// Reassigns this person's faces into `destID` and deletes this now-empty
+    /// person. The destination keeps its name/cover.
+    func merge(into destID: String) async {
+        try? await store.merge(personID, into: destID)
+    }
 }
