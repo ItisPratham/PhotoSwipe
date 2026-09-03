@@ -250,6 +250,10 @@ struct SwipeView: View {
     // MARK: - Gesture handling
 
     private func handleDragEnd(translation: CGSize) {
+        // A second flick that lands while the previous card is still flying
+        // off would schedule a second decision, which then applies to the next
+        // card before the user has seen it. Ignore it until the swap completes.
+        guard !isExiting else { return }
         guard abs(translation.width) > swipeThreshold else {
             // GestureState resets automatically; the .animation modifier
             // springs the card back to centre.
