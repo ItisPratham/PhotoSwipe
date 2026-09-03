@@ -83,6 +83,12 @@ final class PersonDetailViewModel: ObservableObject {
         try? await store.setHidden(personID: personID, true)
     }
 
+    /// Photos this person and `other` both appear in, oldest-first order is
+    /// applied by the deck fetch.
+    func photoIDs(sharedWith other: PersonCluster) -> [String] {
+        Array(Set(photoIDs).intersection(other.photoIDs)).sorted()
+    }
+
     func mergeCandidates() async -> [PersonCluster] {
         let all = (try? await store.clusters()) ?? []
         return all.filter { $0.personID != personID && !$0.isHidden }

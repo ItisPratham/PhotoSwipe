@@ -8,6 +8,9 @@ struct PersonDetailView: View {
     let service: PhotoLibraryService
     /// Observed so the kept / marked badges update after a deck session.
     @ObservedObject var store: ReviewStore
+    /// Not observed: only handed to the "Also with…" deck.
+    let stats: StatsStore
+    let sizes: SizeStore
     @StateObject private var viewModel: PersonDetailViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -15,12 +18,19 @@ struct PersonDetailView: View {
     @State private var draftName = ""
     @State private var showMerge = false
     @State private var mergeCandidates: [PersonCluster] = []
+    /// "Also with…": pick a second person, then push a deck of the photos
+    /// both appear in.
+    @State private var showAlsoWith = false
+    @State private var alsoWithRoute: AppRoute?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
-    init(cluster: PersonCluster, service: PhotoLibraryService, store: ReviewStore) {
+    init(cluster: PersonCluster, service: PhotoLibraryService, store: ReviewStore,
+         stats: StatsStore, sizes: SizeStore) {
         self.service = service
         self.store = store
+        self.stats = stats
+        self.sizes = sizes
         _viewModel = StateObject(wrappedValue: PersonDetailViewModel(cluster: cluster))
     }
 
@@ -37,9 +47,21 @@ struct PersonDetailView: View {
                 Button("Cancel", role: .cancel) {}
             }
             .sheet(isPresented: $showMerge) {
-                MergePickerView(candidates: mergeCandidates, service: service) { dest in
+                MergePickerView(title: "Merge into", candidates: mergeCandidates, service: service) { dest in
                     showMerge = false
                     Task { await viewModel.merge(into: dest.personID); dismiss() }
+                }
+            }
+            .sheet(isPresented: $showAlsoWith) {
+                MergePickerView(title: "Also with", candidates: mergeCandidates, service: service) { other in
+                    showAlsoWith = false
+                    let shared = viewModel.photoIDs(sharedWith: other)
+                    alsoWithRoute = .swipe(.person(shared, preservesOrder: false))
+                }
+            }
+            .navigationDestination(item: $alsoWithRoute) { route in
+                if case .swipe(let source) = route {
+                    SwipeView(service: service, store: store, stats: stats, sizes: sizes, source: source)
                 }
             }
     }
@@ -171,6 +193,14 @@ struct PersonDetailView: View {
                 } label: {
                     Label("Merge into…", systemImage: "arrow.triangle.merge")
                 }
+                Button {
+                    Task {
+                        mergeCandidates = await viewModel.mergeCandidates()
+                        showAlsoWith = true
+                    }
+                } label: {
+                    Label("Also with…", systemImage: "person.2")
+                }
                 Button(role: .destructive) {
                     Task { await viewModel.hidePerson(); dismiss() }
                 } label: {
@@ -187,6 +217,7 @@ struct PersonDetailView: View {
 // MARK: - Merge picker
 
 private struct MergePickerView: View {
+    let title: String
     let candidates: [PersonCluster]
     let service: PhotoLibraryService
     let onPick: (PersonCluster) -> Void
@@ -208,7 +239,7 @@ private struct MergePickerView: View {
                     }
                 }
             }
-            .navigationTitle("Merge into")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
