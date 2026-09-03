@@ -19,8 +19,17 @@ import Foundation
 final class FaceClusterer: Sendable {
 
     /// Default cosine floor for grouping. Higher = stricter = more, smaller
-    /// clusters. Tunable from the People screen.
+    /// clusters. Tunable from the People screen's sensitivity slider.
     static let defaultThreshold: Float = 0.62
+
+    /// Stage-2 centroid-merge floor. Tracks the assignment threshold with a
+    /// small margin (merging uses *averaged*, denoised centroids, so it can be
+    /// only slightly stricter) and, crucially, has **no high floor** — so
+    /// loosening `threshold` to fix over-splitting actually lets a person's
+    /// pose/lighting sub-clusters fuse instead of being pinned apart at 0.72.
+    static func mergeThreshold(for threshold: Float) -> Float {
+        min(threshold + 0.06, 0.82)
+    }
 
     struct Result: Sendable {
         /// Every final cluster, with its chosen cover face.
@@ -59,7 +68,7 @@ final class FaceClusterer: Sendable {
         // Assignment can be moderately permissive so one person's varied poses
         // collect; centroid merging must be stricter because it is transitive and
         // can otherwise create large mixed-person clusters.
-        let mergeThreshold = min(max(threshold + 0.12, 0.72), 0.90)
+        let mergeThreshold = Self.mergeThreshold(for: threshold)
         mergeToFixpoint(&buckets, threshold: mergeThreshold)
 
         // Materialize.
@@ -155,7 +164,7 @@ final class FaceClusterer: Sendable {
             }
         }
 
-        let mergeThreshold = min(max(threshold + 0.12, 0.72), 0.90)
+        let mergeThreshold = Self.mergeThreshold(for: threshold)
         mergeToFixpoint(&newBuckets, threshold: mergeThreshold)
 
         var newPersons: [PersonSeed] = []

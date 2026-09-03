@@ -161,6 +161,22 @@ final class PeopleViewModel: ObservableObject {
         await loadClusters()
     }
 
+    /// Sensitivity-slider entry point: re-group everyone at a new threshold from
+    /// the already-cached embeddings (no re-scan — seconds, not minutes). This is
+    /// a full re-cluster, so it clears names/merges/hides; tuning is meant as a
+    /// pre-naming step. No-op while a scan is running.
+    func regroup(threshold: Float) {
+        guard !isRunning else { return }
+        similarityThreshold = threshold
+        task?.cancel()
+        task = Task { [weak self] in
+            guard let self else { return }
+            self.isRefreshing = true
+            await self.reclusterFull()
+            self.isRefreshing = false
+        }
+    }
+
     private func loadClusters() async {
         let computed = (try? await store.clusters().filter { !$0.isHidden }) ?? []
         clusters = computed

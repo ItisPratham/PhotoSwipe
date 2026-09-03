@@ -8,17 +8,28 @@ struct PeopleView: View {
     @ObservedObject var service: PhotoLibraryService
     @StateObject private var viewModel = PeopleViewModel()
 
+    /// Grouping strength, 1 (stricter → more, smaller clusters) … 10 (looser →
+    /// merges the same person across poses/lighting). Persisted per install.
+    @AppStorage("PhotoSwipe.peopleSensitivity") private var sensitivity: Double = 4
+
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 16),
         count: 3
     )
+
+    /// Maps the 1…10 slider to a cosine floor: 1 → 0.70 (strict), 10 → 0.43
+    /// (loose). Higher sensitivity = lower floor = more merging.
+    private func threshold(for s: Double) -> Float { Float(0.70 - (s - 1) * 0.03) }
 
     var body: some View {
         content
             .navigationTitle("People")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { reloadButton }
-            .task { viewModel.onAppear(using: service) }
+            .task {
+                viewModel.similarityThreshold = threshold(for: sensitivity)
+                viewModel.onAppear(using: service)
+            }
             .onChange(of: service.libraryVersion) { _, _ in
                 viewModel.onLibraryChange(using: service)
             }
@@ -96,6 +107,7 @@ struct PeopleView: View {
     private var grid: some View {
         ScrollView {
             peopleHeader
+            sensitivityBar
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(viewModel.clusters) { cluster in
                     NavigationLink(value: cluster) {
@@ -105,6 +117,34 @@ struct PeopleView: View {
                 }
             }
             .padding()
+        }
+    }
+
+    /// Live grouping-strength control. Re-groups from cached embeddings on
+    /// release — no re-scan. A full re-cluster, so it clears any names.
+    private var sensitivityBar: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Grouping strength").font(.subheadline.bold())
+                Spacer()
+                Text(sensitivity >= 7 ? "Looser" : sensitivity <= 3 ? "Stricter" : "Balanced")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "person.2.badge.plus").foregroundStyle(.secondary)
+                Slider(value: $sensitivity, in: 1...10, step: 1)
+                    .accessibilityLabel("Grouping strength")
+                    .accessibilityValue("\(Int(sensitivity)) of 10")
+                Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(.secondary)
+            }
+            Text("Higher merges the same person across poses & lighting. Re-groups everyone — clears any names you've set.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, Theme.Spacing.screenMargin)
+        .padding(.top, 4)
+        .disabled(viewModel.isRefreshing)
+        .onChange(of: sensitivity) { _, s in
+            viewModel.regroup(threshold: threshold(for: s))
         }
     }
 
