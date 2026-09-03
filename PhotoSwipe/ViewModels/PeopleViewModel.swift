@@ -51,6 +51,10 @@ final class PeopleViewModel: ObservableObject {
     /// asked for it unconditionally.
     private var isRunQueued = false
     private var queuedRunIsConditional = true
+    /// A regroup is waiting; slider ticks fold into it and it reads the latest
+    /// threshold when it starts, so the final value is never dropped and the
+    /// store never sees two full re-clusters for one drag.
+    private var isRegroupQueued = false
     /// The `libraryVersion` the last run started from. Re-appearing with an
     /// unchanged library (popping back from a deck, switching tabs) is then a
     /// no-op instead of another fetch + incremental scan + regroup.
@@ -88,6 +92,7 @@ final class PeopleViewModel: ObservableObject {
     func cancel() {
         queue.cancelAll()
         isRunQueued = false
+        isRegroupQueued = false
         isRefreshing = false
         phase = clusters.isEmpty ? .idle : .results
     }
@@ -194,8 +199,11 @@ final class PeopleViewModel: ObservableObject {
     /// pre-naming step. Queued behind any running scan rather than racing it.
     func regroup(threshold: Float) {
         similarityThreshold = threshold
+        guard !isRegroupQueued else { return }
+        isRegroupQueued = true
         queue.enqueue { [weak self] in
             guard let self else { return }
+            self.isRegroupQueued = false
             self.isRefreshing = true
             await self.reclusterFull()
             self.isRefreshing = false
