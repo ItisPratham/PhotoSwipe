@@ -5,9 +5,11 @@ import SwiftUI
 /// UserDefaults via @AppStorage so a reinstall re-shows the tutorial.
 struct RootView: View {
     @StateObject private var library = PhotoLibraryService()
-    @StateObject private var reviewStore = ReviewStore()
-    @StateObject private var statsStore = StatsStore()
-    @StateObject private var sizeStore = SizeStore()
+    /// The decision, stats, and size stores, owned here but never read here.
+    /// Held in one plain object under `@State` rather than as `@StateObject`s
+    /// so their changes (every swipe) don't re-render the root shell and,
+    /// through it, the whole tab tree.
+    @State private var stores = AppStores()
     @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("PhotoSwipe.hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -61,7 +63,7 @@ struct RootView: View {
                 library.refreshAccessState()
             case .background:
                 // Land any debounced decision write before we can be killed.
-                reviewStore.flush()
+                stores.review.flush()
             default:
                 break
             }
@@ -86,19 +88,30 @@ struct RootView: View {
                 }
             case .authorized:
                 AppTabView(library: library,
-                           reviewStore: reviewStore,
-                           statsStore: statsStore,
-                           sizeStore: sizeStore,
+                           reviewStore: stores.review,
+                           statsStore: stores.stats,
+                           sizeStore: stores.sizes,
                            onCleanLoaded: {
                                homeLoaded = true
                                guard !hasPrunedDecisions else { return }
                                hasPrunedDecisions = true
-                               Task { await reviewStore.pruneMissing(using: library) }
+                               Task { await stores.review.pruneMissing(using: library) }
                            })
             }
         }
     }
 
+}
+
+/// The app-wide stores that outlive every screen. Created once with the root
+/// view; not observable itself, so holding it in `@State` doesn't subscribe
+/// the root to the stores' changes. Screens that display store values still
+/// observe the individual store they read.
+@MainActor
+final class AppStores {
+    let review = ReviewStore()
+    let stats = StatsStore()
+    let sizes = SizeStore()
 }
 
 #Preview {

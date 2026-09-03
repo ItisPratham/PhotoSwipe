@@ -6,10 +6,13 @@ import SwiftUI
 /// and advances the deck, while a release below threshold springs everything
 /// back. A bottom action bar holds the Review(N) entry point and undo.
 struct SwipeView: View {
+    /// Observed: the body reacts to `libraryVersion`.
     @ObservedObject var service: PhotoLibraryService
+    /// Observed: the body reads the reviewed and marked counts.
     @ObservedObject var store: ReviewStore
-    @ObservedObject var stats: StatsStore
-    @ObservedObject var sizes: SizeStore
+    /// Not observed: only passed to the view model.
+    let stats: StatsStore
+    let sizes: SizeStore
     @StateObject private var viewModel: SwipeViewModel
 
     /// Live translation while the finger is down. Backed by GestureState so

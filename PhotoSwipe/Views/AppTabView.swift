@@ -10,11 +10,15 @@ import SwiftUI
 /// tab reads and writes the same source of truth (no per-tab duplication).
 /// Every entry point still funnels into the single `SwipeView` deck engine via
 /// a `DeckSource`.
+///
+/// The stores are plain references, not observed: this shell reads nothing
+/// from them, it only hands them down. Observing them here would re-evaluate
+/// the whole tab tree on every swipe.
 struct AppTabView: View {
-    @ObservedObject var library: PhotoLibraryService
-    @ObservedObject var reviewStore: ReviewStore
-    @ObservedObject var statsStore: StatsStore
-    @ObservedObject var sizeStore: SizeStore
+    let library: PhotoLibraryService
+    let reviewStore: ReviewStore
+    let statsStore: StatsStore
+    let sizeStore: SizeStore
 
     /// Fires once the Clean tab's deck finishes its first load, so RootView's
     /// launch splash can wait for real content before crossfading in.
