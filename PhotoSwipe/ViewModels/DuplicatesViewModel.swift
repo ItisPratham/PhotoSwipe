@@ -39,6 +39,8 @@ final class DuplicatesViewModel: ObservableObject {
 
     private let indexService = LibraryIndexService()
     private let store = IndexStore(modelContainer: IndexContainer.shared)
+    /// Read-only: best face quality per photo feeds the keeper score.
+    private let faceStore = FaceStore(modelContainer: FaceContainer.shared)
     /// Scans and regroups run strictly one at a time through this queue, so a
     /// library change mid-scan queues a follow-up instead of replacing the
     /// handle to the running scan, Cancel always reaches the real work, and a
@@ -203,9 +205,11 @@ final class DuplicatesViewModel: ObservableObject {
 
     /// Runs the (cancelable, off-main) grouping pass at the current sensitivity.
     private func group(assets: [PhotoAsset], indexed: [IndexedAsset]) async throws -> [DuplicateGroup] {
-        try await indexService.groups(
+        let faceQuality = (try? await faceStore.bestFaceQualityByAsset()) ?? [:]
+        return try await indexService.groups(
             assets: assets,
             indexed: indexed,
+            faceQuality: faceQuality,
             distanceThreshold: Float(distanceThreshold)
         )
     }

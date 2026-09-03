@@ -74,9 +74,12 @@ final class LibraryIndexService: @unchecked Sendable {
         // lingering on the cooperative thread between assets.
         return autoreleasepool {
             guard let vector = featurePrintVector(from: cgImage) else { return nil }
+            // Quality signals for the keeper score ride on the same thumbnail.
             return IndexedAsset(localIdentifier: asset.id,
                                 vector: vector,
-                                byteSize: resourceSize(for: asset.phAsset))
+                                byteSize: resourceSize(for: asset.phAsset),
+                                sharpness: ImageQuality.sharpness(of: cgImage),
+                                aestheticScore: ImageQuality.aestheticScore(of: cgImage))
         }
     }
 
@@ -88,19 +91,23 @@ final class LibraryIndexService: @unchecked Sendable {
     /// re-download, a screenshot saved twice, the same meme) still group. The
     /// pairwise pass runs as blocked BLAS matrix products in
     /// `NearDuplicateMatcher`, so a 50k library takes seconds, not minutes.
-    /// Only groups of two or more are returned; each names its
-    /// highest-quality member as the suggested keeper. `distanceThreshold`
-    /// controls sensitivity — smaller = only near-identical. Cancelable
-    /// between blocks.
+    /// Only groups of two or more are returned; each names the member
+    /// `KeeperScorer` ranks highest (sharpness, face quality, pixel count,
+    /// aesthetics) as the suggested keeper. `faceQuality` is the best face
+    /// capture quality per asset from the face index — pass an empty map when
+    /// no face scan has run. `distanceThreshold` controls sensitivity —
+    /// smaller = only near-identical. Cancelable between blocks.
     func groups(
         assets: [PhotoAsset],
         indexed: [IndexedAsset],
+        faceQuality: [String: Float],
         distanceThreshold: Float
     ) async throws -> [DuplicateGroup] {
-        let vectorByID = Dictionary(
-            indexed.map { ($0.localIdentifier, $0.vector) },
+        let indexedByID = Dictionary(
+            indexed.map { ($0.localIdentifier, $0) },
             uniquingKeysWith: { first, _ in first }
         )
+        let vectorByID = indexedByID.mapValues(\.vector)
         // Only consider assets we actually have a print for, oldest-first.
         let candidates = assets
             .filter { vectorByID[$0.id] != nil }
@@ -136,12 +143,23 @@ final class LibraryIndexService: @unchecked Sendable {
             membersByRoot[uf.find(index), default: []].append(id)
         }
 
+        let hasFaceScan = !faceQuality.isEmpty
         return membersByRoot.values
             .filter { $0.count > 1 }
             .map { memberIDs -> DuplicateGroup in
-                let keeper = memberIDs.max { lhs, rhs in
-                    quality(assetByID[lhs]) < quality(assetByID[rhs])
-                } ?? memberIDs[0]
+                let candidates = memberIDs.map { id -> KeeperScorer.Candidate in
+                    let asset = assetByID[id]
+                    let row = indexedByID[id]
+                    return KeeperScorer.Candidate(
+                        id: id,
+                        created: asset?.creationDate,
+                        pixelArea: asset?.pixelArea ?? 0,
+                        sharpness: row?.sharpness,
+                        faceQuality: hasFaceScan ? (faceQuality[id] ?? 0) : nil,
+                        aesthetic: row?.aestheticScore
+                    )
+                }
+                let keeper = KeeperScorer.keeper(among: candidates) ?? memberIDs[0]
                 let ordered = memberIDs.sorted {
                     (assetByID[$0]?.creationDate ?? .distantPast)
                         < (assetByID[$1]?.creationDate ?? .distantPast)
@@ -150,11 +168,6 @@ final class LibraryIndexService: @unchecked Sendable {
             }
             // Biggest groups first, then by keeper id for stable ordering.
             .sorted { ($0.count, $0.id) > ($1.count, $1.id) }
-    }
-
-    /// Quality proxy for keeper selection: more pixels wins.
-    private func quality(_ asset: PhotoAsset?) -> Int {
-        asset?.pixelArea ?? 0
     }
 
     // MARK: - Vision / metadata helpers

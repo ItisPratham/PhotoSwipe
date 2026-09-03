@@ -50,6 +50,19 @@ actor FaceStore {
         return Set(try modelContext.fetch(descriptor).map(\.localIdentifier))
     }
 
+    /// Best face capture quality per asset, over non-ignored faces. Reads
+    /// two columns only. Empty when no scan has run — the keeper score then
+    /// drops its face term instead of treating every photo as faceless.
+    func bestFaceQualityByAsset() throws -> [String: Float] {
+        var descriptor = FetchDescriptor<FaceRow>(predicate: #Predicate { !$0.isIgnored })
+        descriptor.propertiesToFetch = [\.localIdentifier, \.quality]
+        var best: [String: Float] = [:]
+        for row in try modelContext.fetch(descriptor) {
+            best[row.localIdentifier] = max(best[row.localIdentifier] ?? 0, row.quality)
+        }
+        return best
+    }
+
     /// Number of stored faces — tells the UI whether a first scan has run.
     func faceCount() throws -> Int {
         try modelContext.fetchCount(FetchDescriptor<FaceRow>())

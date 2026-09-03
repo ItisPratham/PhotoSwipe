@@ -24,11 +24,21 @@ final class AssetIndex {
     var byteSize: Int64
     var scannedAt: Date
 
-    init(localIdentifier: String, vector: Data, byteSize: Int64, scannedAt: Date) {
+    /// Laplacian-variance sharpness of the 256 px scan thumbnail
+    /// (`ImageQuality.sharpness`). Optional so existing stores migrate in
+    /// place; nil for rows indexed before 5.0 until a later pass fills it.
+    var sharpness: Float?
+    /// Vision aesthetics score (iOS 18+), same nil semantics.
+    var aestheticScore: Float?
+
+    init(localIdentifier: String, vector: Data, byteSize: Int64, scannedAt: Date,
+         sharpness: Float? = nil, aestheticScore: Float? = nil) {
         self.localIdentifier = localIdentifier
         self.featurePrint = Data()
         self.vector = vector
         self.byteSize = byteSize
         self.scannedAt = scannedAt
+        self.sharpness = sharpness
+        self.aestheticScore = aestheticScore
     }
 }

@@ -8,6 +8,9 @@ struct IndexedAsset: Sendable, Hashable {
     let localIdentifier: String
     let vector: [Float]
     let byteSize: Int64
+    /// Quality signals for the keeper score; nil when not measured yet.
+    var sharpness: Float? = nil
+    var aestheticScore: Float? = nil
 }
 
 /// Where the app's SwiftData stores live. Each index gets its **own file**:
@@ -110,7 +113,9 @@ actor IndexStore {
             }
             result.append(IndexedAsset(localIdentifier: row.localIdentifier,
                                        vector: vector,
-                                       byteSize: row.byteSize))
+                                       byteSize: row.byteSize,
+                                       sharpness: row.sharpness,
+                                       aestheticScore: row.aestheticScore))
         }
         if converted % 500 != 0 { try modelContext.save() }
         return result
@@ -131,12 +136,16 @@ actor IndexStore {
                 record.featurePrint = Data()
                 record.byteSize = item.byteSize
                 record.scannedAt = scannedAt
+                record.sharpness = item.sharpness
+                record.aestheticScore = item.aestheticScore
             } else {
                 modelContext.insert(
                     AssetIndex(localIdentifier: item.localIdentifier,
                                vector: vectorData,
                                byteSize: item.byteSize,
-                               scannedAt: scannedAt)
+                               scannedAt: scannedAt,
+                               sharpness: item.sharpness,
+                               aestheticScore: item.aestheticScore)
                 )
             }
         }
