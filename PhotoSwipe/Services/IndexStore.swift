@@ -65,10 +65,12 @@ enum IndexContainer {
 @ModelActor
 actor IndexStore {
 
-    /// Local identifiers already indexed — lets the scan skip them.
+    /// Local identifiers already indexed — lets the scan skip them. Reads the
+    /// identifier column only; the vectors stay on disk.
     func indexedIdentifiers() throws -> Set<String> {
-        let records = try modelContext.fetch(FetchDescriptor<AssetIndex>())
-        return Set(records.map(\.localIdentifier))
+        var descriptor = FetchDescriptor<AssetIndex>()
+        descriptor.propertiesToFetch = [\.localIdentifier]
+        return Set(try modelContext.fetch(descriptor).map(\.localIdentifier))
     }
 
     /// Number of indexed assets — tells the UI whether a first scan has run.
@@ -141,9 +143,12 @@ actor IndexStore {
         try modelContext.save()
     }
 
-    /// Drops rows whose asset is no longer present in the library.
+    /// Drops rows whose asset is no longer present in the library. Reads the
+    /// identifier column only.
     func purge(keeping keepIDs: Set<String>) throws {
-        let records = try modelContext.fetch(FetchDescriptor<AssetIndex>())
+        var descriptor = FetchDescriptor<AssetIndex>()
+        descriptor.propertiesToFetch = [\.localIdentifier]
+        let records = try modelContext.fetch(descriptor)
         var changed = false
         for record in records where !keepIDs.contains(record.localIdentifier) {
             modelContext.delete(record)
