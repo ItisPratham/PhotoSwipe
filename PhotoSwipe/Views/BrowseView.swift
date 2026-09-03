@@ -24,10 +24,9 @@ struct BrowseView: View {
         content
             .navigationTitle("Browse")
             .navigationBarTitleDisplayMode(.inline)
-            // Opaque bar: with the default translucent bar, rows scrolled
-            // under it showed through blurred above the pinned day header,
-            // which read as photos floating on both sides of the date.
-            .toolbarBackground(.visible, for: .navigationBar)
+            // Thicker bar material: photos scrolling under the bar, just
+            // above the pinned day header, blur out more heavily.
+            .toolbarBackground(.thickMaterial, for: .navigationBar)
             .task {
                 prefetcher.attach(service)
                 await viewModel.loadIfNeeded(using: service)
@@ -143,19 +142,16 @@ struct BrowseView: View {
                                 HStack(spacing: 6) {
                                     Text(section.id, format: .dateTime.month(.wide).day().year())
                                         .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(.white)
                                     Spacer()
                                     Image(systemName: "chevron.right")
                                         .font(.caption2)
-                                        .foregroundStyle(.tertiary)
+                                        .foregroundStyle(.white.opacity(0.5))
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, Theme.Spacing.screenMargin)
                                 .padding(.vertical, 6)
-                                // System background so the pinned header
-                                // continues the opaque bar above it in both
-                                // light and dark, matching the person view.
-                                .background(Color(.systemBackground))
+                                .background(Color.black)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
