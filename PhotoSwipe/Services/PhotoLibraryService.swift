@@ -159,15 +159,20 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
     ///
     /// The underlying PhotoKit request is cancelled when the consuming task is
     /// cancelled (e.g. when the user swipes to the next card).
+    ///
+    /// `contentMode` defaults to aspect-fill, which lets PhotoKit hand back a
+    /// crop for thumbnails. Pass `.aspectFit` when the caller does its own
+    /// geometry on the result (the face-crop cover) and needs the full frame.
     nonisolated func imageStream(
         for asset: PhotoAsset,
-        targetSize: CGSize
+        targetSize: CGSize,
+        contentMode: PHImageContentMode = .aspectFill
     ) -> AsyncStream<UIImage> {
         AsyncStream { continuation in
             let requestID = cachingImageManager.requestImage(
                 for: asset.phAsset,
                 targetSize: targetSize,
-                contentMode: .aspectFill,
+                contentMode: contentMode,
                 options: Self.streamOptions()
             ) { image, info in
                 if let image {

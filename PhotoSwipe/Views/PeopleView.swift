@@ -327,41 +327,50 @@ private struct PersonCell: View {
 /// padding on each side) fills the circle — turning every person icon into a
 /// properly-centered face shot. Falls back to the full thumbnail when no face
 /// scan data exists yet.
+///
+/// The image is requested aspect-*fit* so PhotoKit returns the whole frame:
+/// the bounding box is normalised to the full photo, and an aspect-fill
+/// result may already be cropped, which would put the face off-centre. The
+/// crop is computed once per delivered image and kept in state, not
+/// recomputed on every body evaluation.
 private struct PersonCoverView: View {
     let cluster: PersonCluster
     let service: PhotoLibraryService
 
-    @State private var rawImage: UIImage?
+    @State private var coverImage: UIImage?
 
     var body: some View {
         // Overlay pattern: the base Color always determines the layout size so
         // there are no geometry reflows when the image loads or changes.
         Theme.cardSurface
             .overlay {
-                if let display = displayImage {
-                    Image(uiImage: display)
+                if let coverImage {
+                    Image(uiImage: coverImage)
                         .resizable()
                         .scaledToFill()
                 }
             }
             .clipped()
             .task(id: cluster.coverAssetID) {
-                rawImage = nil
+                coverImage = nil
                 guard let assetID = cluster.coverAssetID,
                       let asset = await service.fetchAssets(withIDs: [assetID]).first
                 else { return }
+                let bbox = cluster.coverBoundingBox
                 for await img in service.imageStream(
-                    for: asset, targetSize: CGSize(width: 512, height: 512)
+                    for: asset,
+                    targetSize: CGSize(width: 512, height: 512),
+                    contentMode: .aspectFit
                 ) {
-                    rawImage = img
+                    coverImage = Self.faceCrop(of: img, boundingBox: bbox)
                 }
             }
     }
 
-    private var displayImage: UIImage? {
-        guard let raw = rawImage else { return nil }
-        guard let bbox = cluster.coverBoundingBox,
-              let cgImage = raw.cgImage else { return raw }
+    /// Crops `image` to the face box plus 50% padding on each side, clamped
+    /// to the frame. Returns the image unchanged when there is no box.
+    private static func faceCrop(of image: UIImage, boundingBox bbox: CGRect?) -> UIImage {
+        guard let bbox, let cgImage = image.cgImage else { return image }
 
         let W = CGFloat(cgImage.width)
         let H = CGFloat(cgImage.height)
@@ -380,7 +389,7 @@ private struct PersonCoverView: View {
         let cropPx = CGRect(x: cropNorm.minX * W, y: cropNorm.minY * H,
                             width: cropNorm.width * W, height: cropNorm.height * H)
 
-        guard let cropped = cgImage.cropping(to: cropPx) else { return raw }
-        return UIImage(cgImage: cropped, scale: raw.scale, orientation: raw.imageOrientation)
+        guard let cropped = cgImage.cropping(to: cropPx) else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
     }
 }
