@@ -9,6 +9,38 @@ import UIKit
 /// file-level constant rather than a main-actor property.
 private let cachingImageManager = PHCachingImageManager()
 
+/// Keeps the all-assets fetch result PhotoKit change notifications are
+/// diffed against. Reading `PHChange.changeDetails(for:)` tells us whether a
+/// notification touched any asset at all; album edits, sync bookkeeping, and
+/// other non-asset changes come back with no details and are ignored.
+/// Accessed from PhotoKit's observer queue, hence the lock.
+private final class AssetChangeTracker: @unchecked Sendable {
+    private let lock = NSLock()
+    private var fetchResult = PHAsset.fetchAssets(with: nil)
+
+    /// Applies `change` to the tracked result. Returns true when assets were
+    /// inserted, removed, changed, or moved.
+    func apply(_ change: PHChange) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let details = change.changeDetails(for: fetchResult) else { return false }
+        fetchResult = details.fetchResultAfterChanges
+        guard details.hasIncrementalChanges else { return true }
+        return !details.removedObjects.isEmpty
+            || !details.insertedObjects.isEmpty
+            || !details.changedObjects.isEmpty
+            || details.hasMoves
+    }
+
+    /// Re-baselines after access is granted, when the library first becomes
+    /// visible to the app.
+    func reset() {
+        lock.lock()
+        fetchResult = PHAsset.fetchAssets(with: nil)
+        lock.unlock()
+    }
+}
+
 /// Owns photo-library authorization, asset fetching, image loading, and the
 /// batched-delete bridge to PhotoKit. Also observes the library so features
 /// (e.g. Duplicates) can auto-refresh when photos are added, deleted, edited,
@@ -26,9 +58,23 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
     }
 
     @Published private(set) var accessState: AccessState
-    /// Bumped on every library change. Observers watch this to know the library
-    /// is out of date without diffing PhotoKit themselves.
+    /// Bumped when the set of assets changes (add, delete, edit, move).
+    /// Observers watch this to know the library is out of date without
+    /// diffing PhotoKit themselves. Changes that don't touch assets (album
+    /// edits, metadata syncs elsewhere) are filtered out by `assetTracker`.
     @Published private(set) var libraryVersion = 0
+
+    /// The all-assets fetch result each change notification is diffed
+    /// against, so only real asset changes bump `libraryVersion`.
+    private let assetTracker = AssetChangeTracker()
+
+    /// One fetch per (source, library version), shared by every screen that
+    /// asks for it. At launch Clean, Browse, Duplicates, and People all want
+    /// the same all-photos list; this makes that one PhotoKit enumeration
+    /// instead of four, and a later screen at the same version gets the
+    /// cached array. Only whole-library sources are cached; day-start decks
+    /// are one-offs.
+    private var sharedFetches: [DeckSource: (version: Int, task: Task<[PhotoAsset], Never>)] = [:]
 
     override init() {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
@@ -41,9 +87,11 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         PHPhotoLibrary.shared().unregisterChangeObserver(self)
     }
 
-    /// PHPhotoLibraryChangeObserver — fires on an arbitrary queue, so hop to the
-    /// main actor to bump the version.
+    /// PHPhotoLibraryChangeObserver — fires on an arbitrary queue. Diff the
+    /// change against the tracked asset set there, and hop to the main actor
+    /// only when something actually changed.
     nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
+        guard assetTracker.apply(changeInstance) else { return }
         Task { @MainActor in
             self.libraryVersion &+= 1
         }
@@ -53,12 +101,23 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
     /// this just refreshes our cached state.
     func requestAuthorization() async {
         let status = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-        accessState = Self.map(status)
+        updateAccessState(Self.map(status))
     }
 
     /// Re-reads the current status — call when returning from Settings.
     func refreshAccessState() {
-        accessState = Self.map(PHPhotoLibrary.authorizationStatus(for: .readWrite))
+        updateAccessState(Self.map(PHPhotoLibrary.authorizationStatus(for: .readWrite)))
+    }
+
+    /// Gaining access changes what the tracked fetch can see, so the tracker
+    /// re-baselines instead of diffing against a pre-authorisation snapshot.
+    private func updateAccessState(_ state: AccessState) {
+        let gainedAccess = state == .authorized && accessState != .authorized
+        accessState = state
+        if gainedAccess {
+            assetTracker.reset()
+            libraryVersion &+= 1
+        }
     }
 
     private static func map(_ status: PHAuthorizationStatus) -> AccessState {
@@ -80,73 +139,88 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
     /// supplied `DeckSource` — scope (all photos or a specific album), media
     /// kind (photos / videos / both), and an optional `startFrom` cutoff. The
     /// media filter is applied at the predicate layer, so the default `.photos`
-    /// source never surfaces a video. Runs off the main actor because
-    /// enumerating a large library can take a beat.
-    nonisolated func fetchImages(source: DeckSource) async -> [PhotoAsset] {
-        await Task.detached(priority: .userInitiated) {
-            let options = PHFetchOptions()
-            options.sortDescriptors = [
-                NSSortDescriptor(key: "creationDate", ascending: true)
-            ]
+    /// source never surfaces a video. The enumeration runs off the main actor;
+    /// whole-library sources are shared per library version (see
+    /// `sharedFetches`), so concurrent or repeated callers await one task.
+    func fetchImages(source: DeckSource) async -> [PhotoAsset] {
+        let shareable = source.scope == .allPhotos && source.startFrom == nil
+        let version = libraryVersion
+        if shareable, let entry = sharedFetches[source], entry.version == version {
+            return await entry.task.value
+        }
+        let task = Task.detached(priority: .userInitiated) {
+            Self.performFetch(source: source)
+        }
+        if shareable {
+            sharedFetches = sharedFetches.filter { $0.value.version == version }
+            sharedFetches[source] = (version, task)
+        }
+        return await task.value
+    }
 
-            var predicates: [NSPredicate] = []
-            switch source.media {
-            case .photos:
-                predicates.append(NSPredicate(format: "mediaType = %d",
-                                              PHAssetMediaType.image.rawValue))
-            case .videos:
-                predicates.append(NSPredicate(format: "mediaType = %d",
-                                              PHAssetMediaType.video.rawValue))
-            case .all:
-                break // no media-type restriction
-            }
-            if let startFrom = source.startFrom {
-                predicates.append(NSPredicate(format: "creationDate >= %@",
-                                              startFrom as NSDate))
-            }
-            options.predicate = predicates.isEmpty
-                ? nil
-                : predicates.count == 1
-                    ? predicates[0]
-                    : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+    nonisolated private static func performFetch(source: DeckSource) -> [PhotoAsset] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [
+            NSSortDescriptor(key: "creationDate", ascending: true)
+        ]
 
-            let result: PHFetchResult<PHAsset>
-            switch source.scope {
-            case .allPhotos:
-                result = PHAsset.fetchAssets(with: options)
-            case .album(let collection):
-                result = PHAsset.fetchAssets(in: collection, options: options)
-            case .duplicateGroup(let ids):
-                // A specific, already-chosen set — media/date filters don't
-                // apply; just resolve the identifiers (still oldest-first).
-                options.predicate = nil
-                result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
-            case .person(let ids, let preservesOrder):
-                // Media/date filters don't apply to an explicit id set. When
-                // the caller's order is authoritative we re-order after the
-                // fetch; otherwise keep PhotoKit's oldest-first sort.
-                options.predicate = nil
-                if preservesOrder { options.sortDescriptors = nil }
-                result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
-            }
+        var predicates: [NSPredicate] = []
+        switch source.media {
+        case .photos:
+            predicates.append(NSPredicate(format: "mediaType = %d",
+                                          PHAssetMediaType.image.rawValue))
+        case .videos:
+            predicates.append(NSPredicate(format: "mediaType = %d",
+                                          PHAssetMediaType.video.rawValue))
+        case .all:
+            break // no media-type restriction
+        }
+        if let startFrom = source.startFrom {
+            predicates.append(NSPredicate(format: "creationDate >= %@",
+                                          startFrom as NSDate))
+        }
+        options.predicate = predicates.isEmpty
+            ? nil
+            : predicates.count == 1
+                ? predicates[0]
+                : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
 
-            var assets: [PhotoAsset] = []
-            assets.reserveCapacity(result.count)
-            result.enumerateObjects { asset, _, _ in
-                assets.append(PhotoAsset(phAsset: asset))
-            }
+        let result: PHFetchResult<PHAsset>
+        switch source.scope {
+        case .allPhotos:
+            result = PHAsset.fetchAssets(with: options)
+        case .album(let collection):
+            result = PHAsset.fetchAssets(in: collection, options: options)
+        case .duplicateGroup(let ids):
+            // A specific, already-chosen set — media/date filters don't
+            // apply; just resolve the identifiers (still oldest-first).
+            options.predicate = nil
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .person(let ids, let preservesOrder):
+            // Media/date filters don't apply to an explicit id set. When
+            // the caller's order is authoritative we re-order after the
+            // fetch; otherwise keep PhotoKit's oldest-first sort.
+            options.predicate = nil
+            if preservesOrder { options.sortDescriptors = nil }
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        }
 
-            // PHAsset.fetchAssets(withLocalIdentifiers:) ignores the input order
-            // and sorts by options.sortDescriptors. For person scope we re-order
-            // the result to match the caller's sequence exactly (e.g. newest→oldest
-            // per day, or from a tapped photo backward through the rest of that day).
-            if case .person(let ids, true) = source.scope {
-                let byID = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, $0) })
-                assets = ids.compactMap { byID[$0] }
-            }
+        var assets: [PhotoAsset] = []
+        assets.reserveCapacity(result.count)
+        result.enumerateObjects { asset, _, _ in
+            assets.append(PhotoAsset(phAsset: asset))
+        }
 
-            return assets
-        }.value
+        // PHAsset.fetchAssets(withLocalIdentifiers:) ignores the input order
+        // and sorts by options.sortDescriptors. For person scope we re-order
+        // the result to match the caller's sequence exactly (e.g. newest→oldest
+        // per day, or from a tapped photo backward through the rest of that day).
+        if case .person(let ids, true) = source.scope {
+            let byID = Dictionary(uniqueKeysWithValues: assets.map { ($0.id, $0) })
+            assets = ids.compactMap { byID[$0] }
+        }
+
+        return assets
     }
 
     // MARK: - Image loading
