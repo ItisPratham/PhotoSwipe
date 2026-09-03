@@ -57,3 +57,6 @@ PhotoSwipe/Resources/FaceEmbedding.mlpackage/
 
 ## Claude skills lock (local tooling state, like .agents/)
 skills-lock.json
+
+## Local reference docs (performance plan, per-fix notes). Never tracked.
+docs/
