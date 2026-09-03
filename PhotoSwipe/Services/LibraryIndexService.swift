@@ -6,20 +6,31 @@ import Vision
 /// Runs the opt-in duplicate scan and the grouping pass, both off the main
 /// actor (this type is intentionally *not* `@MainActor`, so its `async` methods
 /// hop to a background executor). Both are cancelable via structured
-/// concurrency (`Task.checkCancellation()`). The scan is incremental: only
-/// not-yet-indexed assets are measured, and rows for deleted assets are purged.
-final class LibraryIndexService {
+/// concurrency. The scan is incremental: only not-yet-indexed assets are
+/// measured, and rows for deleted assets are purged.
+///
+/// Up to `maxConcurrency` assets are in flight at once through
+/// `ConcurrentScan`, with cancelable image fetches from `PhotoKitImages`, so
+/// iCloud downloads overlap instead of serialising the whole scan.
+final class LibraryIndexService: @unchecked Sendable {
 
     /// Downscale target for the feature-print thumbnail. Small on purpose —
     /// similarity doesn't need full resolution, and it keeps the scan light.
     private let thumbnailSize: CGFloat = 256
 
+    /// How many assets to fetch + print simultaneously. Same bound as the
+    /// face scan: enough to keep an iCloud pipeline busy without piling up
+    /// decoded images.
+    private let maxConcurrency = 4
+
     // MARK: - Scan
 
     /// Indexes every not-yet-scanned asset: loads a downscaled thumbnail, runs
     /// `VNGenerateImageFeaturePrintRequest`, and upserts the print's raw
-    /// vector plus byte size in batches. Reports `(processed, total)` as it goes. Throws
-    /// `CancellationError` if the enclosing task is cancelled.
+    /// vector plus byte size in batches. Reports `(processed, total)` as it
+    /// goes, in order. Throws `CancellationError` if the enclosing task is
+    /// cancelled. An asset whose image couldn't be loaded is not indexed, so
+    /// the next scan retries it.
     func scan(
         assets: [PhotoAsset],
         store: IndexStore,
@@ -33,19 +44,10 @@ final class LibraryIndexService {
         var batch: [IndexedAsset] = []
         var processed = 0
 
-        for asset in pending {
-            try Task.checkCancellation()
-
-            autoreleasepool {
-                if let vector = featurePrintVector(for: asset.phAsset) {
-                    batch.append(
-                        IndexedAsset(localIdentifier: asset.id,
-                                     vector: vector,
-                                     byteSize: resourceSize(for: asset.phAsset))
-                    )
-                }
-            }
-
+        try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] asset in
+            await self.index(asset)
+        } onResult: { _, indexed in
+            if let indexed { batch.append(indexed) }
             processed += 1
             onProgress(processed, total)
 
@@ -60,6 +62,22 @@ final class LibraryIndexService {
         }
         // Keep the index in step with the library — drop stale rows.
         try await store.purge(keeping: Set(assets.map(\.id)))
+    }
+
+    /// One asset: fetch, print, measure. Nil when the image couldn't be
+    /// loaded or the print couldn't be produced.
+    private func index(_ asset: PhotoAsset) async -> IndexedAsset? {
+        guard let cgImage = await PhotoKitImages.workingImage(
+            for: asset.phAsset, side: thumbnailSize, resizeMode: .fast
+        ) else { return nil }
+        // Vision is synchronous CPU work; the pool keeps the CGImage from
+        // lingering on the cooperative thread between assets.
+        return autoreleasepool {
+            guard let vector = featurePrintVector(from: cgImage) else { return nil }
+            return IndexedAsset(localIdentifier: asset.id,
+                                vector: vector,
+                                byteSize: resourceSize(for: asset.phAsset))
+        }
     }
 
     // MARK: - Grouping
@@ -141,11 +159,9 @@ final class LibraryIndexService {
 
     // MARK: - Vision / metadata helpers
 
-    /// The asset's feature print as a raw vector, or nil when the image can't
-    /// be loaded, Vision fails, or the print has an element type we can't
-    /// decode (so the asset isn't marked indexed and gets retried).
-    private func featurePrintVector(for asset: PHAsset) -> [Float]? {
-        guard let cgImage = thumbnail(for: asset) else { return nil }
+    /// The image's feature print as a raw vector, or nil when Vision fails or
+    /// the print has an element type we can't decode.
+    private func featurePrintVector(from cgImage: CGImage) -> [Float]? {
         let request = VNGenerateImageFeaturePrintRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do {
@@ -158,26 +174,6 @@ final class LibraryIndexService {
         }
         let vector = FeaturePrintCodec.vector(from: observation)
         return vector.isEmpty ? nil : vector
-    }
-
-    /// Synchronous, downscaled thumbnail for Vision. Runs inside the scan's
-    /// background task, so blocking here is fine.
-    private func thumbnail(for asset: PHAsset) -> CGImage? {
-        let options = PHImageRequestOptions()
-        options.isSynchronous = true
-        options.deliveryMode = .highQualityFormat
-        options.isNetworkAccessAllowed = true
-        options.resizeMode = .fast
-        var result: CGImage?
-        PHImageManager.default().requestImage(
-            for: asset,
-            targetSize: CGSize(width: thumbnailSize, height: thumbnailSize),
-            contentMode: .aspectFit,
-            options: options
-        ) { image, _ in
-            result = image?.cgImage
-        }
-        return result
     }
 
     private func resourceSize(for asset: PHAsset) -> Int64 {

@@ -35,6 +35,7 @@
 		D75FD6492FFC9C30003364D9 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6482FFC9C30003364D9 /* IndexStore.swift */; };
 		D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */; };
 		D7C0A1B33003100200AA0002 /* NearDuplicateMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B23003100200AA0002 /* NearDuplicateMatcher.swift */; };
+		D7C0A1B53003100300AA0003 /* ConcurrentScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B43003100300AA0003 /* ConcurrentScan.swift */; };
 		D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */; };
 		D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */; };
 		D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */; };
@@ -99,6 +100,7 @@
 		D75FD6482FFC9C30003364D9 /* IndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexStore.swift; sourceTree = "<group>"; };
 		D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryIndexService.swift; sourceTree = "<group>"; };
 		D7C0A1B23003100200AA0002 /* NearDuplicateMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearDuplicateMatcher.swift; sourceTree = "<group>"; };
+		D7C0A1B43003100300AA0003 /* ConcurrentScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrentScan.swift; sourceTree = "<group>"; };
 		D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesViewModel.swift; sourceTree = "<group>"; };
 		D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SerialTaskQueue.swift; sourceTree = "<group>"; };
 		D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
@@ -260,6 +262,7 @@
 				D75FD6482FFC9C30003364D9 /* IndexStore.swift */,
 				D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */,
 				D7C0A1B23003100200AA0002 /* NearDuplicateMatcher.swift */,
+				D7C0A1B43003100300AA0003 /* ConcurrentScan.swift */,
 				D74813AA3000F0090039DF72 /* FaceStore.swift */,
 				D7A914F83001603A009426DD /* FaceEmbedder.swift */,
 				D7A914FA30016066009426DD /* FaceAligner.swift */,
@@ -395,6 +398,7 @@
 				D74813953000EAEC0039DF72 /* Theme.swift in Sources */,
 				D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */,
 				D7C0A1B33003100200AA0002 /* NearDuplicateMatcher.swift in Sources */,
+				D7C0A1B53003100300AA0003 /* ConcurrentScan.swift in Sources */,
 				D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */,
 				D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */,
 				D7DDEA412FFA8A9000E3ED52 /* AppRoute.swift in Sources */,

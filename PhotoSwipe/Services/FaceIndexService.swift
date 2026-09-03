@@ -12,14 +12,11 @@ enum FaceScanError: Error {
 /// `@MainActor`, so its `async` methods hop to a background executor). For each
 /// not-yet-scanned photo it fetches a working-size image, detects faces +
 /// landmarks (Vision), aligns and embeds each face (`FaceAligner` →
-/// `FaceEmbedder`), and upserts the results in batches. Cancelable via
-/// `Task.checkCancellation()`; incremental — only new assets are processed, and
-/// rows for deleted assets are purged.
+/// `FaceEmbedder`), and upserts the results in batches. Cancelable; incremental
+/// — only new assets are processed, and rows for deleted assets are purged.
 ///
-/// Up to `maxConcurrency` assets are in-flight at once. Bridging
-/// `PHImageManager.requestImage` to an async continuation frees cooperative
-/// threads while iCloud photos download, so the next fetch starts immediately
-/// instead of waiting for the previous one to finish.
+/// Up to `maxConcurrency` assets are in-flight at once through
+/// `ConcurrentScan`, with cancelable image fetches from `PhotoKitImages`.
 final class FaceIndexService: @unchecked Sendable {
 
     /// Working resolution for detection + alignment. Big enough for accurate
@@ -57,40 +54,23 @@ final class FaceIndexService: @unchecked Sendable {
         var scannedBatch: [String] = []
         var processed = 0
 
-        try await withThrowingTaskGroup(of: (String, [FaceObservation]?).self) { group in
-            var iter = pending.makeIterator()
-
-            // Enqueues the next pending asset as a child task, if any remain.
-            func enqueueNext() {
-                guard let asset = iter.next() else { return }
-                group.addTask { [self] in
-                    let faces = await self.detectAndEmbed(asset: asset, embedder: embedder)
-                    return (asset.id, faces)
-                }
+        // A nil result means the image itself couldn't be fetched (offline,
+        // iCloud download failed): the asset is *not* marked scanned, so the
+        // next scan retries it instead of remembering it as "no faces" forever.
+        try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] asset in
+            await self.detectAndEmbed(asset: asset, embedder: embedder)
+        } onResult: { asset, faces in
+            if let faces {
+                faceBatch.append(contentsOf: faces)
+                scannedBatch.append(asset.id)
             }
+            processed += 1
+            onProgress(processed, total)
 
-            // Seed with up to maxConcurrency concurrent tasks.
-            for _ in 0..<min(maxConcurrency, total) { enqueueNext() }
-
-            // As each task finishes, batch the result and top up the pool. A nil
-            // result means the image itself couldn't be fetched (offline, iCloud
-            // download failed): the asset is *not* marked scanned, so the next
-            // scan retries it instead of remembering it as "no faces" forever.
-            for try await (assetID, faces) in group {
-                try Task.checkCancellation()
-                if let faces {
-                    faceBatch.append(contentsOf: faces)
-                    scannedBatch.append(assetID)
-                }
-                processed += 1
-                onProgress(processed, total)
-
-                if scannedBatch.count >= 40 {
-                    try await store.insert(faces: faceBatch, scannedAssetIDs: scannedBatch, at: Date())
-                    faceBatch.removeAll(keepingCapacity: true)
-                    scannedBatch.removeAll(keepingCapacity: true)
-                }
-                enqueueNext()
+            if scannedBatch.count >= 40 {
+                try await store.insert(faces: faceBatch, scannedAssetIDs: scannedBatch, at: Date())
+                faceBatch.removeAll(keepingCapacity: true)
+                scannedBatch.removeAll(keepingCapacity: true)
             }
         }
 
@@ -106,7 +86,9 @@ final class FaceIndexService: @unchecked Sendable {
     /// Returns nil when the working image couldn't be loaded at all, and an
     /// (possibly empty) array once detection actually ran on the pixels.
     private func detectAndEmbed(asset: PhotoAsset, embedder: FaceEmbedder) async -> [FaceObservation]? {
-        guard let cgImage = await thumbnail(for: asset.phAsset) else { return nil }
+        guard let cgImage = await PhotoKitImages.workingImage(
+            for: asset.phAsset, side: workingImageSize, resizeMode: .exact
+        ) else { return nil }
         // Vision detect + CoreML embed are synchronous CPU work; wrap in an
         // autoreleasepool so CGImages from PHImageManager don't linger on the
         // cooperative thread between assets.
@@ -153,30 +135,6 @@ final class FaceIndexService: @unchecked Sendable {
                 index += 1
             }
             return faces
-        }
-    }
-
-    /// Async image fetch: `isSynchronous: false` frees the cooperative thread
-    /// while PhotoKit downloads the asset from iCloud, enabling concurrent fetches.
-    /// With `highQualityFormat`, Photos may call back twice — once with a degraded
-    /// placeholder (skipped) and once with the final full-quality image.
-    private func thumbnail(for asset: PHAsset) async -> CGImage? {
-        await withCheckedContinuation { continuation in
-            let options = PHImageRequestOptions()
-            options.isSynchronous = false
-            options.deliveryMode = .highQualityFormat
-            options.isNetworkAccessAllowed = true
-            options.resizeMode = .exact
-            PHImageManager.default().requestImage(
-                for: asset,
-                targetSize: CGSize(width: workingImageSize, height: workingImageSize),
-                contentMode: .aspectFit,
-                options: options
-            ) { image, info in
-                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                guard !isDegraded else { return }
-                continuation.resume(returning: image?.cgImage)
-            }
         }
     }
 }

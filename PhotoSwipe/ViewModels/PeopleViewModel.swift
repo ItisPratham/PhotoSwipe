@@ -133,7 +133,8 @@ final class PeopleViewModel: ObservableObject {
         do {
             try await indexService.scan(assets: assets, store: store, embedder: embedder) { done, tot in
                 Task { @MainActor in
-                    self.processed = done
+                    // Hops can land out of order; the counter never steps back.
+                    self.processed = max(self.processed, done)
                     self.total = tot
                 }
             }
