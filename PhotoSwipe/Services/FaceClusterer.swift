@@ -178,19 +178,29 @@ final class FaceClusterer: Sendable {
         return Result(newPersons: newPersons, assignments: assignments)
     }
 
+    /// Merges buckets whose centroids clear `threshold` until no pair does.
+    /// Each pass scans every pair once; a bucket that absorbs another keeps
+    /// scanning with its updated centroid, and a pass that merges nothing
+    /// ends the loop. That is a few O(k²) passes in practice, instead of
+    /// restarting from the first pair after every single merge (cubic in
+    /// the cluster count).
     private func mergeToFixpoint(_ buckets: inout [Bucket], threshold: Float) {
         var merged = true
         while merged {
             merged = false
-            outer: for i in 0..<buckets.count {
-                for j in (i + 1)..<buckets.count {
+            var i = 0
+            while i < buckets.count {
+                var j = i + 1
+                while j < buckets.count {
                     if dot(buckets[i].normMean, buckets[j].normMean) >= threshold {
                         buckets[i].merge(buckets[j])
                         buckets.remove(at: j)
                         merged = true
-                        break outer
+                    } else {
+                        j += 1
                     }
                 }
+                i += 1
             }
         }
     }
