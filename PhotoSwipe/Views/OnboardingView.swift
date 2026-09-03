@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Three-slide first-run tutorial. The first two slides teach the swipe deck
+/// Four-slide first-run tutorial. The first three slides teach the swipe deck
 /// by being one: the slide card follows the finger, tilts, and flies off with
-/// the same red/green directional tint as the real deck. The final "review"
-/// slide is a static card with a Get-started button.
+/// the same red/green/yellow directional tint as the real deck (left = mark,
+/// right = keep, up = favorite). The final "review" slide is a static card
+/// with a Get-started button.
 ///
 /// Shown once before the permission prompt on first launch (RootView owns the
 /// seen-flag), and re-openable from the menu afterwards. `onFinish` is called
@@ -35,6 +36,14 @@ struct OnboardingView: View {
             allowed: .right
         ),
         Slide(
+            symbol: "heart.fill",
+            symbolColor: .yellow,
+            title: "Swipe up to favorite",
+            body: "Swiping up keeps the photo and marks it as a favorite in Photos. You can switch this to \"add to an album\" in Settings.",
+            hint: "Swipe up to continue",
+            allowed: .up
+        ),
+        Slide(
             symbol: "tray.full.fill",
             symbolColor: .accentColor,
             title: "Review, then delete in bulk",
@@ -54,8 +63,12 @@ struct OnboardingView: View {
         isExiting ? exitOffset : dragTranslation
     }
 
+    /// −1…1 for the horizontal slides, 0…1 (upward) for the favorite slide.
     private var swipeProgress: CGFloat {
-        max(-1, min(1, displayOffset.width / swipeThreshold))
+        if allowedDirection == .up {
+            return max(0, min(1, -displayOffset.height / swipeThreshold))
+        }
+        return max(-1, min(1, displayOffset.width / swipeThreshold))
     }
 
     private var isLastSlide: Bool {
@@ -82,6 +95,8 @@ struct OnboardingView: View {
         case .right:
             return CGSize(width: max(translation.width, 0),
                           height: translation.height)
+        case .up:
+            return CGSize(width: 0, height: min(translation.height, 0))
         case .none:
             return .zero
         }
@@ -154,7 +169,11 @@ struct OnboardingView: View {
     /// right — same visual language as the real swipe deck.
     private var swipeTint: some View {
         let progress = swipeProgress
-        let tint: Color = progress > 0 ? .green : .red
+        let tint: Color
+        switch allowedDirection {
+        case .up: tint = .yellow
+        default: tint = progress > 0 ? .green : .red
+        }
         return tint.opacity(Double(abs(progress)) * 0.22)
     }
 
@@ -204,7 +223,10 @@ struct OnboardingView: View {
             }
             .onEnded { value in
                 let clamped = clamp(value.translation)
-                guard abs(clamped.width) > swipeThreshold else { return }
+                let committed = allowedDirection == .up
+                    ? -clamped.height > swipeThreshold
+                    : abs(clamped.width) > swipeThreshold
+                guard committed else { return }
                 completeSwipe(translation: clamped)
                 // Below threshold: GestureState auto-resets to zero and the
                 // .animation modifier springs the card back to centre.
@@ -212,11 +234,17 @@ struct OnboardingView: View {
     }
 
     private func completeSwipe(translation: CGSize) {
-        let exitX: CGFloat = translation.width > 0 ? exitDistance : -exitDistance
+        let exit: CGSize
+        if allowedDirection == .up {
+            exit = CGSize(width: 0, height: -exitDistance)
+        } else {
+            exit = CGSize(width: translation.width > 0 ? exitDistance : -exitDistance,
+                          height: translation.height)
+        }
         exitOffset = translation
         isExiting = true
         withAnimation(.easeOut(duration: 0.25)) {
-            exitOffset = CGSize(width: exitX, height: translation.height)
+            exitOffset = exit
         }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 250_000_000)
@@ -228,7 +256,7 @@ struct OnboardingView: View {
 }
 
 private enum SwipeDirection {
-    case left, right
+    case left, right, up
 }
 
 private struct Slide: Identifiable {
