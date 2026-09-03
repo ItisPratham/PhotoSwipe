@@ -13,6 +13,7 @@ struct PeopleView: View {
     @AppStorage("PhotoSwipe.peopleSensitivity") private var sensitivity: Double = 1
     @AppStorage("PhotoSwipe.groupingExpanded") private var groupingExpanded: Bool = false
     @State private var showHidden = false
+    @State private var showMergeSuggestions = false
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 16),
@@ -111,6 +112,7 @@ struct PeopleView: View {
     private var grid: some View {
         VStack(spacing: 0) {
             peopleHeader
+            suggestionsSection
             hiddenSection
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
@@ -137,6 +139,36 @@ struct PeopleView: View {
         }
         .navigationDestination(isPresented: $showHidden) {
             HiddenPeopleView(viewModel: viewModel, service: service)
+        }
+        .sheet(isPresented: $showMergeSuggestions) {
+            MergeSuggestionsSheet(viewModel: viewModel, service: service)
+        }
+    }
+
+    /// Row for merge suggestions, same shape as the hidden-people row.
+    @ViewBuilder
+    private var suggestionsSection: some View {
+        if !viewModel.mergeSuggestions.isEmpty {
+            Button { showMergeSuggestions = true } label: {
+                HStack {
+                    Image(systemName: "arrow.triangle.merge")
+                        .foregroundStyle(.tint)
+                    Text(viewModel.mergeSuggestions.count == 1
+                         ? "1 possible match"
+                         : "\(viewModel.mergeSuggestions.count) possible matches")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, Theme.Spacing.screenMargin)
+                .frame(height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Review people who may be the same person")
+            Divider()
+                .padding(.horizontal, Theme.Spacing.screenMargin)
         }
     }
 
@@ -333,7 +365,7 @@ private struct PersonCell: View {
 /// result may already be cropped, which would put the face off-centre. The
 /// crop is computed once per delivered image and kept in state, not
 /// recomputed on every body evaluation.
-private struct PersonCoverView: View {
+struct PersonCoverView: View {
     let cluster: PersonCluster
     let service: PhotoLibraryService
 

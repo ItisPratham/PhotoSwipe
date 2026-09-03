@@ -27,6 +27,9 @@ final class PeopleViewModel: ObservableObject {
     @Published private(set) var hiddenClusters: [PersonCluster] = []
     /// True while re-running in the background with results already on screen.
     @Published private(set) var isRefreshing = false
+    /// Pairs of visible people who may be the same person, most similar
+    /// first. Refreshed with the clusters; dismissed pairs never return.
+    @Published private(set) var mergeSuggestions: [MergeSuggestion] = []
 
     var progress: Double { total > 0 ? Double(processed) / Double(total) : 0 }
     var isModelAvailable: Bool { embedder.isAvailable }
@@ -221,6 +224,49 @@ final class PeopleViewModel: ObservableObject {
         clusters = all.filter { !$0.isHidden }
         hiddenClusters = all.filter { $0.isHidden }
         phase = (clusters.isEmpty && hiddenClusters.isEmpty) ? .empty : .results
+        await refreshMergeSuggestions()
+    }
+
+    /// Centroid pairs near the merge floor, minus hidden people and pairs
+    /// the user already declined. The pairwise pass is k² over centroids —
+    /// cheap; the centroid read is one pass over the embeddings.
+    private func refreshMergeSuggestions() async {
+        guard clusters.count > 1,
+              let centroids = try? await store.personCentroids()
+        else { mergeSuggestions = []; return }
+        let dismissed = (try? await store.dismissedMergePairs()) ?? []
+        let byID = Dictionary(clusters.map { ($0.personID, $0) }, uniquingKeysWith: { first, _ in first })
+        let visible = centroids.filter { byID[$0.key] != nil }
+        let threshold = similarityThreshold
+        let pairs = await Task.detached(priority: .utility) {
+            FaceClusterer.mergeCandidates(centroids: visible, threshold: threshold)
+        }.value
+        mergeSuggestions = pairs.compactMap { pair in
+            guard !dismissed.contains(MergeSuggestion.pairKey(pair.a, pair.b)),
+                  let a = byID[pair.a], let b = byID[pair.b] else { return nil }
+            return MergeSuggestion(a: a, b: b, similarity: pair.similarity)
+        }
+    }
+
+    /// "Yes, same person": the smaller cluster joins the larger one (names
+    /// and covers carry over where the larger has none).
+    func acceptMerge(_ suggestion: MergeSuggestion) {
+        let (source, dest) = suggestion.a.photoCount <= suggestion.b.photoCount
+            ? (suggestion.a, suggestion.b) : (suggestion.b, suggestion.a)
+        mergeSuggestions.removeAll { $0.id == suggestion.id }
+        Task { [weak self] in
+            guard let self else { return }
+            try? await self.store.merge(source.personID, into: dest.personID)
+            await self.loadClusters()
+        }
+    }
+
+    /// "No": remembered on both people so the pair is never asked again.
+    func dismissMerge(_ suggestion: MergeSuggestion) {
+        mergeSuggestions.removeAll { $0.id == suggestion.id }
+        Task { [weak self] in
+            try? await self?.store.dismissMerge(suggestion.a.personID, suggestion.b.personID)
+        }
     }
 
     /// Restores a hidden person back into the main grid.

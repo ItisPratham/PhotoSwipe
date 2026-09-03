@@ -238,6 +238,36 @@ actor FaceStore {
         .sorted { ($0.photoCount, $0.personID) > ($1.photoCount, $1.personID) }
     }
 
+    // MARK: - Merge suggestions
+
+    /// L2-normalised centroid per clustered person (non-ignored faces).
+    func personCentroids() throws -> [String: [Float]] {
+        FaceClusterer.centroids(of: try clusteredFaces())
+    }
+
+    /// Order-independent keys (`MergeSuggestion.pairKey`) of pairs the user
+    /// declined to merge.
+    func dismissedMergePairs() throws -> Set<String> {
+        var keys = Set<String>()
+        for person in try modelContext.fetch(FetchDescriptor<PersonRow>()) {
+            for other in person.dismissedMergeIDs ?? [] {
+                keys.insert(MergeSuggestion.pairKey(person.personID, other))
+            }
+        }
+        return keys
+    }
+
+    /// Remembers that `a` and `b` are not the same person, on both rows.
+    func dismissMerge(_ a: String, _ b: String) throws {
+        for (this, other) in [(a, b), (b, a)] {
+            guard let row = try person(this) else { continue }
+            var ids = row.dismissedMergeIDs ?? []
+            if !ids.contains(other) { ids.append(other) }
+            row.dismissedMergeIDs = ids
+        }
+        try modelContext.save()
+    }
+
     // MARK: - Cluster management
 
     func rename(personID: String, to name: String?) throws {

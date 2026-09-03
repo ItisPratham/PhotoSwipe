@@ -17,6 +17,10 @@ final class PersonRow {
     /// The user hid this whole cluster from the People list.
     var isHidden: Bool
     var createdAt: Date
+    /// Person ids the user said are *not* this person (merge suggestions the
+    /// user declined). Written on both rows of the pair. Optional so existing
+    /// stores migrate in place.
+    var dismissedMergeIDs: [String]?
 
     init(personID: String,
          name: String? = nil,

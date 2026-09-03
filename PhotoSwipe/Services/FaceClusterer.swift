@@ -178,6 +178,56 @@ final class FaceClusterer: Sendable {
         return Result(newPersons: newPersons, assignments: assignments)
     }
 
+    /// One L2-normalised centroid per person from their stored faces.
+    static func centroids(of faces: [FaceObservation]) -> [String: [Float]] {
+        var sums: [String: [Float]] = [:]
+        var counts: [String: Int] = [:]
+        for face in faces where !face.embedding.isEmpty {
+            guard let pid = face.personID else { continue }
+            if let existing = sums[pid], existing.count == face.embedding.count {
+                var added = [Float](repeating: 0, count: existing.count)
+                vDSP_vadd(existing, 1, face.embedding, 1, &added, 1, vDSP_Length(existing.count))
+                sums[pid] = added
+                counts[pid]! += 1
+            } else if sums[pid] == nil {
+                sums[pid] = face.embedding
+                counts[pid] = 1
+            }
+        }
+        return sums.reduce(into: [:]) { result, entry in
+            var mean = [Float](repeating: 0, count: entry.value.count)
+            var divisor = Float(counts[entry.key] ?? 1)
+            vDSP_vsdiv(entry.value, 1, &divisor, &mean, 1, vDSP_Length(mean.count))
+            result[entry.key] = FaceEmbedder.l2normalized(mean)
+        }
+    }
+
+    /// Pairs of existing people whose centroids are close enough to be the
+    /// same person — at or above `mergeThreshold − margin`. The incremental
+    /// path never merges existing clusters on its own, so these are surfaced
+    /// as suggestions. Most similar first, capped at `limit`.
+    static func mergeCandidates(
+        centroids: [String: [Float]],
+        threshold: Float,
+        margin: Float = 0.08,
+        limit: Int = 20
+    ) -> [(a: String, b: String, similarity: Float)] {
+        let floor = mergeThreshold(for: threshold) - margin
+        let ids = centroids.keys.sorted()
+        var pairs: [(a: String, b: String, similarity: Float)] = []
+        for i in ids.indices {
+            for j in (i + 1)..<ids.count {
+                guard let x = centroids[ids[i]], let y = centroids[ids[j]],
+                      x.count == y.count, !x.isEmpty else { continue }
+                var sim: Float = 0
+                vDSP_dotpr(x, 1, y, 1, &sim, vDSP_Length(x.count))
+                if sim >= floor { pairs.append((ids[i], ids[j], sim)) }
+            }
+        }
+        pairs.sort { $0.similarity > $1.similarity }
+        return Array(pairs.prefix(limit))
+    }
+
     /// Merges buckets whose centroids clear `threshold` until no pair does.
     /// Each pass scans every pair once; a bucket that absorbs another keeps
     /// scanning with its updated centroid, and a pass that merges nothing
