@@ -198,10 +198,7 @@ struct DuplicatesView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(viewModel.groups) { group in
-                        NavigationLink(value: AppRoute.swipe(.duplicateGroup(group))) {
-                            groupRow(group)
-                        }
-                        .buttonStyle(.plain)
+                        groupRow(group)
                     }
                 }
                 .padding(16)
@@ -209,42 +206,60 @@ struct DuplicatesView: View {
         }
     }
 
+    /// The header opens the whole group; a thumbnail starts the deck at that
+    /// photo and continues through the rest of the group, the way tapping a
+    /// photo in Browse starts from there.
     private func groupRow(_ group: DuplicateGroup) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("\(group.count) similar")
-                    .font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+            NavigationLink(value: AppRoute.swipe(.duplicateGroup(group))) {
+                HStack {
+                    Text("\(group.count) similar")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Swipe all \(group.count) similar photos")
 
             LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(previewIDs(for: group), id: \.self) { id in
-                    GroupThumbnail(
-                        asset: viewModel.asset(for: id),
-                        service: service,
-                        isKeeper: id == group.suggestedKeeperID
-                    )
+                    NavigationLink(value: AppRoute.swipe(.duplicateGroup(group, startingAt: id))) {
+                        GroupThumbnail(
+                            asset: viewModel.asset(for: id),
+                            service: service,
+                            isKeeper: id == group.suggestedKeeperID
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(id == group.suggestedKeeperID
+                                        ? "Suggested keeper, start swiping here"
+                                        : "Start swiping from this photo")
+                    .contextMenu {
+                        NavigationLink(value: AppRoute.swipe(.duplicateGroup(group, startingAt: id))) {
+                            Label("Start swiping from here", systemImage: "play.circle")
+                        }
+                    } preview: {
+                        if let asset = viewModel.asset(for: id) {
+                            ThumbnailPreview(asset: asset, service: service)
+                        }
+                    }
                 }
             }
         }
         .padding(14)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Group of \(group.count) similar photos")
     }
 
-    /// Show up to a row of thumbnails, keeper first.
+    /// Up to eight thumbnails in the group's own (oldest-first) order, so a
+    /// tap's "from here onward" reads the same as the row.
     private func previewIDs(for group: DuplicateGroup) -> [String] {
-        var ids = group.assetIDs
-        if let idx = ids.firstIndex(of: group.suggestedKeeperID) {
-            ids.remove(at: idx)
-            ids.insert(group.suggestedKeeperID, at: 0)
-        }
-        return Array(ids.prefix(8))
+        Array(group.assetIDs.prefix(8))
     }
 }
 

@@ -133,11 +133,18 @@ struct DeckSource: Hashable {
     /// Every screenshot in the library, oldest first.
     static let screenshots = DeckSource(scope: .allPhotos, media: .photos, subtype: .screenshots)
 
-    /// Builds the deck for reviewing a duplicate group, keeper badged.
-    static func duplicateGroup(_ group: DuplicateGroup) -> DeckSource {
-        DeckSource(scope: .duplicateGroup(group.assetIDs),
-                   media: .all,
-                   suggestedKeeperID: group.suggestedKeeperID)
+    /// Builds the deck for reviewing a duplicate group, keeper badged. With
+    /// `startingAt`, the deck begins at that member and continues through the
+    /// rest of the group in order (oldest first), like tapping a photo in
+    /// Browse; members before it are left out.
+    static func duplicateGroup(_ group: DuplicateGroup, startingAt startID: String? = nil) -> DeckSource {
+        var ids = group.assetIDs
+        if let startID, let index = ids.firstIndex(of: startID) {
+            ids = Array(ids[index...])
+        }
+        return DeckSource(scope: .duplicateGroup(ids),
+                          media: .all,
+                          suggestedKeeperID: group.suggestedKeeperID)
     }
 
     /// Builds the deck scoped to a person cluster's photos. `preservesOrder`

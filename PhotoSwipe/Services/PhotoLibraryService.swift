@@ -254,8 +254,10 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             result = PHAsset.fetchAssets(in: collection, options: options)
         case .duplicateGroup(let ids):
             // A specific, already-chosen set — media/date filters don't
-            // apply; just resolve the identifiers (still oldest-first).
+            // apply. The grouping pass hands the ids oldest-first and a tap
+            // may start partway through, so the caller's order is kept.
             options.predicate = nil
+            options.sortDescriptors = nil
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
         case .person(let ids, let preservesOrder):
             // Media/date filters don't apply to an explicit id set. When
@@ -296,6 +298,7 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         switch source.scope {
         case .person(let ids, true): orderedIDs = ids
         case .similar(_, let ids): orderedIDs = ids
+        case .duplicateGroup(let ids): orderedIDs = ids
         default: orderedIDs = nil
         }
         if let orderedIDs {
