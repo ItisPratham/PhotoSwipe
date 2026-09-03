@@ -5,6 +5,10 @@ import SwiftUI
 /// will flow in automatically on future launches.
 struct CaughtUpView: View {
     let totalReviewed: Int
+    /// What "Back to Browse" does. Pushed decks leave this nil and pop via
+    /// `dismiss`; the Clean tab (a stack root, where dismiss is a no-op)
+    /// supplies a closure that switches to the Browse tab instead.
+    var onBackToBrowse: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -25,7 +29,11 @@ struct CaughtUpView: View {
                 .padding(.horizontal, 32)
 
             Button {
-                dismiss()
+                if let onBackToBrowse {
+                    onBackToBrowse()
+                } else {
+                    dismiss()
+                }
             } label: {
                 Text("Back to Browse")
             }

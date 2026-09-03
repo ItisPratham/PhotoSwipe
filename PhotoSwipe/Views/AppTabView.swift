@@ -52,7 +52,8 @@ struct AppTabView: View {
                       stats: statsStore,
                       sizes: sizeStore,
                       source: .allPhotos,
-                      onLoaded: onCleanLoaded)
+                      onLoaded: onCleanLoaded,
+                      onBackToBrowse: { selection = .browse })
                 .navigationTitle("Clean")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { settingsToolbar }

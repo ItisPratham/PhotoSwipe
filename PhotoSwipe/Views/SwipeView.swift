@@ -29,6 +29,9 @@ struct SwipeView: View {
     /// RootView's launch splash can wait for real content before crossfading in;
     /// every other entry point leaves it as the no-op default.
     private let onLoaded: () -> Void
+    /// Passed to the end-of-deck screen. Nil for pushed decks (they pop);
+    /// the Clean tab supplies a tab switch since it can't be dismissed.
+    private let onBackToBrowse: (() -> Void)?
 
     /// What we actually offset the card by. During the drag we follow the
     /// gesture; while flinging the card off-screen we switch to the explicit
@@ -42,12 +45,14 @@ struct SwipeView: View {
          stats: StatsStore,
          sizes: SizeStore,
          source: DeckSource,
-         onLoaded: @escaping () -> Void = {}) {
+         onLoaded: @escaping () -> Void = {},
+         onBackToBrowse: (() -> Void)? = nil) {
         self.service = service
         self.store = store
         self.stats = stats
         self.sizes = sizes
         self.onLoaded = onLoaded
+        self.onBackToBrowse = onBackToBrowse
         self._viewModel = StateObject(
             wrappedValue: SwipeViewModel(store: store, stats: stats, sizes: sizes, source: source)
         )
@@ -72,7 +77,8 @@ struct SwipeView: View {
                     } else if let asset = viewModel.currentAsset {
                         card(for: asset)
                     } else {
-                        CaughtUpView(totalReviewed: store.reviewedIDs.count)
+                        CaughtUpView(totalReviewed: store.reviewedIDs.count,
+                                     onBackToBrowse: onBackToBrowse)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
