@@ -40,8 +40,17 @@ final class PeopleViewModel: ObservableObject {
     private let clusterer = FaceClusterer()
     private let embedder = FaceEmbedder.shared
     private let store = FaceStore(modelContainer: FaceContainer.shared)
-    private var task: Task<Void, Never>?
+    /// Scans and regroups run strictly one at a time through this queue, so a
+    /// library change mid-scan queues a follow-up instead of replacing the
+    /// handle to the running scan, Cancel always reaches the real work, and a
+    /// run requested right after Cancel waits for the old one to unwind.
+    private let queue = SerialTaskQueue()
     private var isRunning = false
+    /// A run is waiting in the queue; further requests fold into it. The
+    /// queued run is conditional (only if faces exist) unless *any* requester
+    /// asked for it unconditionally.
+    private var isRunQueued = false
+    private var queuedRunIsConditional = true
 
     // MARK: - Entry points
 
@@ -50,44 +59,53 @@ final class PeopleViewModel: ObservableObject {
     /// model-missing state up front.
     func onAppear(using service: PhotoLibraryService) {
         guard embedder.isAvailable else { phase = .unavailable; return }
-        task = Task { [weak self] in
-            guard let self else { return }
-            if await hasFaces() {
-                await run(using: service)
-            }
-        }
+        enqueueRun(using: service, onlyIfScanned: true)
     }
 
     func onLibraryChange(using service: PhotoLibraryService) {
         guard embedder.isAvailable else { return }
-        task = Task { [weak self] in
-            guard let self, await hasFaces() else { return }
-            await run(using: service)
-        }
+        enqueueRun(using: service, onlyIfScanned: true)
     }
 
     /// The explainer's "Scan library" button — the opt-in first pass.
     func startFirstScan(using service: PhotoLibraryService) {
         guard embedder.isAvailable else { phase = .unavailable; return }
-        task = Task { [weak self] in await self?.run(using: service) }
+        enqueueRun(using: service, onlyIfScanned: false)
     }
 
     func reload(using service: PhotoLibraryService) {
-        task = Task { [weak self] in await self?.run(using: service) }
+        enqueueRun(using: service, onlyIfScanned: false)
     }
 
+    /// Stops the running scan and drops anything queued behind it. `isRunning`
+    /// is left to the run's own `defer` so a follow-up request can't overlap
+    /// the cancelled run while it unwinds.
     func cancel() {
-        task?.cancel()
-        task = nil
-        isRunning = false
+        queue.cancelAll()
+        isRunQueued = false
         isRefreshing = false
         phase = clusters.isEmpty ? .idle : .results
+    }
+
+    private func enqueueRun(using service: PhotoLibraryService, onlyIfScanned: Bool) {
+        queuedRunIsConditional = isRunQueued
+            ? (queuedRunIsConditional && onlyIfScanned)
+            : onlyIfScanned
+        guard !isRunQueued else { return }
+        isRunQueued = true
+        queue.enqueue { [weak self] in
+            guard let self else { return }
+            let conditional = self.queuedRunIsConditional
+            self.isRunQueued = false
+            if conditional, !(await self.hasFaces()) { return }
+            await self.run(using: service)
+        }
     }
 
     // MARK: - Run
 
     private func run(using service: PhotoLibraryService) async {
-        guard !isRunning else { return }
+        guard !isRunning, !Task.isCancelled else { return }
         isRunning = true
         defer { isRunning = false; isRefreshing = false }
 
@@ -167,12 +185,10 @@ final class PeopleViewModel: ObservableObject {
     /// Sensitivity-slider entry point: re-group everyone at a new threshold from
     /// the already-cached embeddings (no re-scan — seconds, not minutes). This is
     /// a full re-cluster, so it clears names/merges/hides; tuning is meant as a
-    /// pre-naming step. No-op while a scan is running.
+    /// pre-naming step. Queued behind any running scan rather than racing it.
     func regroup(threshold: Float) {
-        guard !isRunning else { return }
         similarityThreshold = threshold
-        task?.cancel()
-        task = Task { [weak self] in
+        queue.enqueue { [weak self] in
             guard let self else { return }
             self.isRefreshing = true
             await self.reclusterFull()

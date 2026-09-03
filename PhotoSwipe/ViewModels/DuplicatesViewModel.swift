@@ -39,8 +39,20 @@ final class DuplicatesViewModel: ObservableObject {
 
     private let indexService = LibraryIndexService()
     private let store = IndexStore(modelContainer: IndexContainer.shared)
-    private var task: Task<Void, Never>?
+    /// Scans and regroups run strictly one at a time through this queue, so a
+    /// library change mid-scan queues a follow-up instead of replacing the
+    /// handle to the running scan, Cancel always reaches the real work, and a
+    /// run requested right after Cancel waits for the old one to unwind.
+    private let queue = SerialTaskQueue()
     private var isRunning = false
+    /// A run is waiting in the queue; further requests fold into it. The
+    /// queued run is conditional (only if an index exists) unless *any*
+    /// requester asked for it unconditionally.
+    private var isRunQueued = false
+    private var queuedRunIsConditional = true
+    /// A regroup is waiting; slider ticks fold into it and it reads the latest
+    /// threshold when it starts, so the final value is never dropped.
+    private var isRegroupQueued = false
     /// Last fetched asset list, reused by regroup so the sensitivity slider
     /// doesn't re-enumerate the whole library on every tick.
     private var lastAssets: [PhotoAsset] = []
@@ -52,49 +64,66 @@ final class DuplicatesViewModel: ObservableObject {
     /// On first appearance: auto-refresh if we've scanned before, otherwise
     /// leave the explainer up so the first scan stays opt-in.
     func onAppear(using service: PhotoLibraryService) {
-        task = Task { [weak self] in
-            guard let self, await hasIndex() else { return }
-            await run(using: service)
-        }
+        enqueueRun(using: service, onlyIfIndexed: true)
     }
 
     /// The library changed while the screen is alive — refresh if already scanned.
     func onLibraryChange(using service: PhotoLibraryService) {
-        task = Task { [weak self] in
-            guard let self, await hasIndex() else { return }
-            await run(using: service)
-        }
+        enqueueRun(using: service, onlyIfIndexed: true)
     }
 
     /// The explainer's "Scan library" button — the opt-in first pass.
     func startFirstScan(using service: PhotoLibraryService) {
-        task = Task { [weak self] in await self?.run(using: service) }
+        enqueueRun(using: service, onlyIfIndexed: false)
     }
 
     /// Manual reload button on the results/empty screen.
     func reload(using service: PhotoLibraryService) {
-        task = Task { [weak self] in await self?.run(using: service) }
+        enqueueRun(using: service, onlyIfIndexed: false)
     }
 
     /// Sensitivity changed — regroup from the existing index (no rescan).
     func updateThreshold(_ threshold: Double, using service: PhotoLibraryService) {
         distanceThreshold = threshold
-        guard phase == .results || phase == .empty else { return }
-        task = Task { [weak self] in await self?.regroup(using: service) }
+        guard phase == .results || phase == .empty, !isRegroupQueued else { return }
+        isRegroupQueued = true
+        queue.enqueue { [weak self] in
+            guard let self else { return }
+            self.isRegroupQueued = false
+            await self.regroup(using: service)
+        }
     }
 
+    /// Stops the running scan/regroup and drops anything queued behind it.
+    /// `isRunning` is left to the run's own `defer` so a follow-up request
+    /// can't overlap the cancelled run while it unwinds.
     func cancel() {
-        task?.cancel()
-        task = nil
-        isRunning = false
+        queue.cancelAll()
+        isRunQueued = false
+        isRegroupQueued = false
         isRefreshing = false
         phase = groups.isEmpty ? .idle : .results
+    }
+
+    private func enqueueRun(using service: PhotoLibraryService, onlyIfIndexed: Bool) {
+        queuedRunIsConditional = isRunQueued
+            ? (queuedRunIsConditional && onlyIfIndexed)
+            : onlyIfIndexed
+        guard !isRunQueued else { return }
+        isRunQueued = true
+        queue.enqueue { [weak self] in
+            guard let self else { return }
+            let conditional = self.queuedRunIsConditional
+            self.isRunQueued = false
+            if conditional, !(await self.hasIndex()) { return }
+            await self.run(using: service)
+        }
     }
 
     // MARK: - Run
 
     private func run(using service: PhotoLibraryService) async {
-        guard !isRunning else { return }
+        guard !isRunning, !Task.isCancelled else { return }
         isRunning = true
         defer { isRunning = false; isRefreshing = false }
 

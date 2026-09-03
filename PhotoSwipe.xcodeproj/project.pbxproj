@@ -35,6 +35,7 @@
 		D75FD6492FFC9C30003364D9 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD6482FFC9C30003364D9 /* IndexStore.swift */; };
 		D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */; };
 		D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */; };
+		D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */; };
 		D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */; };
 		D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D592FEE5F1000AE08D1 /* CardView.swift */; };
 		D7893D5C2FEE5F1E00AE08D1 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */; };
@@ -97,6 +98,7 @@
 		D75FD6482FFC9C30003364D9 /* IndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexStore.swift; sourceTree = "<group>"; };
 		D75FD64A2FFC9C72003364D9 /* LibraryIndexService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryIndexService.swift; sourceTree = "<group>"; };
 		D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesViewModel.swift; sourceTree = "<group>"; };
+		D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SerialTaskQueue.swift; sourceTree = "<group>"; };
 		D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		D7893D592FEE5F1000AE08D1 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		D7893D5B2FEE5F1E00AE08D1 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
@@ -239,6 +241,7 @@
 				D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */,
 				D7DDEA382FFA2A6D00E3ED52 /* BrowseViewModel.swift */,
 				D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */,
+				D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */,
 				D7A915003001DFFC009426DD /* PeopleViewModel.swift */,
 				D7A915023001E00C009426DD /* PersonDetailViewModel.swift */,
 			);
@@ -389,6 +392,7 @@
 				D74813953000EAEC0039DF72 /* Theme.swift in Sources */,
 				D75FD64B2FFC9C72003364D9 /* LibraryIndexService.swift in Sources */,
 				D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */,
+				D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */,
 				D7DDEA412FFA8A9000E3ED52 /* AppRoute.swift in Sources */,
 				D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */,
 				D7A915033001E00C009426DD /* PersonDetailViewModel.swift in Sources */,
