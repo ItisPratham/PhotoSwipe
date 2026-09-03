@@ -27,6 +27,9 @@ struct PersonDetailView: View {
     var body: some View {
         content
             .navigationBarTitleDisplayMode(.inline)
+            // Opaque bar, same reason as Browse: no blurred rows above the
+            // pinned date header.
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar { principalTitle; sortButton; optionsMenu }
             .task { await viewModel.load(using: service) }
             .alert("Name this person", isPresented: $showRename) {

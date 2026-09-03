@@ -24,6 +24,10 @@ struct BrowseView: View {
         content
             .navigationTitle("Browse")
             .navigationBarTitleDisplayMode(.inline)
+            // Opaque bar: with the default translucent bar, rows scrolled
+            // under it showed through blurred above the pinned day header,
+            // which read as photos floating on both sides of the date.
+            .toolbarBackground(.visible, for: .navigationBar)
             .task {
                 prefetcher.attach(service)
                 await viewModel.loadIfNeeded(using: service)
@@ -139,16 +143,19 @@ struct BrowseView: View {
                                 HStack(spacing: 6) {
                                     Text(section.id, format: .dateTime.month(.wide).day().year())
                                         .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(.primary)
                                     Spacer()
                                     Image(systemName: "chevron.right")
                                         .font(.caption2)
-                                        .foregroundStyle(.white.opacity(0.5))
+                                        .foregroundStyle(.tertiary)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, Theme.Spacing.screenMargin)
                                 .padding(.vertical, 6)
-                                .background(Color.black)
+                                // System background so the pinned header
+                                // continues the opaque bar above it in both
+                                // light and dark, matching the person view.
+                                .background(Color(.systemBackground))
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
