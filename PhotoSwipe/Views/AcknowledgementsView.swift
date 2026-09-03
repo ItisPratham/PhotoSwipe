@@ -29,7 +29,7 @@ struct AcknowledgementsView: View {
             } header: {
                 Text("Bundled model")
             } footer: {
-                Text("The pretrained AdaFace weights are for non-commercial research use only. Bundling them forecloses selling or distributing this app commercially. See THIRD_PARTY_LICENSES.md at the repo root for the full MIT license text and weight-license terms.")
+                Text("The AdaFace weights are licensed for non-commercial research only, so this app can't be sold or distributed commercially while it includes them. See THIRD_PARTY_LICENSES.md for the full license terms.")
             }
 
             Section {

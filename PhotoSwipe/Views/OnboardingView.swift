@@ -22,7 +22,7 @@ struct OnboardingView: View {
             symbol: "hand.draw.fill",
             symbolColor: .red,
             title: "Swipe left to mark",
-            body: "Swiping left marks a photo for deletion — nothing is removed yet, so you can plough through your library without fear.",
+            body: "Swiping left marks a photo for deletion. Nothing is removed yet, so you can move fast without worrying.",
             hint: "Swipe left to continue",
             allowed: .left
         ),

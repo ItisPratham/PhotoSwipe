@@ -43,7 +43,7 @@ struct PermissionView: View {
         if isBlocked {
             return "PhotoSwipe needs full access to your library to let you swipe through and delete photos. Please enable Full Access in Settings."
         }
-        return "PhotoSwipe lets you swipe through your library to clear out photos you no longer want. Grant full access to get started — your photos never leave your device."
+        return "PhotoSwipe lets you swipe through your library to clear out photos you no longer want. Grant full access to get started. Your photos never leave your device."
     }
 
     private func primaryAction() {

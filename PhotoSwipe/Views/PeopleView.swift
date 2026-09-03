@@ -55,7 +55,7 @@ struct PeopleView: View {
         ContentUnavailableView {
             Label("Find people", systemImage: "person.2")
         } description: {
-            Text("Group your photos by the people in them. This may take a few minutes and runs entirely on your device — nothing leaves your phone.")
+            Text("Groups your photos by who's in them. The first scan takes a few minutes and runs on your phone, so nothing is uploaded.")
         } actions: {
             Button("Scan library") { viewModel.startFirstScan(using: service) }
                 .buttonStyle(.borderedProminent)
@@ -92,7 +92,7 @@ struct PeopleView: View {
         ContentUnavailableView {
             Label("No people found", systemImage: "person.slash")
         } description: {
-            Text("The scan didn't find recognizable faces. Add more photos and scan again.")
+            Text("The scan didn't find any clear faces. Add more photos and scan again.")
         } actions: {
             Button("Scan again") { viewModel.reload(using: service) }
         }
@@ -102,7 +102,7 @@ struct PeopleView: View {
         ContentUnavailableView {
             Label("Face model not installed", systemImage: "exclamationmark.triangle")
         } description: {
-            Text("The on-device face model isn't bundled in this build, so people grouping is unavailable.")
+            Text("This build doesn't include the face model, so grouping by person isn't available.")
         }
     }
 
@@ -203,7 +203,7 @@ struct PeopleView: View {
                             .accessibilityValue("\(Int(sensitivity)) of 10")
                         Image(systemName: "person.crop.circle.badge.checkmark").foregroundStyle(.secondary)
                     }
-                    Text("Higher merges the same person across poses & lighting. Re-groups everyone — clears any names you've set.")
+                    Text("Higher groups the same person across different poses and lighting. Changing this regroups everyone and clears any names you've set.")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, Theme.Spacing.screenMargin)

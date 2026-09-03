@@ -71,7 +71,7 @@ struct SettingsView: View {
                 Button("Reset", role: .destructive, action: store.resetAll)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("All photos you've kept or marked for deletion will re-enter the deck. Your Photos library isn't touched — this only clears PhotoSwipe's tracking.")
+                Text("Everything you've kept or marked comes back into the deck. This only clears PhotoSwipe's own tracking; your Photos library isn't touched.")
             }
         }
     }

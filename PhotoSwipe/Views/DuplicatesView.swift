@@ -112,7 +112,7 @@ struct DuplicatesView: View {
                 .foregroundStyle(.tint)
             Text("Find duplicates")
                 .font(.title2.bold())
-            Text("PhotoSwipe can scan your library for camera bursts and near-identical shots. This may take a few minutes and runs entirely on your device.")
+            Text("Finds camera bursts and near-identical shots in your library. The first scan takes a few minutes and runs on your phone.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
