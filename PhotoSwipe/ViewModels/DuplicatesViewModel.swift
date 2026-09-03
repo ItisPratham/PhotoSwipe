@@ -60,6 +60,12 @@ final class DuplicatesViewModel: ObservableObject {
     /// Last fetched asset list, reused by regroup so the sensitivity slider
     /// doesn't re-enumerate the whole library on every tick.
     private var lastAssets: [PhotoAsset] = []
+    /// The index snapshot the last run grouped from, and the library version
+    /// it belongs to. A regroup at the same version reuses it instead of
+    /// re-reading every vector from SwiftData, so slider ticks cost only the
+    /// pairwise pass. Released with the view model when the screen pops.
+    private var lastIndexed: [IndexedAsset] = []
+    private var lastIndexedVersion: Int?
 
     func asset(for id: String) -> PhotoAsset? { assetsByID[id] }
 
@@ -144,6 +150,7 @@ final class DuplicatesViewModel: ObservableObject {
             isRefreshing = true
         }
 
+        let version = service.libraryVersion
         let assets = await service.fetchImages(source: .allPhotos)
         lastAssets = assets
         do {
@@ -155,6 +162,8 @@ final class DuplicatesViewModel: ObservableObject {
             }
             if showProgress { phase = .grouping }
             let indexed = try await store.allIndexed()
+            lastIndexed = indexed
+            lastIndexedVersion = version
             let computed = try await group(assets: assets, indexed: indexed)
             apply(groups: computed, from: assets)
         } catch is CancellationError {
@@ -174,7 +183,14 @@ final class DuplicatesViewModel: ObservableObject {
             ? await service.fetchImages(source: .allPhotos)
             : lastAssets
         lastAssets = assets
-        let indexed = (try? await store.allIndexed()) ?? []
+        let indexed: [IndexedAsset]
+        if lastIndexedVersion == service.libraryVersion, !lastIndexed.isEmpty {
+            indexed = lastIndexed
+        } else {
+            indexed = (try? await store.allIndexed()) ?? []
+            lastIndexed = indexed
+            lastIndexedVersion = service.libraryVersion
+        }
         // Don't clobber the current results if this regroup is cancelled.
         if let computed = try? await group(assets: assets, indexed: indexed) {
             apply(groups: computed, from: assets)

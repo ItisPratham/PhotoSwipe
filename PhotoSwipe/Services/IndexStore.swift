@@ -2,10 +2,11 @@ import Foundation
 import SwiftData
 
 /// Sendable snapshot of an indexed asset, safe to hand across actor boundaries
-/// (the `@Model` object itself is not Sendable).
+/// (the `@Model` object itself is not Sendable). Carries the decoded vector,
+/// ready for matching; empty when the print couldn't be decoded.
 struct IndexedAsset: Sendable, Hashable {
     let localIdentifier: String
-    let featurePrint: Data
+    let vector: [Float]
     let byteSize: Int64
 }
 
@@ -75,13 +76,32 @@ actor IndexStore {
         try modelContext.fetchCount(FetchDescriptor<AssetIndex>())
     }
 
-    /// Every indexed asset, as Sendable snapshots, for grouping.
+    /// Every indexed asset, as Sendable snapshots, for grouping. Rows written
+    /// before 4.2 still hold an archived observation; they are decoded here
+    /// once, the raw vector written back, and the archive dropped, so the
+    /// unarchive cost is paid a single time per row rather than per regroup.
     func allIndexed() throws -> [IndexedAsset] {
-        try modelContext.fetch(FetchDescriptor<AssetIndex>()).map {
-            IndexedAsset(localIdentifier: $0.localIdentifier,
-                         featurePrint: $0.featurePrint,
-                         byteSize: $0.byteSize)
+        let rows = try modelContext.fetch(FetchDescriptor<AssetIndex>())
+        var result: [IndexedAsset] = []
+        result.reserveCapacity(rows.count)
+        var converted = 0
+        for row in rows {
+            let vector: [Float]
+            if let data = row.vector {
+                vector = FeaturePrintCodec.floats(from: data)
+            } else {
+                vector = FeaturePrintCodec.vector(fromArchived: row.featurePrint)
+                row.vector = FeaturePrintCodec.data(from: vector)
+                row.featurePrint = Data()
+                converted += 1
+                if converted % 500 == 0 { try modelContext.save() }
+            }
+            result.append(IndexedAsset(localIdentifier: row.localIdentifier,
+                                       vector: vector,
+                                       byteSize: row.byteSize))
         }
+        if converted % 500 != 0 { try modelContext.save() }
+        return result
     }
 
     /// Inserts or updates a batch, then saves.
@@ -93,14 +113,16 @@ actor IndexStore {
                     predicate: #Predicate { $0.localIdentifier == id }
                 )
             )
+            let vectorData = FeaturePrintCodec.data(from: item.vector)
             if let record = existing.first {
-                record.featurePrint = item.featurePrint
+                record.vector = vectorData
+                record.featurePrint = Data()
                 record.byteSize = item.byteSize
                 record.scannedAt = scannedAt
             } else {
                 modelContext.insert(
                     AssetIndex(localIdentifier: item.localIdentifier,
-                               featurePrint: item.featurePrint,
+                               vector: vectorData,
                                byteSize: item.byteSize,
                                scannedAt: scannedAt)
                 )

@@ -18,6 +18,8 @@ settings:
   base:
     MARKETING_VERSION: "4.1"
     CURRENT_PROJECT_VERSION: "1"
+    # Accelerate's CBLAS (duplicate matching) without the deprecated headers.
+    OTHER_SWIFT_FLAGS: "-Xcc -DACCELERATE_NEW_LAPACK"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_LANGUAGE: en
     DEVELOPMENT_TEAM: TT7LR66US3

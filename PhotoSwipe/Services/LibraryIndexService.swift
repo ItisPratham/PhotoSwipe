@@ -1,4 +1,3 @@
-import Accelerate
 import Foundation
 import Photos
 import UIKit
@@ -18,8 +17,8 @@ final class LibraryIndexService {
     // MARK: - Scan
 
     /// Indexes every not-yet-scanned asset: loads a downscaled thumbnail, runs
-    /// `VNGenerateImageFeaturePrintRequest`, and upserts the archived print plus
-    /// byte size in batches. Reports `(processed, total)` as it goes. Throws
+    /// `VNGenerateImageFeaturePrintRequest`, and upserts the print's raw
+    /// vector plus byte size in batches. Reports `(processed, total)` as it goes. Throws
     /// `CancellationError` if the enclosing task is cancelled.
     func scan(
         assets: [PhotoAsset],
@@ -38,10 +37,10 @@ final class LibraryIndexService {
             try Task.checkCancellation()
 
             autoreleasepool {
-                if let print = featurePrintData(for: asset.phAsset) {
+                if let vector = featurePrintVector(for: asset.phAsset) {
                     batch.append(
                         IndexedAsset(localIdentifier: asset.id,
-                                     featurePrint: print,
+                                     vector: vector,
                                      byteSize: resourceSize(for: asset.phAsset))
                     )
                 }
@@ -68,72 +67,55 @@ final class LibraryIndexService {
     /// Buckets assets into near-duplicate groups. Camera bursts group cheaply by
     /// `burstIdentifier` (no ML). Everything else is matched **library-wide** —
     /// not just within a time window — so identical shots taken far apart (a
-    /// re-download, a screenshot saved twice, the same meme) still group. Each
-    /// feature print is decoded to its raw float vector once and compared with a
-    /// SIMD L2 distance (vDSP), so the full pairwise pass stays fast. Only
-    /// groups of two or more are returned; each names its highest-quality member
-    /// as the suggested keeper. `distanceThreshold` controls sensitivity —
-    /// smaller = only near-identical. Cancelable between rows.
+    /// re-download, a screenshot saved twice, the same meme) still group. The
+    /// pairwise pass runs as blocked BLAS matrix products in
+    /// `NearDuplicateMatcher`, so a 50k library takes seconds, not minutes.
+    /// Only groups of two or more are returned; each names its
+    /// highest-quality member as the suggested keeper. `distanceThreshold`
+    /// controls sensitivity — smaller = only near-identical. Cancelable
+    /// between blocks.
     func groups(
         assets: [PhotoAsset],
         indexed: [IndexedAsset],
         distanceThreshold: Float
     ) async throws -> [DuplicateGroup] {
-        let indexedIDs = Set(indexed.map(\.localIdentifier))
+        let vectorByID = Dictionary(
+            indexed.map { ($0.localIdentifier, $0.vector) },
+            uniquingKeysWith: { first, _ in first }
+        )
         // Only consider assets we actually have a print for, oldest-first.
         let candidates = assets
-            .filter { indexedIDs.contains($0.id) }
+            .filter { vectorByID[$0.id] != nil }
             .sorted { ($0.creationDate ?? .distantPast) < ($1.creationDate ?? .distantPast) }
         let ids = candidates.map(\.id)
 
-        var uf = UnionFind(ids: ids)
-
-        // 1) Bursts — union everything sharing a burstIdentifier.
-        var burstBuckets: [String: [String]] = [:]
-        for asset in candidates {
+        // 1) Bursts — everything sharing a burstIdentifier is joined up front.
+        var burstBuckets: [String: [Int]] = [:]
+        for (index, asset) in candidates.enumerated() {
             if let burst = asset.burstIdentifier {
-                burstBuckets[burst, default: []].append(asset.id)
+                burstBuckets[burst, default: []].append(index)
             }
         }
+        var seeds: [(Int, Int)] = []
         for members in burstBuckets.values where members.count > 1 {
             for member in members.dropFirst() {
-                uf.union(members[0], member)
+                seeds.append((members[0], member))
             }
         }
 
-        // 2) Near-duplicates — decode every print to a float vector once, then
-        //    compare all pairs with a SIMD squared-L2 distance. Comparing the
-        //    squared distance to the squared threshold avoids a sqrt per pair.
-        let printByID = Dictionary(
-            indexed.map { ($0.localIdentifier, $0.featurePrint) },
-            uniquingKeysWith: { first, _ in first }
+        // 2) Near-duplicates — the blocked pairwise pass.
+        let vectors = ids.map { vectorByID[$0] ?? [] }
+        var uf = try NearDuplicateMatcher.partition(
+            vectors: vectors,
+            distanceThreshold: distanceThreshold,
+            seedUnions: seeds
         )
-        let vectors: [[Float]] = ids.map { Self.vector(from: printByID[$0]) }
-        let threshold2 = distanceThreshold * distanceThreshold
-        let n = candidates.count
-
-        for i in 0..<n {
-            if i % 64 == 0 { try Task.checkCancellation() }
-            let vi = vectors[i]
-            if vi.isEmpty { continue }
-            let count = vDSP_Length(vi.count)
-            let rootI = uf.find(ids[i])
-            for j in (i + 1)..<n {
-                let vj = vectors[j]
-                if vj.count != vi.count { continue }
-                // Skip the distance math if they're already in the same set.
-                if uf.find(ids[j]) == rootI { continue }
-                var d2: Float = 0
-                vDSP_distancesq(vi, 1, vj, 1, &d2, count)
-                if d2 < threshold2 { uf.union(ids[i], ids[j]) }
-            }
-        }
 
         // 3) Materialise groups of 2+.
         let assetByID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        var membersByRoot: [String: [String]] = [:]
-        for id in ids {
-            membersByRoot[uf.find(id), default: []].append(id)
+        var membersByRoot: [Int: [String]] = [:]
+        for (index, id) in ids.enumerated() {
+            membersByRoot[uf.find(index), default: []].append(id)
         }
 
         return membersByRoot.values
@@ -152,32 +134,6 @@ final class LibraryIndexService {
             .sorted { ($0.count, $0.id) > ($1.count, $1.id) }
     }
 
-    /// Decodes an archived `VNFeaturePrintObservation` to its raw float vector.
-    /// Returns an empty array if the data is missing or an unexpected element
-    /// type (grouping then skips it).
-    private static func vector(from data: Data?) -> [Float] {
-        guard let data,
-              let obs = try? NSKeyedUnarchiver.unarchivedObject(
-                ofClass: VNFeaturePrintObservation.self, from: data)
-        else { return [] }
-        let count = obs.elementCount
-        switch obs.elementType {
-        case .float:
-            return obs.data.withUnsafeBytes { raw in
-                Array(raw.bindMemory(to: Float.self).prefix(count))
-            }
-        case .double:
-            return obs.data.withUnsafeBytes { raw in
-                let doubles = raw.bindMemory(to: Double.self)
-                return (0..<count).map { Float(doubles[$0]) }
-            }
-        case .unknown:
-            return []
-        @unknown default:
-            return []
-        }
-    }
-
     /// Quality proxy for keeper selection: more pixels wins.
     private func quality(_ asset: PhotoAsset?) -> Int {
         asset?.pixelArea ?? 0
@@ -185,7 +141,10 @@ final class LibraryIndexService {
 
     // MARK: - Vision / metadata helpers
 
-    private func featurePrintData(for asset: PHAsset) -> Data? {
+    /// The asset's feature print as a raw vector, or nil when the image can't
+    /// be loaded, Vision fails, or the print has an element type we can't
+    /// decode (so the asset isn't marked indexed and gets retried).
+    private func featurePrintVector(for asset: PHAsset) -> [Float]? {
         guard let cgImage = thumbnail(for: asset) else { return nil }
         let request = VNGenerateImageFeaturePrintRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
@@ -197,9 +156,8 @@ final class LibraryIndexService {
         guard let observation = request.results?.first as? VNFeaturePrintObservation else {
             return nil
         }
-        return try? NSKeyedArchiver.archivedData(
-            withRootObject: observation, requiringSecureCoding: true
-        )
+        let vector = FeaturePrintCodec.vector(from: observation)
+        return vector.isEmpty ? nil : vector
     }
 
     /// Synchronous, downscaled thumbnail for Vision. Runs inside the scan's
@@ -232,31 +190,5 @@ final class LibraryIndexService {
             }
         }
         return total
-    }
-}
-
-/// Minimal union-find over string ids for grouping.
-private struct UnionFind {
-    private var parent: [String: String]
-
-    init(ids: [String]) {
-        parent = Dictionary(ids.map { ($0, $0) }, uniquingKeysWith: { first, _ in first })
-    }
-
-    mutating func find(_ id: String) -> String {
-        var root = id
-        while let p = parent[root], p != root { root = p }
-        // Path-compress.
-        var cursor = id
-        while let p = parent[cursor], p != root {
-            parent[cursor] = root
-            cursor = p
-        }
-        return root
-    }
-
-    mutating func union(_ a: String, _ b: String) {
-        let ra = find(a), rb = find(b)
-        if ra != rb { parent[ra] = rb }
     }
 }
