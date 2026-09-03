@@ -7,6 +7,8 @@ import SwiftUI
 /// `AppTabView`); the default oldest-first deck is the Clean tab.
 struct BrowseView: View {
     @ObservedObject var service: PhotoLibraryService
+    /// Observed so the kept / marked badges update after a deck session.
+    @ObservedObject var store: ReviewStore
 
     @StateObject private var viewModel = BrowseViewModel()
     /// Warms thumbnails around the visible rows. Sized to match
@@ -103,7 +105,9 @@ struct BrowseView: View {
                                                        startFrom: asset.creationDate)
                                         )
                                     ) {
-                                        Thumbnail(asset: asset, service: service)
+                                        Thumbnail(asset: asset,
+                                                  service: service,
+                                                  decision: store.decision(for: asset.id))
                                     }
                                     .buttonStyle(.plain)
                                     .onAppear { prefetcher.cellAppeared(section.startIndex + offset) }

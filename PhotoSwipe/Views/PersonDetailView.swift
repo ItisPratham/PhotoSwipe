@@ -6,6 +6,8 @@ import SwiftUI
 /// navigation title renames the person inline.
 struct PersonDetailView: View {
     let service: PhotoLibraryService
+    /// Observed so the kept / marked badges update after a deck session.
+    @ObservedObject var store: ReviewStore
     @StateObject private var viewModel: PersonDetailViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -16,8 +18,9 @@ struct PersonDetailView: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
-    init(cluster: PersonCluster, service: PhotoLibraryService) {
+    init(cluster: PersonCluster, service: PhotoLibraryService, store: ReviewStore) {
         self.service = service
+        self.store = store
         _viewModel = StateObject(wrappedValue: PersonDetailViewModel(cluster: cluster))
     }
 
@@ -80,7 +83,9 @@ struct PersonDetailView: View {
                             NavigationLink(value: AppRoute.swipe(.person(
                                 viewModel.idsFrom(asset: asset, backwardIn: group)
                             ))) {
-                                Thumbnail(asset: asset, service: service)
+                                Thumbnail(asset: asset,
+                                          service: service,
+                                          decision: store.decision(for: asset.id))
                                     .aspectRatio(1, contentMode: .fill)
                                     .clipped()
                             }

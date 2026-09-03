@@ -67,7 +67,7 @@ struct AppTabView: View {
     /// The existing library grid and its surfaced entry points.
     private var browseTab: some View {
         NavigationStack {
-            BrowseView(service: library)
+            BrowseView(service: library, store: reviewStore)
                 .toolbar { settingsToolbar }
                 .navigationDestination(for: AppRoute.self) { destination(for: $0) }
         }
@@ -78,7 +78,7 @@ struct AppTabView: View {
             PeopleView(service: library)
                 .toolbar { settingsToolbar }
                 .navigationDestination(for: PersonCluster.self) { cluster in
-                    PersonDetailView(cluster: cluster, service: library)
+                    PersonDetailView(cluster: cluster, service: library, store: reviewStore)
                 }
                 .navigationDestination(for: AppRoute.self) { destination(for: $0) }
         }

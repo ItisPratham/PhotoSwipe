@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+/// A swipe decision as shown on grid thumbnails.
+enum ReviewDecision {
+    case kept
+    case markedForDeletion
+}
+
 /// Persists swipe decisions keyed by `PHAsset.localIdentifier`. Two sets:
 ///
 /// - `reviewedIDs`: every asset the user has judged (kept OR marked for
@@ -93,6 +99,14 @@ final class ReviewStore: ObservableObject {
 
     func isReviewed(_ id: String) -> Bool {
         reviewedIDs.contains(id)
+    }
+
+    /// What the user decided about an asset, for grid badges. Nil when it
+    /// hasn't been judged.
+    func decision(for id: String) -> ReviewDecision? {
+        if markedForDeletionIDs.contains(id) { return .markedForDeletion }
+        if reviewedIDs.contains(id) { return .kept }
+        return nil
     }
 
     /// Right-swipe: keep and never show again.
