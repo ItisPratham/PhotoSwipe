@@ -121,7 +121,9 @@ struct PeopleView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             NavigationLink(
-                                value: AppRoute.swipe(DeckSource.person(cluster.photoIDs))
+                                value: AppRoute.swipe(
+                                    DeckSource.person(cluster.photoIDs, preservesOrder: false)
+                                )
                             ) {
                                 Label("Swipe these photos", systemImage: "hand.tap.fill")
                             }

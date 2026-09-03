@@ -12,8 +12,11 @@ struct DeckSource: Hashable {
         case album(PHAssetCollection)
         /// A specific set of assets (a duplicate group), by localIdentifier.
         case duplicateGroup([String])
-        /// A person cluster's photos, in the order supplied by the caller.
-        case person([String])
+        /// A person cluster's photos. With `preservesOrder` the deck follows
+        /// the caller's sequence exactly (a day's photos newest→oldest, or
+        /// from a tapped photo backward); otherwise PhotoKit's oldest-first
+        /// creation-date order applies.
+        case person([String], preservesOrder: Bool)
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
             switch (lhs, rhs) {
@@ -24,8 +27,8 @@ struct DeckSource: Hashable {
                 return a.localIdentifier == b.localIdentifier
             case (.duplicateGroup(let a), .duplicateGroup(let b)):
                 return a == b
-            case (.person(let a), .person(let b)):
-                return a == b
+            case (.person(let a, let pa), .person(let b, let pb)):
+                return a == b && pa == pb
             default:
                 return false
             }
@@ -41,9 +44,10 @@ struct DeckSource: Hashable {
             case .duplicateGroup(let ids):
                 hasher.combine("duplicateGroup")
                 hasher.combine(ids)
-            case .person(let ids):
+            case .person(let ids, let preservesOrder):
                 hasher.combine("person")
                 hasher.combine(ids)
+                hasher.combine(preservesOrder)
             }
         }
     }
@@ -98,9 +102,12 @@ struct DeckSource: Hashable {
                    suggestedKeeperID: group.suggestedKeeperID)
     }
 
-    /// Builds the deck scoped to a person cluster's photos, in the order provided.
-    static func person(_ photoIDs: [String]) -> DeckSource {
-        DeckSource(scope: .person(photoIDs), media: .all)
+    /// Builds the deck scoped to a person cluster's photos. `preservesOrder`
+    /// keeps the caller's sequence (the person-detail entry points sort
+    /// deliberately); pass false for an unordered id set — e.g. the People
+    /// grid's context menu, whose ids come from a Set — to get oldest-first.
+    static func person(_ photoIDs: [String], preservesOrder: Bool = true) -> DeckSource {
+        DeckSource(scope: .person(photoIDs, preservesOrder: preservesOrder), media: .all)
     }
 
     func hash(into hasher: inout Hasher) {
