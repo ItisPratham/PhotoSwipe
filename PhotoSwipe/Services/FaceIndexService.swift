@@ -57,7 +57,7 @@ final class FaceIndexService: @unchecked Sendable {
         var scannedBatch: [String] = []
         var processed = 0
 
-        try await withThrowingTaskGroup(of: (String, [FaceObservation]).self) { group in
+        try await withThrowingTaskGroup(of: (String, [FaceObservation]?).self) { group in
             var iter = pending.makeIterator()
 
             // Enqueues the next pending asset as a child task, if any remain.
@@ -72,11 +72,16 @@ final class FaceIndexService: @unchecked Sendable {
             // Seed with up to maxConcurrency concurrent tasks.
             for _ in 0..<min(maxConcurrency, total) { enqueueNext() }
 
-            // As each task finishes, batch the result and top up the pool.
+            // As each task finishes, batch the result and top up the pool. A nil
+            // result means the image itself couldn't be fetched (offline, iCloud
+            // download failed): the asset is *not* marked scanned, so the next
+            // scan retries it instead of remembering it as "no faces" forever.
             for try await (assetID, faces) in group {
                 try Task.checkCancellation()
-                faceBatch.append(contentsOf: faces)
-                scannedBatch.append(assetID)
+                if let faces {
+                    faceBatch.append(contentsOf: faces)
+                    scannedBatch.append(assetID)
+                }
                 processed += 1
                 onProgress(processed, total)
 
@@ -98,8 +103,10 @@ final class FaceIndexService: @unchecked Sendable {
 
     // MARK: - Detection + embedding
 
-    private func detectAndEmbed(asset: PhotoAsset, embedder: FaceEmbedder) async -> [FaceObservation] {
-        guard let cgImage = await thumbnail(for: asset.phAsset) else { return [] }
+    /// Returns nil when the working image couldn't be loaded at all, and an
+    /// (possibly empty) array once detection actually ran on the pixels.
+    private func detectAndEmbed(asset: PhotoAsset, embedder: FaceEmbedder) async -> [FaceObservation]? {
+        guard let cgImage = await thumbnail(for: asset.phAsset) else { return nil }
         // Vision detect + CoreML embed are synchronous CPU work; wrap in an
         // autoreleasepool so CGImages from PHImageManager don't linger on the
         // cooperative thread between assets.
