@@ -119,6 +119,15 @@ struct PeopleView: View {
                             PersonCell(cluster: cluster, service: service)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            NavigationLink(
+                                value: AppRoute.swipe(DeckSource.person(cluster.photoIDs))
+                            ) {
+                                Label("Swipe these photos", systemImage: "hand.tap.fill")
+                            }
+                        } preview: {
+                            PersonCoverPreview(cluster: cluster, service: service)
+                        }
                     }
                 }
                 .padding()
@@ -241,7 +250,7 @@ private struct HiddenPeopleView: View {
                     LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(viewModel.hiddenClusters) { cluster in
                             VStack(spacing: 6) {
-                                PersonCoverView(assetID: cluster.coverAssetID, service: service)
+                                PersonCoverView(cluster: cluster, service: service)
                                     .aspectRatio(1, contentMode: .fill)
                                     .clipShape(Circle())
                                     .opacity(0.55)
@@ -262,6 +271,31 @@ private struct HiddenPeopleView: View {
     }
 }
 
+/// Full-photo preview shown when long-pressing a person cell. Loads at
+/// high resolution so the cover photo is legible before the user acts.
+private struct PersonCoverPreview: View {
+    let cluster: PersonCluster
+    let service: PhotoLibraryService
+
+    @State private var asset: PhotoAsset?
+
+    var body: some View {
+        Group {
+            if let asset {
+                ThumbnailPreview(asset: asset, service: service)
+            } else {
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(width: 280, height: 280)
+            }
+        }
+        .task(id: cluster.coverAssetID) {
+            guard let id = cluster.coverAssetID else { return }
+            asset = await service.fetchAssets(withIDs: [id]).first
+        }
+    }
+}
+
 /// One person in the grid: a circular cover with the name and photo count.
 private struct PersonCell: View {
     let cluster: PersonCluster
@@ -269,7 +303,7 @@ private struct PersonCell: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            PersonCoverView(assetID: cluster.coverAssetID, service: service)
+            PersonCoverView(cluster: cluster, service: service)
                 .aspectRatio(1, contentMode: .fill)
                 .clipShape(Circle())
 
@@ -286,25 +320,65 @@ private struct PersonCell: View {
     }
 }
 
-/// Resolves a cover asset id to a thumbnail. Kept private to People — a small
-/// helper tightly bound to the grid.
+/// Circular person cover that crops to the detected face rectangle. When a
+/// bounding box is available, the full image is cropped so the face (plus 50%
+/// padding on each side) fills the circle — turning every person icon into a
+/// properly-centered face shot. Falls back to the full thumbnail when no face
+/// scan data exists yet.
 private struct PersonCoverView: View {
-    let assetID: String?
+    let cluster: PersonCluster
     let service: PhotoLibraryService
 
-    @State private var asset: PhotoAsset?
+    @State private var rawImage: UIImage?
 
     var body: some View {
-        Group {
-            if let asset {
-                Thumbnail(asset: asset, service: service)
-            } else {
-                Theme.cardSurface
+        // Overlay pattern: the base Color always determines the layout size so
+        // there are no geometry reflows when the image loads or changes.
+        Theme.cardSurface
+            .overlay {
+                if let display = displayImage {
+                    Image(uiImage: display)
+                        .resizable()
+                        .scaledToFill()
+                }
             }
-        }
-        .task(id: assetID) {
-            guard let assetID else { return }
-            asset = await service.fetchAssets(withIDs: [assetID]).first
-        }
+            .clipped()
+            .task(id: cluster.coverAssetID) {
+                rawImage = nil
+                guard let assetID = cluster.coverAssetID,
+                      let asset = await service.fetchAssets(withIDs: [assetID]).first
+                else { return }
+                for await img in service.imageStream(
+                    for: asset, targetSize: CGSize(width: 512, height: 512)
+                ) {
+                    rawImage = img
+                }
+            }
+    }
+
+    private var displayImage: UIImage? {
+        guard let raw = rawImage else { return nil }
+        guard let bbox = cluster.coverBoundingBox,
+              let cgImage = raw.cgImage else { return raw }
+
+        let W = CGFloat(cgImage.width)
+        let H = CGFloat(cgImage.height)
+
+        // Vision bbox: bottom-left origin, normalized 0…1.
+        // Face center in CGImage coords (top-left origin): flip Y.
+        let pad: CGFloat = 0.5
+        let side = max(bbox.width, bbox.height) * (1.0 + pad)
+        let halfN = side / 2
+        let normCX = bbox.midX
+        let normCY = 1.0 - bbox.midY  // Y-flip
+
+        let cropNorm = CGRect(x: normCX - halfN, y: normCY - halfN,
+                              width: side, height: side)
+            .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+        let cropPx = CGRect(x: cropNorm.minX * W, y: cropNorm.minY * H,
+                            width: cropNorm.width * W, height: cropNorm.height * H)
+
+        guard let cropped = cgImage.cropping(to: cropPx) else { return raw }
+        return UIImage(cgImage: cropped, scale: raw.scale, orientation: raw.imageOrientation)
     }
 }

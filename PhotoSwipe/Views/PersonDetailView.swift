@@ -85,6 +85,15 @@ struct PersonDetailView: View {
                                     .clipped()
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                NavigationLink(value: AppRoute.swipe(.person(
+                                    viewModel.idsFrom(asset: asset, backwardIn: group)
+                                ))) {
+                                    Label("Swipe from here", systemImage: "play.circle")
+                                }
+                            } preview: {
+                                ThumbnailPreview(asset: asset, service: service)
+                            }
                         }
                     }
                 } header: {

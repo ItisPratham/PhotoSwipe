@@ -183,12 +183,18 @@ actor FaceStore {
         return grouped.map { pid, rows -> PersonCluster in
             let meta = personByID[pid]
             let best = rows.max { $0.quality < $1.quality }
+            let coverFaceID = meta?.coverFaceID ?? best?.faceID
+            let coverRow = rows.first { $0.faceID == coverFaceID }
+            let coverBBox = coverRow.map {
+                CGRect(x: $0.bboxX, y: $0.bboxY, width: $0.bboxWidth, height: $0.bboxHeight)
+            }
             let photoIDs = Array(Set(rows.map(\.localIdentifier)))
             return PersonCluster(
                 personID: pid,
                 name: meta?.name,
                 coverAssetID: meta?.coverAssetID ?? best?.localIdentifier,
-                coverFaceID: meta?.coverFaceID ?? best?.faceID,
+                coverFaceID: coverFaceID,
+                coverBoundingBox: coverBBox,
                 photoIDs: photoIDs,
                 faceCount: rows.count,
                 isHidden: meta?.isHidden ?? false

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Sendable UI aggregate for one person: identity, optional name, and cover,
@@ -12,6 +13,9 @@ struct PersonCluster: Identifiable, Sendable, Hashable {
     let name: String?
     let coverAssetID: String?
     let coverFaceID: String?
+    /// Bounding box of the cover face in Vision coordinate space (bottom-left
+    /// origin, y-axis up, normalized 0…1). Nil until a face scan has run.
+    let coverBoundingBox: CGRect?
     let photoIDs: [String]
     let faceCount: Int
     let isHidden: Bool
@@ -22,5 +26,11 @@ struct PersonCluster: Identifiable, Sendable, Hashable {
     var displayName: String {
         if let name, !name.isEmpty { return name }
         return "Unnamed"
+    }
+
+    // CGRect isn't Hashable; identity is determined solely by personID.
+    func hash(into hasher: inout Hasher) { hasher.combine(personID) }
+    static func == (lhs: PersonCluster, rhs: PersonCluster) -> Bool {
+        lhs.personID == rhs.personID
     }
 }

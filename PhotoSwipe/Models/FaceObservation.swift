@@ -11,7 +11,8 @@ struct FaceObservation: Sendable, Hashable, Identifiable {
     /// L2-normalized 512-d AdaFace embedding.
     let embedding: [Float]
     let quality: Float
-    /// Normalized face bounding box in the source image (0...1, top-left origin).
+    /// Normalized face bounding box in Vision coordinate space (bottom-left
+    /// origin, y-axis up, all values in 0…1).
     let boundingBox: CGRect
     var personID: String?
 

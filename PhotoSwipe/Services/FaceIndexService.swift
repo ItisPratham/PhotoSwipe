@@ -105,10 +105,16 @@ final class FaceIndexService: @unchecked Sendable {
         // cooperative thread between assets.
         return autoreleasepool {
             let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
-            let request = VNDetectFaceLandmarksRequest()
+            let landmarkReq = VNDetectFaceLandmarksRequest()
+            let qualityReq = VNDetectFaceCaptureQualityRequest()
             let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do { try handler.perform([request]) } catch { return [] }
-            guard let results = request.results, !results.isEmpty else { return [] }
+            do { try handler.perform([landmarkReq, qualityReq]) } catch { return [] }
+            guard let results = landmarkReq.results, !results.isEmpty else { return [] }
+
+            // Both requests share the same face detector under the hood.
+            // Match each landmark obs to the nearest quality obs by bbox center
+            // (robust to any ordering differences) then fall back to bbox area.
+            let qualityObs = qualityReq.results ?? []
 
             var faces: [FaceObservation] = []
             var index = 0
@@ -119,11 +125,21 @@ final class FaceIndexService: @unchecked Sendable {
                         cgImage: cgImage, imageSize: imageSize, observation: observation),
                       let embedding = embedder.embed(input)
                 else { continue }
+
+                let cx = observation.boundingBox.midX
+                let cy = observation.boundingBox.midY
+                let matched = qualityObs.min {
+                    hypot($0.boundingBox.midX - cx, $0.boundingBox.midY - cy) <
+                    hypot($1.boundingBox.midX - cx, $1.boundingBox.midY - cy)
+                }
+                let quality = matched?.faceCaptureQuality
+                    ?? Float(observation.boundingBox.width * observation.boundingBox.height)
+
                 faces.append(FaceObservation(
                     localIdentifier: asset.id,
                     faceIndex: index,
                     embedding: embedding,
-                    quality: Float(observation.boundingBox.width * observation.boundingBox.height),
+                    quality: quality,
                     boundingBox: observation.boundingBox,
                     personID: nil
                 ))

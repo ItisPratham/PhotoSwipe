@@ -39,22 +39,25 @@ struct BrowseView: View {
     private var scroll: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
-                NavigationLink(value: AppRoute.albums) {
-                    BrowseEntryRow(title: "Albums", systemImage: "rectangle.stack")
+                HStack(spacing: 12) {
+                    NavigationLink(value: AppRoute.albums) {
+                        BrowseEntryRow(title: "Albums", systemImage: "rectangle.stack")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Browse albums")
+
+                    NavigationLink(
+                        value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .videos))
+                    ) {
+                        BrowseEntryRow(title: "Videos", systemImage: "video")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Swipe through videos, oldest first")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Browse albums")
                 .padding(.horizontal, Theme.Spacing.screenMargin)
                 .padding(.top, 12)
-
-                NavigationLink(
-                    value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .videos))
-                ) {
-                    BrowseEntryRow(title: "Videos", systemImage: "video")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Swipe through videos, oldest first")
-                .padding(.horizontal, Theme.Spacing.screenMargin)
 
                 NavigationLink(
                     value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .all, order: .largestFirst))
@@ -117,19 +120,19 @@ struct BrowseView: View {
                                                startFrom: section.id)
                                 )
                             ) {
-                                HStack(spacing: 8) {
+                                HStack(spacing: 6) {
                                     Text(section.id, format: .dateTime.month(.wide).day().year())
-                                        .font(.headline)
-                                        .foregroundStyle(.primary)
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.tertiary)
                                     Spacer()
-                                    Image(systemName: "arrow.right.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(.tint)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2)
+                                        .foregroundStyle(.quaternary)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, Theme.Spacing.screenMargin)
-                                .padding(.vertical, 8)
-                                .background(.regularMaterial)
+                                .padding(.vertical, 6)
+                                .background(Color.white)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
