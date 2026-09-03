@@ -20,6 +20,9 @@ struct DeckSource: Hashable {
         /// "More like this": the feature-print neighbours of `seedID`, in
         /// ascending-distance order (preserved in the deck).
         case similar(seedID: String, ids: [String])
+        /// A Browse category's photos (ids resolved by `CategoriesViewModel`),
+        /// oldest first.
+        case category(AssetCategory, ids: [String])
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
             switch (lhs, rhs) {
@@ -34,6 +37,8 @@ struct DeckSource: Hashable {
                 return a == b && pa == pb
             case (.similar(let sa, let a), .similar(let sb, let b)):
                 return sa == sb && a == b
+            case (.category(let ca, let a), .category(let cb, let b)):
+                return ca == cb && a == b
             default:
                 return false
             }
@@ -56,6 +61,10 @@ struct DeckSource: Hashable {
             case .similar(let seedID, let ids):
                 hasher.combine("similar")
                 hasher.combine(seedID)
+                hasher.combine(ids)
+            case .category(let category, let ids):
+                hasher.combine("category")
+                hasher.combine(category)
                 hasher.combine(ids)
             }
         }
@@ -136,6 +145,11 @@ struct DeckSource: Hashable {
     /// nearest-first from `SimilarPhotosFinder` and the deck keeps that order.
     static func similar(to seedID: String, ids: [String]) -> DeckSource {
         DeckSource(scope: .similar(seedID: seedID, ids: ids), media: .all)
+    }
+
+    /// Builds the deck for a Browse category, oldest first.
+    static func category(_ category: AssetCategory, ids: [String]) -> DeckSource {
+        DeckSource(scope: .category(category, ids: ids), media: .photos)
     }
 
     func hash(into hasher: inout Hasher) {

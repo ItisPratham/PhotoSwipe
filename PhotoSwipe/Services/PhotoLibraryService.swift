@@ -270,6 +270,10 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             options.predicate = nil
             options.sortDescriptors = nil
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .category(_, let ids):
+            // An explicit id set in PhotoKit's oldest-first order.
+            options.predicate = nil
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
         }
 
         var assets: [PhotoAsset] = []

@@ -16,6 +16,7 @@
 		D748138E3000DCC60039DF72 /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138D3000DCC60039DF72 /* PeopleView.swift */; };
 		D74813903000DCE40039DF72 /* AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138F3000DCE40039DF72 /* AppTabView.swift */; };
 		D74813923000E96E0039DF72 /* BrowseEntryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813913000E96E0039DF72 /* BrowseEntryRow.swift */; };
+		D7C0A1C13003100100AA000A /* CategoriesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1C03003100100AA000A /* CategoriesSection.swift */; };
 		D74813953000EAEC0039DF72 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813943000EAEC0039DF72 /* Theme.swift */; };
 		D74813973000EAF00039DF72 /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813963000EAF00039DF72 /* AppTab.swift */; };
 		D74813993000EAFD0039DF72 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74813983000EAFD0039DF72 /* SettingsView.swift */; };
@@ -41,6 +42,7 @@
 		D7C0A1B33003100200AA0002 /* NearDuplicateMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B23003100200AA0002 /* NearDuplicateMatcher.swift */; };
 		D7C0A1B53003100300AA0003 /* ConcurrentScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B43003100300AA0003 /* ConcurrentScan.swift */; };
 		D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */; };
+		D7C0A1BF3003100100AA0009 /* CategoriesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1BE3003100100AA0009 /* CategoriesViewModel.swift */; };
 		D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */; };
 		D75FD64F2FFD43C2003364D9 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */; };
 		D7893D5A2FEE5F1000AE08D1 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7893D592FEE5F1000AE08D1 /* CardView.swift */; };
@@ -88,6 +90,7 @@
 		D748138D3000DCC60039DF72 /* PeopleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleView.swift; sourceTree = "<group>"; };
 		D748138F3000DCE40039DF72 /* AppTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabView.swift; sourceTree = "<group>"; };
 		D74813913000E96E0039DF72 /* BrowseEntryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseEntryRow.swift; sourceTree = "<group>"; };
+		D7C0A1C03003100100AA000A /* CategoriesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesSection.swift; sourceTree = "<group>"; };
 		D74813943000EAEC0039DF72 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		D74813963000EAF00039DF72 /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
 		D74813983000EAFD0039DF72 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -113,6 +116,7 @@
 		D7C0A1B23003100200AA0002 /* NearDuplicateMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearDuplicateMatcher.swift; sourceTree = "<group>"; };
 		D7C0A1B43003100300AA0003 /* ConcurrentScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrentScan.swift; sourceTree = "<group>"; };
 		D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesViewModel.swift; sourceTree = "<group>"; };
+		D7C0A1BE3003100100AA0009 /* CategoriesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesViewModel.swift; sourceTree = "<group>"; };
 		D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SerialTaskQueue.swift; sourceTree = "<group>"; };
 		D75FD64E2FFD43C2003364D9 /* DuplicatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicatesView.swift; sourceTree = "<group>"; };
 		D7893D592FEE5F1000AE08D1 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
@@ -172,6 +176,7 @@
 				D748138D3000DCC60039DF72 /* PeopleView.swift */,
 				D748138F3000DCE40039DF72 /* AppTabView.swift */,
 				D74813913000E96E0039DF72 /* BrowseEntryRow.swift */,
+				D7C0A1C03003100100AA000A /* CategoriesSection.swift */,
 				D74813983000EAFD0039DF72 /* SettingsView.swift */,
 				D748139A3000EB5F0039DF72 /* Thumbnail.swift */,
 				D7C0A1B63003100400AA0004 /* GridPrefetcher.swift */,
@@ -263,6 +268,7 @@
 				D7893D5E2FEE60D200AE08D1 /* SwipeViewModel.swift */,
 				D7DDEA382FFA2A6D00E3ED52 /* BrowseViewModel.swift */,
 				D75FD64C2FFD43A5003364D9 /* DuplicatesViewModel.swift */,
+				D7C0A1BE3003100100AA0009 /* CategoriesViewModel.swift */,
 				D7C0A1B03003100100AA0001 /* SerialTaskQueue.swift */,
 				D7A915003001DFFC009426DD /* PeopleViewModel.swift */,
 				D7A915023001E00C009426DD /* PersonDetailViewModel.swift */,
@@ -373,6 +379,7 @@
 			files = (
 				B3A63D093E20D0D998C33CC6 /* PermissionView.swift in Sources */,
 				D74813923000E96E0039DF72 /* BrowseEntryRow.swift in Sources */,
+				D7C0A1C13003100100AA000A /* CategoriesSection.swift in Sources */,
 				D7DDEA312FF9829A00E3ED52 /* DeleteRecord.swift in Sources */,
 				D7C0A1BD3003100100AA0008 /* AssetCategory.swift in Sources */,
 				D7C0A1B53003100100AA0004 /* SwipeUpAction.swift in Sources */,
@@ -428,6 +435,7 @@
 				D7C0A1B33003100200AA0002 /* NearDuplicateMatcher.swift in Sources */,
 				D7C0A1B53003100300AA0003 /* ConcurrentScan.swift in Sources */,
 				D75FD64D2FFD43A5003364D9 /* DuplicatesViewModel.swift in Sources */,
+				D7C0A1BF3003100100AA0009 /* CategoriesViewModel.swift in Sources */,
 				D7C0A1B13003100100AA0001 /* SerialTaskQueue.swift in Sources */,
 				D7DDEA412FFA8A9000E3ED52 /* AppRoute.swift in Sources */,
 				D7DDEA272FF9748100E3ED52 /* OnboardingView.swift in Sources */,

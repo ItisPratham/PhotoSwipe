@@ -159,7 +159,9 @@ final class DuplicatesViewModel: ObservableObject {
         let assets = await service.fetchImages(source: .allPhotos)
         lastAssets = assets
         do {
-            try await indexService.scan(assets: assets, store: store) { done, tot in
+            let includeCategories = UserDefaults.standard.bool(forKey: CategoriesViewModel.enabledKey)
+            try await indexService.scan(assets: assets, store: store,
+                                        includeCategories: includeCategories) { done, tot in
                 Task { @MainActor in
                     // Hops can land out of order; the counter never steps back.
                     self.processed = max(self.processed, done)
