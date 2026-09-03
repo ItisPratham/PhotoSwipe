@@ -27,6 +27,10 @@ final class BrowseViewModel: ObservableObject {
     /// How many of the fetched photos are screenshots, for the Browse entry's
     /// subtitle. Counted during the grouping pass — no extra fetch.
     @Published private(set) var screenshotCount = 0
+    /// Photos taken on today's month/day in earlier years, and how many years
+    /// they span, for the On This Day entry. Counted in the grouping pass.
+    @Published private(set) var onThisDayCount = 0
+    @Published private(set) var onThisDayYears = 0
 
     /// The `libraryVersion` the grid was built from; nil until the first load.
     private var loadedLibraryVersion: Int?
@@ -40,15 +44,39 @@ final class BrowseViewModel: ObservableObject {
         let version = service.libraryVersion
         if sections.isEmpty { isLoading = true }
         let fetched = await service.fetchImages(source: .allPhotos)
-        let (grouped, screenshots) = await Task.detached(priority: .userInitiated) {
-            (Self.group(assets: fetched), fetched.reduce(0) { $0 + ($1.isScreenshot ? 1 : 0) })
+        let (grouped, screenshots, onThisDay) = await Task.detached(priority: .userInitiated) {
+            (Self.group(assets: fetched),
+             fetched.reduce(0) { $0 + ($1.isScreenshot ? 1 : 0) },
+             Self.onThisDay(assets: fetched))
         }.value
         sections = grouped
         screenshotCount = screenshots
+        onThisDayCount = onThisDay.count
+        onThisDayYears = onThisDay.years
         flatAssets = grouped.flatMap(\.assets)
         generation &+= 1
         loadedLibraryVersion = version
         isLoading = false
+    }
+
+    /// How many photos fall on today's month/day in an earlier year, and how
+    /// many distinct years they cover.
+    nonisolated private static func onThisDay(assets: [PhotoAsset],
+                                              now: Date = Date()) -> (count: Int, years: Int) {
+        let calendar = Calendar.current
+        let today = calendar.dateComponents([.year, .month, .day], from: now)
+        var count = 0
+        var years = Set<Int>()
+        for asset in assets {
+            guard let date = asset.creationDate else { continue }
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            guard parts.month == today.month, parts.day == today.day,
+                  let year = parts.year, let thisYear = today.year, year < thisYear
+            else { continue }
+            count += 1
+            years.insert(year)
+        }
+        return (count, years.count)
     }
 
     /// Buckets by start-of-day and returns newest-first sections with

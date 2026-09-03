@@ -23,6 +23,9 @@ struct DeckSource: Hashable {
         /// A Browse category's photos (ids resolved by `CategoriesViewModel`),
         /// oldest first.
         case category(AssetCategory, ids: [String])
+        /// Photos taken on today's month/day in any earlier year, resolved at
+        /// the fetch layer with one date-range predicate per year.
+        case onThisDay
 
         static func == (lhs: Scope, rhs: Scope) -> Bool {
             switch (lhs, rhs) {
@@ -39,6 +42,8 @@ struct DeckSource: Hashable {
                 return sa == sb && a == b
             case (.category(let ca, let a), .category(let cb, let b)):
                 return ca == cb && a == b
+            case (.onThisDay, .onThisDay):
+                return true
             default:
                 return false
             }
@@ -66,6 +71,8 @@ struct DeckSource: Hashable {
                 hasher.combine("category")
                 hasher.combine(category)
                 hasher.combine(ids)
+            case .onThisDay:
+                hasher.combine("onThisDay")
             }
         }
     }
@@ -146,6 +153,9 @@ struct DeckSource: Hashable {
     static func similar(to seedID: String, ids: [String]) -> DeckSource {
         DeckSource(scope: .similar(seedID: seedID, ids: ids), media: .all)
     }
+
+    /// Today's date in every earlier year, oldest year first. Photos only.
+    static let onThisDay = DeckSource(scope: .onThisDay, media: .photos)
 
     /// Builds the deck for a Browse category, oldest first.
     static func category(_ category: AssetCategory, ids: [String]) -> DeckSource {

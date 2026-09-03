@@ -274,6 +274,12 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             // An explicit id set in PhotoKit's oldest-first order.
             options.predicate = nil
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .onThisDay:
+            // Media filter stays; the date filter is one range per past year.
+            var all = predicates
+            all.append(Self.onThisDayPredicate())
+            options.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: all)
+            result = PHAsset.fetchAssets(with: options)
         }
 
         var assets: [PhotoAsset] = []
@@ -298,6 +304,24 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         }
 
         return assets
+    }
+
+    /// `creationDate` within today's calendar day in each of the last
+    /// `yearsBack` years, OR-ed together. PhotoKit predicates can't extract
+    /// month/day, so the ranges are spelled out; ~50 clauses is fine.
+    nonisolated static func onThisDayPredicate(now: Date = Date(),
+                                               calendar: Calendar = .current,
+                                               yearsBack: Int = 50) -> NSPredicate {
+        let today = calendar.startOfDay(for: now)
+        var ranges: [NSPredicate] = []
+        for back in 1...yearsBack {
+            guard let start = calendar.date(byAdding: .year, value: -back, to: today),
+                  let end = calendar.date(byAdding: .day, value: 1, to: start)
+            else { continue }
+            ranges.append(NSPredicate(format: "creationDate >= %@ AND creationDate < %@",
+                                      start as NSDate, end as NSDate))
+        }
+        return NSCompoundPredicate(orPredicateWithSubpredicates: ranges)
     }
 
     // MARK: - Image loading

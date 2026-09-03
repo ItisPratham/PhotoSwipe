@@ -55,6 +55,18 @@ struct BrowseView: View {
     private var scroll: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
+                if viewModel.onThisDayCount > 0 {
+                    NavigationLink(value: AppRoute.swipe(.onThisDay)) {
+                        BrowseEntryRow(title: "On this day",
+                                       subtitle: onThisDaySubtitle,
+                                       systemImage: "calendar.badge.clock")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Swipe through photos taken on this day in earlier years")
+                    .padding(.horizontal, Theme.Spacing.screenMargin)
+                    .padding(.top, 12)
+                }
+
                 HStack(spacing: 12) {
                     NavigationLink(value: AppRoute.albums) {
                         BrowseEntryRow(title: "Albums", systemImage: "rectangle.stack")
@@ -175,6 +187,11 @@ struct BrowseView: View {
             .padding(.bottom, 16)
         }
         .scrollIndicators(.visible)
+    }
+
+    private var onThisDaySubtitle: String {
+        let n = viewModel.onThisDayCount, y = viewModel.onThisDayYears
+        return "\(n) \(n == 1 ? "photo" : "photos") across \(y) \(y == 1 ? "year" : "years")"
     }
 
     private var screenshotsSubtitle: String {
