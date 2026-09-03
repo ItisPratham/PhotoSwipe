@@ -145,6 +145,8 @@ enum NearDuplicateMatcher {
         }
 
         var products = [Float](repeating: 0, count: blockRows * m)
+        // Scratch row of squared distances for one matrix row at a time.
+        var distances = [Float](repeating: 0, count: m)
         var start = 0
         while start < m - 1 {
             try Task.checkCancellation()
@@ -163,18 +165,31 @@ enum NearDuplicateMatcher {
                 }
             }
 
+            // Per row: d² = |a|² + |b|² − 2·a·b as two vDSP passes, then a
+            // vector minimum. Most rows have no neighbour under the
+            // threshold, so they are dismissed by the minimum alone; only
+            // rows with a hit are scanned element by element.
             products.withUnsafeBufferPointer { pp in
                 norms.withUnsafeBufferPointer { np in
-                    for r in 0..<rows {
-                        let i = start + r
-                        let ni = np[i]
-                        let rowBase = r * cols
-                        // Columns at or before i belong to the lower triangle.
-                        let firstCol = max(0, i + 1 - colStart)
-                        for c in firstCol..<cols {
-                            let j = colStart + c
-                            let d2 = ni + np[j] - 2 * pp[rowBase + c]
-                            if d2 < threshold2 { uf.union(members[i], members[j]) }
+                    distances.withUnsafeMutableBufferPointer { dp in
+                        var minusTwo: Float = -2
+                        for r in 0..<rows {
+                            let i = start + r
+                            // Columns at or before i belong to the lower triangle.
+                            let firstCol = max(0, i + 1 - colStart)
+                            let n = cols - firstCol
+                            guard n > 0 else { continue }
+                            var ni = np[i]
+                            let rowBase = pp.baseAddress! + r * cols + firstCol
+                            let otherNorms = np.baseAddress! + colStart + firstCol
+                            vDSP_vsmsa(rowBase, 1, &minusTwo, &ni, dp.baseAddress!, 1, vDSP_Length(n))
+                            vDSP_vadd(dp.baseAddress!, 1, otherNorms, 1, dp.baseAddress!, 1, vDSP_Length(n))
+                            var minimum: Float = 0
+                            vDSP_minv(dp.baseAddress!, 1, &minimum, vDSP_Length(n))
+                            guard minimum < threshold2 else { continue }
+                            for c in 0..<n where dp[c] < threshold2 {
+                                uf.union(members[i], members[colStart + firstCol + c])
+                            }
                         }
                     }
                 }
