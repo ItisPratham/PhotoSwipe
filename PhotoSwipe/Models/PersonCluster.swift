@@ -28,9 +28,35 @@ struct PersonCluster: Identifiable, Sendable, Hashable {
         return "Unnamed"
     }
 
-    // CGRect isn't Hashable; identity is determined solely by personID.
-    func hash(into hasher: inout Hasher) { hasher.combine(personID) }
+    // Hand-written only because CGRect isn't Hashable. Equality covers every
+    // field on purpose: SwiftUI uses it to decide whether a cell showing this
+    // value needs re-rendering, so a personID-only comparison left photo
+    // counts stale after a reload. `Identifiable.id` still carries the
+    // stable identity for ForEach and navigation.
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(personID)
+        hasher.combine(name)
+        hasher.combine(coverAssetID)
+        hasher.combine(coverFaceID)
+        hasher.combine(photoIDs)
+        hasher.combine(faceCount)
+        hasher.combine(isHidden)
+        if let box = coverBoundingBox {
+            hasher.combine(box.origin.x)
+            hasher.combine(box.origin.y)
+            hasher.combine(box.size.width)
+            hasher.combine(box.size.height)
+        }
+    }
+
     static func == (lhs: PersonCluster, rhs: PersonCluster) -> Bool {
         lhs.personID == rhs.personID
+            && lhs.name == rhs.name
+            && lhs.coverAssetID == rhs.coverAssetID
+            && lhs.coverFaceID == rhs.coverFaceID
+            && lhs.coverBoundingBox == rhs.coverBoundingBox
+            && lhs.photoIDs == rhs.photoIDs
+            && lhs.faceCount == rhs.faceCount
+            && lhs.isHidden == rhs.isHidden
     }
 }

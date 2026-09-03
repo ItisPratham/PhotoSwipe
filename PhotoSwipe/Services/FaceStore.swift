@@ -209,7 +209,8 @@ actor FaceStore {
             let coverBBox = coverRow.map {
                 CGRect(x: $0.bboxX, y: $0.bboxY, width: $0.bboxWidth, height: $0.bboxHeight)
             }
-            let photoIDs = Array(Set(rows.map(\.localIdentifier)))
+            // Sorted so two reads of the same cluster compare equal.
+            let photoIDs = Array(Set(rows.map(\.localIdentifier))).sorted()
             return PersonCluster(
                 personID: pid,
                 name: meta?.name,
