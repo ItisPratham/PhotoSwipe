@@ -85,10 +85,8 @@ private struct AlbumRow: View {
             }
 
             Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
+            // No trailing chevron here: the List's NavigationLink row already
+            // draws the system disclosure indicator.
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
