@@ -16,7 +16,7 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "5.1"
+    MARKETING_VERSION: "5.2"
     CURRENT_PROJECT_VERSION: "1"
     # Accelerate's CBLAS (duplicate matching) without the deprecated headers.
     OTHER_SWIFT_FLAGS: "-Xcc -DACCELERATE_NEW_LAPACK"
