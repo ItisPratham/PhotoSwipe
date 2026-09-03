@@ -131,12 +131,12 @@ final class LibraryIndexService: @unchecked Sendable {
         }
     }
 
-    /// The library's "blurry" cut: the 10th percentile of sharpness over the
+    /// The library's "blurry" cut: the 5th percentile of sharpness over the
     /// categorized photos. Nil until enough rows carry a sharpness value.
     static func blurThreshold(from signals: [CategorySignals]) -> Float? {
         let values = signals.compactMap(\.sharpness).sorted()
-        guard values.count >= 20 else { return nil }
-        return values[values.count / 10]
+        guard values.count >= 40 else { return nil }
+        return values[values.count / 20]
     }
 
     private func measureCategories(for asset: PhotoAsset) async -> CategoryMeasurement? {
@@ -170,12 +170,15 @@ final class LibraryIndexService: @unchecked Sendable {
             .prefix(8)
             .map { ($0.identifier, $0.confidence) }
 
+        // A clear cat/dog only; the detector fires weakly on toys and fur.
         let hasAnimal = (animals.results ?? []).contains { observation in
-            observation.labels.contains { $0.confidence >= 0.5 }
+            observation.labels.contains { $0.confidence >= 0.75 }
         }
 
+        // Ignore speck-sized boxes, which come from texture rather than text.
         let coverage = (text.results ?? []).reduce(Float(0)) { sum, observation in
-            sum + Float(observation.boundingBox.width * observation.boundingBox.height)
+            let area = Float(observation.boundingBox.width * observation.boundingBox.height)
+            return area >= 0.002 ? sum + area : sum
         }
 
         return CategoryMeasurement(labels: CategorySignals.encode(labels: Array(labels)),

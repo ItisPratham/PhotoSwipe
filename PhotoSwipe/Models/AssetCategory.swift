@@ -25,8 +25,9 @@ struct CategorySignals: Sendable, Hashable {
         labels.first { $0.0 == identifier }?.1
     }
 
-    func hasAny(_ identifiers: Set<String>) -> Bool {
-        labels.contains { identifiers.contains($0.0) }
+    /// Whether any of `identifiers` was reported at or above `minConfidence`.
+    func hasAny(_ identifiers: Set<String>, minConfidence: Float = 0.45) -> Bool {
+        labels.contains { identifiers.contains($0.0) && $0.1 >= minConfidence }
     }
 
     // Hashable/Equatable by identity; the tuple array isn't Hashable itself.
@@ -79,7 +80,7 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
         case .food: return "Meals, drinks, and desserts"
         case .pets: return "Cats and dogs"
         case .memes: return "Text-heavy images and saved screenshots"
-        case .blurry: return "The least sharp 10% of your photos"
+        case .blurry: return "The least sharp 5% of your photos"
         }
     }
 
@@ -108,24 +109,34 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
     private static let memeLabels: Set<String> = ["screenshot"]
 
     /// Whether `signals` fall into this category. `blurThreshold` is the
-    /// library's 10th-percentile sharpness, computed by the categorize pass.
+    /// library's 5th-percentile sharpness, computed by the categorize pass.
+    ///
+    /// Tuned toward precision: a label alone needs a clear confidence, and
+    /// text coverage on its own (which fires on foliage and patterns too)
+    /// never makes a document. Better to miss a few than to fill a category
+    /// with wrong photos.
     func matches(_ s: CategorySignals, blurThreshold: Float?) -> Bool {
+        let text = s.textCoverage ?? 0
         switch self {
         case .receipts:
-            return s.hasAny(Self.receiptLabels)
-                || (s.isUtility == true && (s.textCoverage ?? 0) >= 0.30 && !s.hasAny(Self.whiteboardLabels))
+            // Only with the label: "utility + text" alone is more often a
+            // document than a receipt, and documents is checked next.
+            return s.hasAny(Self.receiptLabels, minConfidence: 0.4)
         case .documents:
-            return s.hasAny(Self.documentLabels)
-                || (s.textCoverage ?? 0) >= 0.35 && !s.isScreenshot && !s.hasAny(Self.whiteboardLabels)
+            return s.hasAny(Self.documentLabels, minConfidence: 0.5)
+                || (s.hasAny(Self.documentLabels, minConfidence: 0.3) && text >= 0.3)
+                || (s.isUtility == true && text >= 0.45 && !s.isScreenshot
+                    && !s.hasAny(Self.whiteboardLabels))
         case .whiteboards:
-            return s.hasAny(Self.whiteboardLabels)
+            return s.hasAny(Self.whiteboardLabels, minConfidence: 0.5)
         case .food:
-            return s.hasAny(Self.foodLabels)
+            return s.hasAny(Self.foodLabels, minConfidence: 0.55)
         case .pets:
-            return s.hasAnimal == true || s.hasAny(Self.petLabels)
+            return s.hasAnimal == true || s.hasAny(Self.petLabels, minConfidence: 0.6)
         case .memes:
             guard !s.isScreenshot else { return false }
-            return s.hasAny(Self.memeLabels) || (s.textCoverage ?? 0) >= 0.25
+            return s.hasAny(Self.memeLabels, minConfidence: 0.5)
+                || (text >= 0.45 && s.isUtility != false)
         case .blurry:
             guard let sharpness = s.sharpness, let blurThreshold else { return false }
             return sharpness < blurThreshold

@@ -107,6 +107,10 @@ struct AppTabView: View {
             AlbumListView(service: library)
         case .duplicates:
             DuplicatesView(service: library)
+        case .categories:
+            CategoriesView(service: library)
+        case .category(let category, let ids):
+            CategoryDetailView(category: category, ids: ids, service: library, store: reviewStore)
         case .swipe(let source):
             SwipeView(service: library,
                       store: reviewStore,

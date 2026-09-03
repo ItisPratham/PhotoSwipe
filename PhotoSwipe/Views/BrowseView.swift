@@ -11,7 +11,6 @@ struct BrowseView: View {
     @ObservedObject var store: ReviewStore
 
     @StateObject private var viewModel = BrowseViewModel()
-    @StateObject private var categories = CategoriesViewModel()
     /// Warms thumbnails around the visible rows. Sized to match
     /// `Thumbnail`'s request exactly, or the cache would miss.
     @State private var prefetcher = GridPrefetcher(targetSize: Thumbnail.requestSize)
@@ -116,7 +115,14 @@ struct BrowseView: View {
                 .accessibilityLabel("Find duplicate photos")
                 .padding(.horizontal, Theme.Spacing.screenMargin)
 
-                CategoriesSection(viewModel: categories, service: service)
+                NavigationLink(value: AppRoute.categories) {
+                    BrowseEntryRow(title: "Categories",
+                                   subtitle: "Receipts, documents, food, pets, and more",
+                                   systemImage: "square.grid.2x2")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Sort photos into categories")
+                .padding(.horizontal, Theme.Spacing.screenMargin)
 
                 if viewModel.sections.isEmpty {
                     emptyState

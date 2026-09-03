@@ -64,8 +64,8 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
 * **On this day** — photos taken on today's date in earlier years, when there
   are any.
 * **Categories** — an opt-in on-device pass sorts photos into Receipts,
-  Documents, Whiteboards, Food, Pets, Memes, and Blurry; each opens its own
-  deck. See *Categories* below.
+  Documents, Whiteboards, Food, Pets, Memes, and Blurry. Each category is a
+  Browse-style grid you can swipe from any photo. See *Categories* below.
 * **Videos** — reviewed right in the deck: poster first, then muted looping
   autoplay, a duration badge, tap to play/pause, a scrubber to seek, and a
   per-card mute toggle. Videos get a playable preview in the review grid too.
@@ -95,7 +95,7 @@ the system's *Recently Deleted*, recoverable for ~30 days.
 
 ## Categories
 
-The Categories section on Browse is opt-in and runs entirely on-device. It
+The Categories screen (from Browse) is opt-in and runs entirely on-device. It
 rides on the Duplicates scan's 256 px thumbnail: for each photo it runs
 Vision's built-in scene classifier (`VNClassifyImageRequest`), the cat/dog
 detector, and text-rectangle detection, and measures sharpness (Laplacian
@@ -103,7 +103,9 @@ variance) and, on iOS 18, aesthetics. The results are stored as optional
 columns on the duplicate index — no second library walk, no bundled model, no
 new license. Rules over those signals bucket each photo into its first
 matching category (receipt before document, never a meme if it's a system
-screenshot). "Blurry" is the least-sharp 10% of the library. Once opted in,
+screenshot). Rules lean toward precision: a label needs a clear confidence
+and text coverage alone never makes a document. "Blurry" is the least-sharp
+5% of the library. Once opted in,
 the Duplicates scan measures new photos too, so the two never diverge.
 
 ## Duplicate detection
