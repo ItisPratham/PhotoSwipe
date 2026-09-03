@@ -9,9 +9,13 @@ final class SwipeViewModel: ObservableObject {
     @Published private(set) var assets: [PhotoAsset] = []
     @Published private(set) var currentIndex: Int = 0
     @Published private(set) var isLoading: Bool = true
-    /// True after a swipe that hasn't been undone. Single-step only — undoing
-    /// flips this off until the next swipe.
-    @Published private(set) var canUndo: Bool = false
+    /// Decisions made this session, most recent last. Undo pops from here;
+    /// see `undo()` for how entries are validated against the live deck.
+    @Published private(set) var undoStack: [UndoEntry] = []
+    /// How many decisions Undo can walk back.
+    static let undoLimit = 50
+
+    var canUndo: Bool { !undoStack.isEmpty }
     /// Bytes reclaimed by the most recent successful delete. Surfaced to the
     /// UI as a "Freed ~X MB" banner and cleared after the user sees it.
     @Published var lastFreedBytes: Int64? = nil
@@ -66,9 +70,6 @@ final class SwipeViewModel: ObservableObject {
     /// The `PhotoLibraryService.libraryVersion` the current deck was built
     /// from. Nil until the first load.
     private var loadedLibraryVersion: Int?
-    /// The asset the last swipe decided, so undo can be validated after a
-    /// silent refresh rebuilds the deck.
-    private var lastDecidedID: String?
     private var isRefreshing = false
     /// The running size measurement, so Cancel can reach it.
     private var measureTask: Task<[String: Int64], Error>?
@@ -93,8 +94,7 @@ final class SwipeViewModel: ObservableObject {
         guard let deck = await buildDeck(using: service, keeping: []) else { return }
         assets = deck
         currentIndex = 0
-        canUndo = false
-        lastDecidedID = nil
+        undoStack.removeAll()
         loadedLibraryVersion = version
         isLoading = false
     }
@@ -102,8 +102,8 @@ final class SwipeViewModel: ObservableObject {
     /// The library changed (our own batch delete, iCloud sync, a new photo):
     /// rebuild the deck without a loading flash and without losing the place.
     /// Cards already shown this session stay in the deck so the cursor and the
-    /// single-step undo keep pointing at the right cards; assets that vanished
-    /// from the library drop out; new unreviewed assets slot in.
+    /// undo stack keep pointing at real cards; assets that vanished from the
+    /// library drop out (and leave the stack); new unreviewed assets slot in.
     func refreshIfStale(using service: PhotoLibraryService) async {
         guard loadedLibraryVersion != nil, !isRefreshing else { return }
         isRefreshing = true
@@ -117,9 +117,8 @@ final class SwipeViewModel: ObservableObject {
             let newIndex = fresh.firstIndex { !shown.contains($0.id) } ?? fresh.count
             assets = fresh
             currentIndex = newIndex
-            if canUndo, !(newIndex > 0 && fresh[newIndex - 1].id == lastDecidedID) {
-                canUndo = false
-            }
+            let live = Set(fresh.prefix(newIndex).map(\.id))
+            undoStack.removeAll { !live.contains($0.assetID) }
             loadedLibraryVersion = version
         }
     }
@@ -185,29 +184,39 @@ final class SwipeViewModel: ObservableObject {
     func keep() {
         guard let asset = currentAsset else { return }
         store.markKept(asset.id)
-        lastDecidedID = asset.id
-        currentIndex += 1
-        canUndo = true
+        advance(recording: UndoEntry(assetID: asset.id))
     }
 
     /// Left swipe — mark for batch deletion (also counts as reviewed).
     func markForDeletion() {
         guard let asset = currentAsset else { return }
         store.markForDeletion(asset.id)
-        lastDecidedID = asset.id
-        currentIndex += 1
-        canUndo = true
+        advance(recording: UndoEntry(assetID: asset.id))
     }
 
-    /// Restore the previous card and clear whatever mark it received. Single
-    /// step only: the user can't chain undos.
-    func undo() {
-        guard canUndo, currentIndex > 0 else { return }
-        currentIndex -= 1
-        if let asset = currentAsset {
-            store.clearDecision(for: asset.id)
+    /// Moves past the current card and records the decision for Undo, keeping
+    /// the stack within `undoLimit`.
+    private func advance(recording entry: UndoEntry) {
+        currentIndex += 1
+        undoStack.append(entry)
+        if undoStack.count > Self.undoLimit {
+            undoStack.removeFirst(undoStack.count - Self.undoLimit)
         }
-        canUndo = false
+    }
+
+    /// Walks back to the most recent decision whose card is still in the deck
+    /// behind the cursor, clears that decision, and makes it the current card.
+    /// Cards between it and the cursor (unreviewed ones a silent refresh may
+    /// have slotted in) are simply shown again. Entries whose card is gone —
+    /// batch-deleted, or removed by a refresh — are dropped, never replayed.
+    func undo() {
+        while let entry = undoStack.popLast() {
+            guard let index = assets.prefix(currentIndex).lastIndex(where: { $0.id == entry.assetID })
+            else { continue }
+            currentIndex = index
+            store.clearDecision(for: entry.assetID)
+            return
+        }
     }
 
     /// Performs a batched delete of every asset currently marked for deletion.
@@ -226,8 +235,9 @@ final class SwipeViewModel: ObservableObject {
         if success {
             store.forget(ids: ids)
             stats.recordDelete(count: ids.count, bytesFreed: bytes)
-            // Undo can't reach across a confirmed delete — the photo is gone.
-            canUndo = false
+            // Undo can't reach across a confirmed delete — the photos are gone
+            // and the surviving decisions were reviewed on the way to it.
+            undoStack.removeAll()
             lastFreedBytes = bytes
         }
         return success
