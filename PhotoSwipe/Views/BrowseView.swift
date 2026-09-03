@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Browse tab. Surfaces quick entries into Albums, Videos, Biggest files,
-/// and Duplicates, followed by a day-grouped grid of the user's library
+/// The Browse tab. Surfaces quick entries into Albums, Videos, Screenshots,
+/// Biggest files, and Duplicates, followed by a day-grouped grid of the user's library
 /// (Photos.app shape). Tapping a thumbnail or a day header pushes the swipe
 /// deck starting at that photo/day. Settings live behind the tab's gear (see
 /// `AppTabView`); the default oldest-first deck is the Clean tab.
@@ -73,6 +73,15 @@ struct BrowseView: View {
                 }
                 .padding(.horizontal, Theme.Spacing.screenMargin)
                 .padding(.top, 12)
+
+                NavigationLink(value: AppRoute.swipe(.screenshots)) {
+                    BrowseEntryRow(title: "Screenshots",
+                                   subtitle: screenshotsSubtitle,
+                                   systemImage: "camera.viewfinder")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Swipe through screenshots, oldest first")
+                .padding(.horizontal, Theme.Spacing.screenMargin)
 
                 NavigationLink(
                     value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .all, order: .largestFirst))
@@ -163,6 +172,14 @@ struct BrowseView: View {
             .padding(.bottom, 16)
         }
         .scrollIndicators(.visible)
+    }
+
+    private var screenshotsSubtitle: String {
+        switch viewModel.screenshotCount {
+        case 0: return "None in your library"
+        case 1: return "1 screenshot"
+        case let n: return "\(n) screenshots"
+        }
     }
 
     private var emptyState: some View {

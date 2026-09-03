@@ -13,6 +13,10 @@ struct PhotoAsset: Identifiable, Equatable, @unchecked Sendable {
     /// as stills — only true movies count as video here.
     var isVideo: Bool { phAsset.mediaType == .video }
 
+    /// Set by the system for images captured with the screenshot gesture.
+    /// Metadata, not a visual guess — see the Screenshots browse entry.
+    var isScreenshot: Bool { phAsset.mediaSubtypes.contains(.photoScreenshot) }
+
     /// Play length in seconds. Zero for stills.
     var duration: TimeInterval { phAsset.duration }
 

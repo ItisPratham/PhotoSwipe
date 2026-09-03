@@ -24,6 +24,9 @@ final class BrowseViewModel: ObservableObject {
     /// refresh that happens to keep the same counts.
     @Published private(set) var generation = 0
     @Published private(set) var isLoading: Bool = true
+    /// How many of the fetched photos are screenshots, for the Browse entry's
+    /// subtitle. Counted during the grouping pass — no extra fetch.
+    @Published private(set) var screenshotCount = 0
 
     /// The `libraryVersion` the grid was built from; nil until the first load.
     private var loadedLibraryVersion: Int?
@@ -37,10 +40,11 @@ final class BrowseViewModel: ObservableObject {
         let version = service.libraryVersion
         if sections.isEmpty { isLoading = true }
         let fetched = await service.fetchImages(source: .allPhotos)
-        let grouped = await Task.detached(priority: .userInitiated) {
-            Self.group(assets: fetched)
+        let (grouped, screenshots) = await Task.detached(priority: .userInitiated) {
+            (Self.group(assets: fetched), fetched.reduce(0) { $0 + ($1.isScreenshot ? 1 : 0) })
         }.value
         sections = grouped
+        screenshotCount = screenshots
         flatAssets = grouped.flatMap(\.assets)
         generation &+= 1
         loadedLibraryVersion = version

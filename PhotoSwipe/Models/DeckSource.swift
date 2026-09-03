@@ -69,9 +69,17 @@ struct DeckSource: Hashable {
         case largestFirst
     }
 
+    /// Media-subtype filter applied at the predicate layer, on top of
+    /// `media`. Nil = no restriction. Subtypes are PhotoKit metadata, so the
+    /// filter is exact and costs nothing.
+    enum Subtype: Hashable {
+        case screenshots
+    }
+
     var scope: Scope
     var media: Media
     var order: Order
+    var subtype: Subtype?
     /// Include only assets whose creationDate is on/after this date. Used by
     /// the browse flow to start from a chosen photo or day, moving forward
     /// in time toward the newest.
@@ -83,17 +91,22 @@ struct DeckSource: Hashable {
     init(scope: Scope = .allPhotos,
          media: Media = .photos,
          order: Order = .chronological,
+         subtype: Subtype? = nil,
          startFrom: Date? = nil,
          suggestedKeeperID: String? = nil) {
         self.scope = scope
         self.media = media
         self.order = order
+        self.subtype = subtype
         self.startFrom = startFrom
         self.suggestedKeeperID = suggestedKeeperID
     }
 
     /// Default source — the full chronological photo library.
     static let allPhotos = DeckSource(scope: .allPhotos, media: .photos, startFrom: nil)
+
+    /// Every screenshot in the library, oldest first.
+    static let screenshots = DeckSource(scope: .allPhotos, media: .photos, subtype: .screenshots)
 
     /// Builds the deck for reviewing a duplicate group, keeper badged.
     static func duplicateGroup(_ group: DuplicateGroup) -> DeckSource {
@@ -114,6 +127,7 @@ struct DeckSource: Hashable {
         hasher.combine(scope)
         hasher.combine(media)
         hasher.combine(order)
+        hasher.combine(subtype)
         hasher.combine(startFrom)
         hasher.combine(suggestedKeeperID)
     }

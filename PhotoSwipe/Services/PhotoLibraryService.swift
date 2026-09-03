@@ -211,6 +211,13 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         case .all:
             break // no media-type restriction
         }
+        switch source.subtype {
+        case .screenshots:
+            predicates.append(NSPredicate(format: "(mediaSubtypes & %d) != 0",
+                                          PHAssetMediaSubtype.photoScreenshot.rawValue))
+        case nil:
+            break
+        }
         if let startFrom = source.startFrom {
             predicates.append(NSPredicate(format: "creationDate >= %@",
                                           startFrom as NSDate))
