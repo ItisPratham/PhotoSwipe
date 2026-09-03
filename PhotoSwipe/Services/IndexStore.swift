@@ -9,12 +9,38 @@ struct IndexedAsset: Sendable, Hashable {
     let byteSize: Int64
 }
 
+/// Where the app's SwiftData stores live. Each index gets its **own file**:
+/// SwiftData's default `ModelConfiguration` points every container at the same
+/// `Application Support/default.store`, so two containers with different
+/// schemas would migrate that one file back and forth and drop each other's
+/// tables on every open.
+enum LocalStores {
+    static func url(named name: String) -> URL {
+        let directory = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appending(path: "\(name).store")
+    }
+
+    /// Removes the legacy shared `default.store` (and its SQLite sidecars) left
+    /// behind by earlier builds. Its contents are undefined after the schema
+    /// ping-pong, and both indexes rebuild incrementally, so nothing of value
+    /// is lost. Runs at most once per launch.
+    static let removeLegacyDefaultStore: Void = {
+        let base = URL.applicationSupportDirectory.appending(path: "default.store").path
+        for suffix in ["", "-shm", "-wal"] {
+            try? FileManager.default.removeItem(atPath: base + suffix)
+        }
+    }()
+}
+
 /// The on-disk SwiftData container for the duplicate index. Created once and
 /// shared; the schema is fixed, so a failure here is unrecoverable and fatal.
 enum IndexContainer {
     static let shared: ModelContainer = {
+        _ = LocalStores.removeLegacyDefaultStore
         let schema = Schema([AssetIndex.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(schema: schema,
+                                               url: LocalStores.url(named: "duplicates"))
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {

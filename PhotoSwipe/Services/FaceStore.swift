@@ -2,11 +2,14 @@ import Foundation
 import SwiftData
 
 /// The on-disk SwiftData container for the face index. Created once and shared;
-/// the schema is fixed, so a failure here is unrecoverable and fatal.
+/// the schema is fixed, so a failure here is unrecoverable and fatal. Lives in
+/// its own file (see `LocalStores`) so it never collides with the duplicate index.
 enum FaceContainer {
     static let shared: ModelContainer = {
+        _ = LocalStores.removeLegacyDefaultStore
         let schema = Schema([FaceRow.self, PersonRow.self, ScannedAssetRow.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(schema: schema,
+                                               url: LocalStores.url(named: "faces"))
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
