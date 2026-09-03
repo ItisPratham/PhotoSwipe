@@ -322,26 +322,45 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
 
     /// Measures on-device byte size per asset from `PHAssetResource` metadata
     /// (no download), returning a map keyed by `localIdentifier`. Callers pass
-    /// only the assets they don't already have cached. Runs at `.utility` off
-    /// the main actor. Assets with multiple resources (RAW + JPEG, edits) sum
-    /// them all, since they all reclaim space on delete.
-    nonisolated func byteSizes(for assets: [PhotoAsset]) async -> [String: Int64] {
+    /// only the assets they don't already have cached. Assets with multiple
+    /// resources (RAW + JPEG, edits) sum them all, since they all reclaim
+    /// space on delete.
+    ///
+    /// Runs on the generic executor (nonisolated async), not detached, so the
+    /// caller's cancellation reaches it: it checks between chunks and throws
+    /// `CancellationError`. `onProgress` reports `(measured, total)` after
+    /// each chunk, from a background thread.
+    nonisolated func byteSizes(
+        for assets: [PhotoAsset],
+        chunkSize: Int = 250,
+        onProgress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }
+    ) async throws -> [String: Int64] {
         guard !assets.isEmpty else { return [:] }
-        return await Task.detached(priority: .utility) {
-            var result: [String: Int64] = [:]
-            for asset in assets {
-                var total: Int64 = 0
-                for resource in PHAssetResource.assetResources(for: asset.phAsset) {
-                    if let size = resource.value(forKey: "fileSize") as? Int64 {
-                        total += size
-                    } else if let size = resource.value(forKey: "fileSize") as? NSNumber {
-                        total += size.int64Value
-                    }
-                }
-                result[asset.id] = total
+        var result: [String: Int64] = [:]
+        result.reserveCapacity(assets.count)
+        var start = 0
+        while start < assets.count {
+            try Task.checkCancellation()
+            let end = min(assets.count, start + max(1, chunkSize))
+            for asset in assets[start..<end] {
+                result[asset.id] = Self.resourceSize(of: asset.phAsset)
             }
-            return result
-        }.value
+            start = end
+            onProgress(start, assets.count)
+        }
+        return result
+    }
+
+    nonisolated private static func resourceSize(of asset: PHAsset) -> Int64 {
+        var total: Int64 = 0
+        for resource in PHAssetResource.assetResources(for: asset) {
+            if let size = resource.value(forKey: "fileSize") as? Int64 {
+                total += size
+            } else if let size = resource.value(forKey: "fileSize") as? NSNumber {
+                total += size.int64Value
+            }
+        }
+        return total
     }
 
     /// Lightweight summary of a user album — enough for a list row without

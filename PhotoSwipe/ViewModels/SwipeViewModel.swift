@@ -15,6 +15,12 @@ final class SwipeViewModel: ObservableObject {
     /// Bytes reclaimed by the most recent successful delete. Surfaced to the
     /// UI as a "Freed ~X MB" banner and cleared after the user sees it.
     @Published var lastFreedBytes: Int64? = nil
+    /// Progress of the largest-first size measurement while loading. Total is
+    /// zero when nothing is being measured.
+    @Published private(set) var measuredCount = 0
+    @Published private(set) var measureTotal = 0
+
+    var isMeasuring: Bool { measureTotal > 0 }
 
     private let store: ReviewStore
     private let stats: StatsStore
@@ -64,6 +70,8 @@ final class SwipeViewModel: ObservableObject {
     /// silent refresh rebuilds the deck.
     private var lastDecidedID: String?
     private var isRefreshing = false
+    /// The running size measurement, so Cancel can reach it.
+    private var measureTask: Task<[String: Int64], Error>?
 
     /// Called on every appearance. Builds the deck on the first call; later
     /// calls (switching tabs, popping back) keep the deck and the user's place
@@ -77,11 +85,12 @@ final class SwipeViewModel: ObservableObject {
     }
 
     /// Full (re)load behind the loading indicator: rebuilds the deck from
-    /// scratch and resets the cursor and undo.
+    /// scratch and resets the cursor and undo. A cancelled size measurement
+    /// leaves the deck untouched (the screen is being dismissed).
     func load(using service: PhotoLibraryService) async {
         isLoading = true
         let version = service.libraryVersion
-        let deck = await buildDeck(using: service, keeping: [])
+        guard let deck = await buildDeck(using: service, keeping: []) else { return }
         assets = deck
         currentIndex = 0
         canUndo = false
@@ -102,7 +111,7 @@ final class SwipeViewModel: ObservableObject {
         while let loaded = loadedLibraryVersion, loaded != service.libraryVersion {
             let version = service.libraryVersion
             let shownBefore = Set(assets.prefix(currentIndex).map(\.id))
-            let fresh = await buildDeck(using: service, keeping: shownBefore)
+            guard let fresh = await buildDeck(using: service, keeping: shownBefore) else { return }
             // The user may have swiped while we were fetching — re-read the place.
             let shown = Set(assets.prefix(currentIndex).map(\.id))
             let newIndex = fresh.firstIndex { !shown.contains($0.id) } ?? fresh.count
@@ -116,30 +125,55 @@ final class SwipeViewModel: ObservableObject {
     }
 
     /// Fetches the source and filters out already-reviewed assets, except the
-    /// ids in `keeping` (cards already shown this session).
+    /// ids in `keeping` (cards already shown this session). Nil only when a
+    /// largest-first measurement was cancelled.
     private func buildDeck(using service: PhotoLibraryService,
-                           keeping: Set<String>) async -> [PhotoAsset] {
+                           keeping: Set<String>) async -> [PhotoAsset]? {
         let fetched = await service.fetchImages(source: source)
-        var deck = fetched.filter { keeping.contains($0.id) || !store.isReviewed($0.id) }
+        let deck = fetched.filter { keeping.contains($0.id) || !store.isReviewed($0.id) }
         if source.order == .largestFirst {
-            deck = await sortedByLargest(deck, using: service)
+            return await sortedByLargest(deck, using: service)
         }
         return deck
     }
 
     /// Sorts the deck by on-device byte size, descending. Sizes come from the
-    /// cache; anything not yet measured is enumerated once (metadata only, no
-    /// download) and folded back into the cache for next time.
+    /// cache, topped up from the duplicate index; anything still unmeasured
+    /// is enumerated once (metadata only, no download) with progress and
+    /// Cancel, and folded back into the cache for next time. Nil if cancelled.
     private func sortedByLargest(_ deck: [PhotoAsset],
-                                 using service: PhotoLibraryService) async -> [PhotoAsset] {
-        let missing = deck.filter { sizes.size(for: $0.id) == nil }
+                                 using service: PhotoLibraryService) async -> [PhotoAsset]? {
+        var missing = deck.filter { sizes.size(for: $0.id) == nil }
         if !missing.isEmpty {
-            let measured = await service.byteSizes(for: missing)
+            await sizes.adoptIndexedSizes()
+            missing = missing.filter { sizes.size(for: $0.id) == nil }
+        }
+        if !missing.isEmpty {
+            measuredCount = 0
+            measureTotal = missing.count
+            defer { measureTotal = 0; measuredCount = 0; measureTask = nil }
+            let task = Task { [weak self] in
+                try await service.byteSizes(for: missing) { done, _ in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        // Callbacks may land out of order; never step back.
+                        self.measuredCount = max(self.measuredCount, done)
+                    }
+                }
+            }
+            measureTask = task
+            guard let measured = try? await task.value else { return nil }
             sizes.merge(measured)
         }
         return deck.sorted {
             (sizes.size(for: $0.id) ?? 0) > (sizes.size(for: $1.id) ?? 0)
         }
+    }
+
+    /// Stops a running size measurement. The caller dismisses the deck, since
+    /// a largest-first deck can't be built without the sizes.
+    func cancelMeasuring() {
+        measureTask?.cancel()
     }
 
     /// Right swipe — keep and never show again.

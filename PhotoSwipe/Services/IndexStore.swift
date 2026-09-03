@@ -76,6 +76,16 @@ actor IndexStore {
         try modelContext.fetchCount(FetchDescriptor<AssetIndex>())
     }
 
+    /// On-device byte size per indexed asset, for the size cache. Reads only
+    /// the identifier and size columns.
+    func byteSizes() throws -> [String: Int64] {
+        var descriptor = FetchDescriptor<AssetIndex>()
+        descriptor.propertiesToFetch = [\.localIdentifier, \.byteSize]
+        let rows = try modelContext.fetch(descriptor)
+        return Dictionary(rows.map { ($0.localIdentifier, $0.byteSize) },
+                          uniquingKeysWith: { first, _ in first })
+    }
+
     /// Every indexed asset, as Sendable snapshots, for grouping. Rows written
     /// before 4.2 still hold an archived observation; they are decoded here
     /// once, the raw vector written back, and the archive dropped, so the

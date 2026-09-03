@@ -24,6 +24,7 @@ struct SwipeView: View {
     @State private var showReviewSheet = false
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
+    @Environment(\.dismiss) private var dismiss
 
     /// How many cards past the current one are kept warm in the image cache.
     /// Small on purpose: each entry is a screen-sized decoded image.
@@ -86,8 +87,12 @@ struct SwipeView: View {
                 GeometryReader { proxy in
                     Group {
                         if viewModel.isLoading {
-                            ProgressView("Loading library…")
-                                .controlSize(.large)
+                            if viewModel.isMeasuring {
+                                measuringState
+                            } else {
+                                ProgressView("Loading library…")
+                                    .controlSize(.large)
+                            }
                         } else if let asset = viewModel.currentAsset {
                             card(for: asset)
                         } else {
@@ -190,6 +195,35 @@ struct SwipeView: View {
     private func releasePrefetched() {
         service.stopCaching(prefetched, targetSize: prefetchedSize)
         prefetched = []
+    }
+
+    // MARK: - Measuring (largest-first first open)
+
+    /// Determinate progress while file sizes are read for a largest-first
+    /// deck. Cancel stops the measurement and pops the deck, since the order
+    /// can't be built without the sizes; what was measured is kept for next
+    /// time only once the run completes.
+    private var measuringState: some View {
+        VStack(spacing: 20) {
+            ProgressView(value: Double(viewModel.measuredCount),
+                         total: Double(max(1, viewModel.measureTotal))) {
+                Text("Measuring file sizes…")
+            } currentValueLabel: {
+                Text("\(viewModel.measuredCount) of \(viewModel.measureTotal)")
+                    .monospacedDigit()
+            }
+            .progressViewStyle(.linear)
+            .padding(.horizontal, 40)
+
+            Text("Only once — sizes are remembered for next time.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button("Cancel") {
+                viewModel.cancelMeasuring()
+                dismiss()
+            }
+        }
     }
 
     // MARK: - Card
