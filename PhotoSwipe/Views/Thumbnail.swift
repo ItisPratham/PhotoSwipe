@@ -7,6 +7,10 @@ struct Thumbnail: View {
     let asset: PhotoAsset
     let service: PhotoLibraryService
 
+    /// The pixel size every thumbnail asks for. Shared with `GridPrefetcher`
+    /// so a prefetched image is a cache hit for the cell.
+    static let requestSize = CGSize(width: 240, height: 240)
+
     @State private var image: UIImage?
 
     var body: some View {
@@ -25,7 +29,7 @@ struct Thumbnail: View {
                 image = nil
                 for await next in service.imageStream(
                     for: asset,
-                    targetSize: CGSize(width: 240, height: 240)
+                    targetSize: Self.requestSize
                 ) {
                     image = next
                 }

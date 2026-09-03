@@ -9,6 +9,9 @@ struct BrowseView: View {
     @ObservedObject var service: PhotoLibraryService
 
     @StateObject private var viewModel = BrowseViewModel()
+    /// Warms thumbnails around the visible rows. Sized to match
+    /// `Thumbnail`'s request exactly, or the cache would miss.
+    @State private var prefetcher = GridPrefetcher(targetSize: Thumbnail.requestSize)
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 4),
@@ -20,11 +23,16 @@ struct BrowseView: View {
             .navigationTitle("Browse")
             .navigationBarTitleDisplayMode(.inline)
             .task {
+                prefetcher.attach(service)
                 await viewModel.loadIfNeeded(using: service)
             }
             .onChange(of: service.libraryVersion) { _, _ in
                 Task { await viewModel.loadIfNeeded(using: service) }
             }
+            .onChange(of: viewModel.generation, initial: true) { _, _ in
+                prefetcher.update(assets: viewModel.flatAssets)
+            }
+            .onDisappear { prefetcher.release() }
     }
 
     @ViewBuilder
@@ -88,7 +96,7 @@ struct BrowseView: View {
                     ForEach(viewModel.sections) { section in
                         Section {
                             LazyVGrid(columns: columns, spacing: 4) {
-                                ForEach(section.assets) { asset in
+                                ForEach(Array(section.assets.enumerated()), id: \.element.id) { offset, asset in
                                     NavigationLink(
                                         value: AppRoute.swipe(
                                             DeckSource(scope: .allPhotos,
@@ -98,6 +106,8 @@ struct BrowseView: View {
                                         Thumbnail(asset: asset, service: service)
                                     }
                                     .buttonStyle(.plain)
+                                    .onAppear { prefetcher.cellAppeared(section.startIndex + offset) }
+                                    .onDisappear { prefetcher.cellDisappeared(section.startIndex + offset) }
                                     .accessibilityLabel("Start swiping from \(asset.formattedDate)")
                                     .contextMenu {
                                         NavigationLink(

@@ -11,9 +11,18 @@ final class BrowseViewModel: ObservableObject {
         /// M3 will feed into DeckSource.
         let id: Date
         let assets: [PhotoAsset]
+        /// Offset of this section's first asset in `flatAssets`, so a cell
+        /// can report its flat index to the grid prefetcher.
+        let startIndex: Int
     }
 
     @Published private(set) var sections: [DaySection] = []
+    /// Every asset in display order (sections newest-first, newest-first
+    /// inside), the list the grid prefetcher windows over.
+    @Published private(set) var flatAssets: [PhotoAsset] = []
+    /// Bumped whenever `sections` are rebuilt, so observers can react to a
+    /// refresh that happens to keep the same counts.
+    @Published private(set) var generation = 0
     @Published private(set) var isLoading: Bool = true
 
     /// The `libraryVersion` the grid was built from; nil until the first load.
@@ -28,9 +37,12 @@ final class BrowseViewModel: ObservableObject {
         let version = service.libraryVersion
         if sections.isEmpty { isLoading = true }
         let fetched = await service.fetchImages(source: .allPhotos)
-        sections = await Task.detached(priority: .userInitiated) {
+        let grouped = await Task.detached(priority: .userInitiated) {
             Self.group(assets: fetched)
         }.value
+        sections = grouped
+        flatAssets = grouped.flatMap(\.assets)
+        generation &+= 1
         loadedLibraryVersion = version
         isLoading = false
     }
@@ -45,11 +57,13 @@ final class BrowseViewModel: ObservableObject {
             let day = calendar.startOfDay(for: date)
             buckets[day, default: []].append(asset)
         }
+        var offset = 0
         return buckets.keys.sorted(by: >).map { day in
             let sorted = (buckets[day] ?? []).sorted {
                 ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast)
             }
-            return DaySection(id: day, assets: sorted)
+            defer { offset += sorted.count }
+            return DaySection(id: day, assets: sorted, startIndex: offset)
         }
     }
 }
