@@ -31,6 +31,14 @@ final class AssetIndex {
     /// Vision aesthetics score (iOS 18+), same nil semantics.
     var aestheticScore: Float?
 
+    /// Categorize-pass columns (see `CategorySignals`). All optional: nil
+    /// until the pass has run for this row, which `categorizedAt` marks.
+    var labels: String?
+    var textCoverage: Float?
+    var isUtility: Bool?
+    var hasAnimal: Bool?
+    var categorizedAt: Date?
+
     init(localIdentifier: String, vector: Data, byteSize: Int64, scannedAt: Date,
          sharpness: Float? = nil, aestheticScore: Float? = nil) {
         self.localIdentifier = localIdentifier

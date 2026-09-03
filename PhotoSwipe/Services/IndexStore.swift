@@ -11,6 +11,20 @@ struct IndexedAsset: Sendable, Hashable {
     /// Quality signals for the keeper score; nil when not measured yet.
     var sharpness: Float? = nil
     var aestheticScore: Float? = nil
+    /// Categorize-pass results, set when the scan ran with categories on.
+    var categories: CategoryMeasurement? = nil
+}
+
+/// What the categorize pass measures for one asset; written to the index
+/// columns of the same name. `labels` is the encoded `identifier:confidence`
+/// list (see `CategorySignals.encode`).
+struct CategoryMeasurement: Sendable, Hashable {
+    var labels: String
+    var textCoverage: Float
+    var isUtility: Bool?
+    var hasAnimal: Bool
+    var sharpness: Float?
+    var aestheticScore: Float?
 }
 
 /// Where the app's SwiftData stores live. Each index gets its **own file**:
@@ -81,6 +95,66 @@ actor IndexStore {
         try modelContext.fetchCount(FetchDescriptor<AssetIndex>())
     }
 
+    /// Identifiers that have a print but haven't been through the categorize
+    /// pass. Identifier column only.
+    func uncategorizedIdentifiers() throws -> [String] {
+        var descriptor = FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.categorizedAt == nil })
+        descriptor.propertiesToFetch = [\.localIdentifier]
+        return try modelContext.fetch(descriptor).map(\.localIdentifier)
+    }
+
+    /// Number of rows the categorize pass has covered — tells the UI whether
+    /// the Categories section has anything to show yet.
+    func categorizedCount() throws -> Int {
+        try modelContext.fetchCount(FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.categorizedAt != nil }))
+    }
+
+    /// Category signals for every categorized row, without the vectors.
+    /// `screenshotIDs` marks rows whose asset is a system screenshot.
+    func categorySignals(screenshotIDs: Set<String>) throws -> [CategorySignals] {
+        var descriptor = FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.categorizedAt != nil })
+        descriptor.propertiesToFetch = [
+            \.localIdentifier, \.labels, \.textCoverage, \.sharpness, \.isUtility, \.hasAnimal,
+        ]
+        return try modelContext.fetch(descriptor).map { row in
+            CategorySignals(localIdentifier: row.localIdentifier,
+                            labels: CategorySignals.decode(labels: row.labels),
+                            textCoverage: row.textCoverage,
+                            sharpness: row.sharpness,
+                            isUtility: row.isUtility,
+                            hasAnimal: row.hasAnimal,
+                            isScreenshot: screenshotIDs.contains(row.localIdentifier))
+        }
+    }
+
+    /// Writes categorize-pass results onto existing rows (by identifier) and
+    /// stamps `categorizedAt`. Rows that no longer exist are skipped.
+    func applyCategories(_ measurements: [String: CategoryMeasurement], at date: Date) throws {
+        let ids = Array(measurements.keys)
+        var start = 0
+        while start < ids.count {
+            let chunk = Array(ids[start..<min(ids.count, start + 500)])
+            let rows = try modelContext.fetch(FetchDescriptor<AssetIndex>(
+                predicate: #Predicate { chunk.contains($0.localIdentifier) }))
+            for row in rows {
+                guard let m = measurements[row.localIdentifier] else { continue }
+                Self.write(m, to: row, at: date)
+            }
+            start += chunk.count
+        }
+        try modelContext.save()
+    }
+
+    private static func write(_ m: CategoryMeasurement, to row: AssetIndex, at date: Date) {
+        row.labels = m.labels
+        row.textCoverage = m.textCoverage
+        row.isUtility = m.isUtility
+        row.hasAnimal = m.hasAnimal
+        if let sharpness = m.sharpness { row.sharpness = sharpness }
+        if let aesthetic = m.aestheticScore { row.aestheticScore = aesthetic }
+        row.categorizedAt = date
+    }
+
     /// On-device byte size per indexed asset, for the size cache. Reads only
     /// the identifier and size columns.
     func byteSizes() throws -> [String: Int64] {
@@ -138,15 +212,20 @@ actor IndexStore {
                 record.scannedAt = scannedAt
                 record.sharpness = item.sharpness
                 record.aestheticScore = item.aestheticScore
+                if let categories = item.categories {
+                    Self.write(categories, to: record, at: scannedAt)
+                }
             } else {
-                modelContext.insert(
-                    AssetIndex(localIdentifier: item.localIdentifier,
-                               vector: vectorData,
-                               byteSize: item.byteSize,
-                               scannedAt: scannedAt,
-                               sharpness: item.sharpness,
-                               aestheticScore: item.aestheticScore)
-                )
+                let record = AssetIndex(localIdentifier: item.localIdentifier,
+                                        vector: vectorData,
+                                        byteSize: item.byteSize,
+                                        scannedAt: scannedAt,
+                                        sharpness: item.sharpness,
+                                        aestheticScore: item.aestheticScore)
+                if let categories = item.categories {
+                    Self.write(categories, to: record, at: scannedAt)
+                }
+                modelContext.insert(record)
             }
         }
         try modelContext.save()
