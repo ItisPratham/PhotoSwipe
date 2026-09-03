@@ -48,6 +48,15 @@ final class SwipeViewModel: ObservableObject {
         store.markedForDeletionIDs.count
     }
 
+    /// The next `limit` cards after the current one, for image prefetching.
+    /// Empty at the end of the deck or while loading.
+    func upcomingAssets(limit: Int) -> [PhotoAsset] {
+        let start = currentIndex + 1
+        let end = min(assets.count, start + limit)
+        guard limit > 0, start < end else { return [] }
+        return Array(assets[start..<end])
+    }
+
     /// The `PhotoLibraryService.libraryVersion` the current deck was built
     /// from. Nil until the first load.
     private var loadedLibraryVersion: Int?

@@ -25,6 +25,17 @@ struct SwipeView: View {
     @State private var zoomAsset: PhotoAsset?
     @State private var freedBannerDismiss: Task<Void, Never>?
 
+    /// How many cards past the current one are kept warm in the image cache.
+    /// Small on purpose: each entry is a screen-sized decoded image.
+    private let prefetchDepth = 3
+    /// Pixel size the cards request, derived from the deck slot. Zero until
+    /// the first layout pass, which is why prefetching also keys off it.
+    @State private var cardTargetSize: CGSize = .zero
+    /// What is currently warm, and at what size, so leaving cards can be
+    /// released precisely (the cache keys on size).
+    @State private var prefetched: [PhotoAsset] = []
+    @State private var prefetchedSize: CGSize = .zero
+
     /// Fires once the deck finishes its first load. The Clean tab passes this so
     /// RootView's launch splash can wait for real content before crossfading in;
     /// every other entry point leaves it as the no-op default.
@@ -70,18 +81,25 @@ struct SwipeView: View {
                 .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                Group {
-                    if viewModel.isLoading {
-                        ProgressView("Loading library…")
-                            .controlSize(.large)
-                    } else if let asset = viewModel.currentAsset {
-                        card(for: asset)
-                    } else {
-                        CaughtUpView(totalReviewed: store.reviewedIDs.count,
-                                     onBackToBrowse: onBackToBrowse)
+                // The reader measures the deck slot so the prefetcher can ask
+                // PhotoKit for exactly the size the card itself will request.
+                GeometryReader { proxy in
+                    Group {
+                        if viewModel.isLoading {
+                            ProgressView("Loading library…")
+                                .controlSize(.large)
+                        } else if let asset = viewModel.currentAsset {
+                            card(for: asset)
+                        } else {
+                            CaughtUpView(totalReviewed: store.reviewedIDs.count,
+                                         onBackToBrowse: onBackToBrowse)
+                        }
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .onChange(of: proxy.size, initial: true) { _, size in
+                        cardTargetSize = DeckCardMetrics.pixelSize(forSlot: size)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if !viewModel.isLoading {
                     actionsBar
@@ -101,10 +119,17 @@ struct SwipeView: View {
         .task {
             await viewModel.loadIfNeeded(using: service)
             onLoaded()
+            prefetchUpcoming()
         }
         .onChange(of: service.libraryVersion) { _, _ in
-            Task { await viewModel.refreshIfStale(using: service) }
+            Task {
+                await viewModel.refreshIfStale(using: service)
+                prefetchUpcoming()
+            }
         }
+        .onChange(of: viewModel.currentIndex) { _, _ in prefetchUpcoming() }
+        .onChange(of: cardTargetSize) { _, _ in prefetchUpcoming() }
+        .onDisappear { releasePrefetched() }
         .onChange(of: viewModel.lastFreedBytes) { _, newValue in
             scheduleFreedBannerDismiss(for: newValue)
         }
@@ -137,6 +162,36 @@ struct SwipeView: View {
         viewModel.lastFreedBytes = nil
     }
 
+    // MARK: - Prefetch
+
+    /// Keeps the next few cards' images warm. Cards that left the window are
+    /// released, so the cache stays a fixed size regardless of deck length.
+    /// A size change (rotation, first layout) re-warms the whole window at
+    /// the new size, since the old entries are keyed on the old one.
+    private func prefetchUpcoming() {
+        let upcoming = viewModel.upcomingAssets(limit: prefetchDepth)
+        if prefetchedSize != cardTargetSize {
+            service.stopCaching(prefetched, targetSize: prefetchedSize)
+            service.startCaching(upcoming, targetSize: cardTargetSize)
+        } else {
+            let upcomingIDs = Set(upcoming.map(\.id))
+            let prefetchedIDs = Set(prefetched.map(\.id))
+            service.stopCaching(prefetched.filter { !upcomingIDs.contains($0.id) },
+                                targetSize: prefetchedSize)
+            service.startCaching(upcoming.filter { !prefetchedIDs.contains($0.id) },
+                                 targetSize: cardTargetSize)
+        }
+        prefetched = upcoming
+        prefetchedSize = cardTargetSize
+    }
+
+    /// Drops the warm window when the deck leaves the screen. Re-appearing
+    /// re-runs `.task`, which warms it again.
+    private func releasePrefetched() {
+        service.stopCaching(prefetched, targetSize: prefetchedSize)
+        prefetched = []
+    }
+
     // MARK: - Card
 
     private func card(for asset: PhotoAsset) -> some View {
@@ -147,8 +202,8 @@ struct SwipeView: View {
                     keeperBadge
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 28)
+            .padding(.horizontal, DeckCardMetrics.horizontalInset)
+            .padding(.vertical, DeckCardMetrics.verticalInset)
             .offset(displayOffset)
             .rotationEffect(.degrees(Double(displayOffset.width / 18)))
             // Spring-back animation: when GestureState resets to .zero on

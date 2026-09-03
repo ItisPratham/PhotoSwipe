@@ -3,6 +3,12 @@ import Photos
 import SwiftUI
 import UIKit
 
+/// One caching manager for every image request in the app. The deck's
+/// prefetch calls warm it, and `imageStream` reads through it, so a card that
+/// was prefetched is served from memory. Thread-safe by contract, hence a
+/// file-level constant rather than a main-actor property.
+private let cachingImageManager = PHCachingImageManager()
+
 /// Owns photo-library authorization, asset fetching, image loading, and the
 /// batched-delete bridge to PhotoKit. Also observes the library so features
 /// (e.g. Duplicates) can auto-refresh when photos are added, deleted, edited,
@@ -158,16 +164,11 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         targetSize: CGSize
     ) -> AsyncStream<UIImage> {
         AsyncStream { continuation in
-            let options = PHImageRequestOptions()
-            options.deliveryMode = .opportunistic
-            options.isNetworkAccessAllowed = true
-            options.resizeMode = .fast
-
-            let requestID = PHImageManager.default().requestImage(
+            let requestID = cachingImageManager.requestImage(
                 for: asset.phAsset,
                 targetSize: targetSize,
                 contentMode: .aspectFill,
-                options: options
+                options: Self.streamOptions()
             ) { image, info in
                 if let image {
                     continuation.yield(image)
@@ -179,9 +180,49 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             }
 
             continuation.onTermination = { _ in
-                PHImageManager.default().cancelImageRequest(requestID)
+                cachingImageManager.cancelImageRequest(requestID)
             }
         }
+    }
+
+    /// Options shared by `imageStream` and the prefetch calls. They must match
+    /// exactly: the caching manager keys prepared images on asset, size,
+    /// content mode, and options, so a mismatch turns a prefetch into wasted
+    /// work and a second fetch.
+    nonisolated private static func streamOptions() -> PHImageRequestOptions {
+        let options = PHImageRequestOptions()
+        options.deliveryMode = .opportunistic
+        options.isNetworkAccessAllowed = true
+        options.resizeMode = .fast
+        return options
+    }
+
+    // MARK: - Prefetch
+
+    /// Warms the cache for upcoming deck cards at the exact size the card will
+    /// request, so advancing the deck lands on a ready image instead of a
+    /// thumbnail-then-full transition. Safe to call with assets already
+    /// cached; PhotoKit de-duplicates.
+    nonisolated func startCaching(_ assets: [PhotoAsset], targetSize: CGSize) {
+        guard !assets.isEmpty, targetSize.width > 0, targetSize.height > 0 else { return }
+        cachingImageManager.startCachingImages(
+            for: assets.map(\.phAsset),
+            targetSize: targetSize,
+            contentMode: .aspectFill,
+            options: Self.streamOptions()
+        )
+    }
+
+    /// Releases cards that left the prefetch window, at the size they were
+    /// cached with.
+    nonisolated func stopCaching(_ assets: [PhotoAsset], targetSize: CGSize) {
+        guard !assets.isEmpty, targetSize.width > 0, targetSize.height > 0 else { return }
+        cachingImageManager.stopCachingImages(
+            for: assets.map(\.phAsset),
+            targetSize: targetSize,
+            contentMode: .aspectFill,
+            options: Self.streamOptions()
+        )
     }
 
     /// Resolves an `AVPlayerItem` for a video asset. `isNetworkAccessAllowed`

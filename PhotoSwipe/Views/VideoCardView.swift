@@ -42,7 +42,7 @@ struct VideoCardView: View {
             .accessibilityLabel(Text("Video from \(asset.formattedDate), \(asset.formattedDuration)"))
             .accessibilityAddTraits(.startsMediaSession)
             .task(id: asset.id) {
-                await start(targetSize: targetPixelSize(from: proxy.size))
+                await start(targetSize: DeckCardMetrics.pixelSize(forCardSize: proxy.size))
             }
             .onDisappear { controller.teardown() }
         }
@@ -183,11 +183,6 @@ struct VideoCardView: View {
         for await next in service.imageStream(for: asset, targetSize: targetSize) {
             poster = next
         }
-    }
-
-    private func targetPixelSize(from size: CGSize) -> CGSize {
-        let scale = UIScreen.main.scale
-        return CGSize(width: size.width * scale, height: size.height * scale)
     }
 }
 
