@@ -171,6 +171,8 @@ final class LibraryIndexService {
                 let doubles = raw.bindMemory(to: Double.self)
                 return (0..<count).map { Float(doubles[$0]) }
             }
+        case .unknown:
+            return []
         @unknown default:
             return []
         }
