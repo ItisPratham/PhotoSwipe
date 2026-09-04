@@ -16,11 +16,19 @@ struct MergeSuggestionsSheet: View {
                                            systemImage: "person.2.badge.gearshape",
                                            description: Text("New matches show up here after a rescan."))
                 } else {
-                    List(viewModel.mergeSuggestions) { suggestion in
-                        row(suggestion)
-                            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    // A plain scroll view rather than a List: inside a List
+                    // row only the first context menu is honoured, so the
+                    // right-hand cover previewed the left person.
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.mergeSuggestions) { suggestion in
+                                row(suggestion)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                Divider().padding(.leading, 16)
+                            }
+                        }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Same person?")
