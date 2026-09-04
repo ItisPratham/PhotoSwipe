@@ -49,14 +49,15 @@ PhotoSwipe/Resources/FaceEmbedding.mlpackage/
 *.swp
 *.save
 
-## Markdown — keep README.md and THIRD_PARTY_LICENSES.md tracked. Other .md
-## files are local reference notes (spec, scratchpads) and stay out of the repo.
+## Markdown — keep product/legal docs, the final v5/v6 briefs, and engineering
+## notes tracked. Older version briefs and personal scratchpads stay local.
 *.md
 !README.md
 !THIRD_PARTY_LICENSES.md
+!PhotoSwipe_v5_Instructions.md
+!PhotoSwipe_v6_Instructions.md
+!docs/
+!docs/*.md
 
 ## Claude skills lock (local tooling state, like .agents/)
 skills-lock.json
-
-## Local reference docs (performance plan, per-fix notes). Never tracked.
-docs/

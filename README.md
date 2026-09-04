@@ -8,8 +8,8 @@ without fear.
 PhotoSwipe runs entirely on your device. There's no account, no upload, and no
 tracking — your library never leaves your phone.
 
-Current version: **5.2** (iOS 17+). The repository is named `PhotoTinder`; the
-app, target, and bundle identifier are `PhotoSwipe`.
+Current version: **5.2** (iOS 17+), the final v5 release. The repository is
+named `PhotoTinder`; the app, target, and bundle identifier are `PhotoSwipe`.
 
 ---
 
@@ -30,7 +30,7 @@ tab's toolbar.
 | Tab | What it does |
 | --- | --- |
 | **Clean** | Lands straight in the default deck: every photo, oldest first, skipping anything you've already judged. |
-| **Browse** | A day-grouped grid of the library with a slim overlaid fast-scroll rail. Tap a photo or day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, browse-first grids for **Videos**, **Screenshots**, and **Biggest files**, plus **Duplicates** and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes). |
+| **Browse** | A day-grouped grid of the library. Tap a photo or day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, browse-first grids for **Videos**, **Screenshots**, and **Biggest files**, plus **Duplicates** and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes). |
 | **People** | Opt-in on-device face scan. A grid of people; open one to browse or swipe through their photos. “Also with…” lists only people who actually share a photo, then opens those shared photos as a grid. Rename, merge, hide, answer merge suggestions, and tune grouping strength. |
 
 **Settings** (gear) holds the read-only **Activity** log, the **Swipe up
@@ -256,6 +256,6 @@ PhotoTinder/
 └── project.yml              # Original XcodeGen seed, kept in sync for reference
 ```
 
-Only `README.md` and `THIRD_PARTY_LICENSES.md` are tracked among Markdown
-files; other notes at the repo root and under `docs/` are local reference
-material and stay out of the repository.
+The final v5/v6 build briefs and the engineering notes under `docs/` are
+tracked with `README.md` and `THIRD_PARTY_LICENSES.md`. Older version briefs
+and personal scratch notes remain local.
