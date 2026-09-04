@@ -48,7 +48,7 @@ struct OnboardingView: View {
             symbol: "photo.stack",
             symbolColor: .purple,
             title: "Smarter ways in",
-            body: "Tap the stack icon on a photo to see its closest look-alikes. Browse can also pull out your screenshots, show what you shot on this day in past years, and sort photos into categories like receipts, food, pets, and blurry shots. It all happens on your phone.",
+            body: "Tap the stack icon on a photo to see its closest look-alikes. Browse can also pull out your screenshots, show what you shot on this day in past years, and sort photos into categories like receipts, food, pets, and memes. It all happens on your phone.",
             hint: nil,
             allowed: nil
         ),

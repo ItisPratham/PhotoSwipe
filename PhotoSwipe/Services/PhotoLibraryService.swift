@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 import Photos
 import SwiftUI
 import UIKit
@@ -8,6 +9,59 @@ import UIKit
 /// was prefetched is served from memory. Thread-safe by contract, hence a
 /// file-level constant rather than a main-actor property.
 private let cachingImageManager = PHCachingImageManager()
+
+/// Console diagnostics for the PhotoKit hangs seen on device. Counts the
+/// image requests in flight per source and logs the count when it changes,
+/// plus every library-change bump, so a run captured from Xcode's console
+/// (subsystem `com.phototinder.PhotoSwipe`, category `photokit`) shows
+/// whether requests stop completing and whether the library is churning.
+enum PhotoKitDiag {
+    static let log = Logger(subsystem: "com.phototinder.PhotoSwipe", category: "photokit")
+    private static let lock = NSLock()
+    private static var inFlight: [String: Int] = [:]
+    private static var lastChange = Date()
+
+    /// Every eight seconds, reports any source whose count has been
+    /// non-zero with no change at all — the signature of a call that never
+    /// returned. Started on first use.
+    private static let watchdog: DispatchSourceTimer = {
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        timer.schedule(deadline: .now() + 8, repeating: 8)
+        timer.setEventHandler {
+            lock.lock()
+            let stuck = inFlight.filter { $0.value > 0 }
+            let idle = Date().timeIntervalSince(lastChange)
+            lock.unlock()
+            if !stuck.isEmpty, idle > 8 {
+                log.warning("STALLED for \(Int(idle))s with no change: \(stuck.description, privacy: .public)")
+            }
+        }
+        timer.resume()
+        return timer
+    }()
+
+    static func requestStarted(_ source: String) {
+        adjust(source, by: 1)
+    }
+
+    static func requestFinished(_ source: String) {
+        adjust(source, by: -1)
+    }
+
+    private static func adjust(_ source: String, by delta: Int) {
+        _ = watchdog
+        lock.lock()
+        let count = (inFlight[source] ?? 0) + delta
+        inFlight[source] = count
+        lastChange = Date()
+        let snapshot = inFlight
+        lock.unlock()
+        // Log the milestones, not every tick, so the console stays readable.
+        if count % 25 == 0 || count < 0 {
+            log.debug("in flight: \(snapshot.description, privacy: .public)")
+        }
+    }
+}
 
 /// Keeps the all-assets fetch result PhotoKit change notifications are
 /// diffed against. Reading `PHChange.changeDetails(for:)` tells us whether a
@@ -38,6 +92,7 @@ private final class AssetChangeTracker: @unchecked Sendable {
         let onlySelfEdits = !changedIDs.isEmpty
             && changedIDs.allSatisfy(selfEdited.contains)
         selfEdited.subtract(changedIDs)
+        PhotoKitDiag.log.debug("library change: +\(details.insertedObjects.count) −\(details.removedObjects.count) ~\(changedIDs.count) moves=\(details.hasMoves) selfEdits=\(onlySelfEdits)")
         if structural { return true }
         return !changedIDs.isEmpty && !onlySelfEdits
     }
@@ -347,6 +402,8 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         contentMode: PHImageContentMode = .aspectFill
     ) -> AsyncStream<UIImage> {
         AsyncStream { continuation in
+            PhotoKitDiag.requestStarted("ui")
+            let finished = OSAllocatedUnfairLock(initialState: false)
             let requestID = cachingImageManager.requestImage(
                 for: asset.phAsset,
                 targetSize: targetSize,
@@ -358,14 +415,28 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
                 }
                 let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
                 if !isDegraded {
+                    if !finished.withLock({ done in defer { done = true }; return done }) {
+                        PhotoKitDiag.requestFinished("ui")
+                    }
                     continuation.finish()
                 }
             }
 
             continuation.onTermination = { _ in
                 cachingImageManager.cancelImageRequest(requestID)
+                if !finished.withLock({ done in defer { done = true }; return done }) {
+                    PhotoKitDiag.requestFinished("ui")
+                }
             }
         }
+    }
+
+    /// Drops every image the caching manager is holding or fetching. Used
+    /// when a grid leaves the screen or its data is replaced, instead of
+    /// per-asset `stopCaching` calls: cancelling requests in batches during a
+    /// scroll was the pattern that preceded the on-device freeze.
+    nonisolated func stopCachingAll() {
+        cachingImageManager.stopCachingImagesForAllAssets()
     }
 
     /// Options shared by `imageStream` and the prefetch calls. They must match

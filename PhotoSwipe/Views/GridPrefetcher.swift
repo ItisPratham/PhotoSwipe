@@ -53,11 +53,13 @@ final class GridPrefetcher {
         schedule()
     }
 
-    /// Drops the warm window (grid left the screen or its data changed).
+    /// Drops the warm window (grid left the screen or its data changed). One
+    /// stop-all call rather than a per-asset stop: the caching manager owns
+    /// the cancellation, and there is no request churn while scrolling.
     func release() {
         pending?.cancel()
         pending = nil
-        service?.stopCaching(warm, targetSize: targetSize)
+        service?.stopCachingAll()
         warm = []
         visible.removeAll()
     }
@@ -79,9 +81,12 @@ final class GridPrefetcher {
         guard start < end else { return }
         let wanted = Array(assets[start..<end])
 
-        let wantedIDs = Set(wanted.map(\.id))
+        // Only ever *start* caching while scrolling. The earlier version also
+        // stopped caching for cells that left the window on every recompute;
+        // that start/stop churn on the caching manager is what preceded the
+        // on-device Browse freeze. Memory stays bounded because the manager
+        // evicts on its own and `release()` clears everything on exit.
         let warmIDs = Set(warm.map(\.id))
-        service.stopCaching(warm.filter { !wantedIDs.contains($0.id) }, targetSize: targetSize)
         service.startCaching(wanted.filter { !warmIDs.contains($0.id) }, targetSize: targetSize)
         warm = wanted
     }

@@ -39,9 +39,14 @@ enum ConcurrentScan {
 
 /// Async, cancelable PhotoKit image fetches for the scans. Bridging
 /// `requestImage` to a continuation frees the cooperative thread while an
-/// iCloud original downloads, so the next fetch starts immediately. Task
-/// cancellation cancels the PhotoKit request and resumes with nil at once,
-/// so a cancelled scan never waits on a download.
+/// iCloud original downloads, so the next fetch starts immediately.
+///
+/// Cancellation resumes the caller with nil at once but deliberately does
+/// **not** call `cancelImageRequest`: cancelling network-backed requests
+/// mid-download, four at a time, was followed on device by PhotoKit never
+/// completing another request in the process (scan stuck at 0, every
+/// thumbnail blank) until relaunch. Letting the in-flight request finish on
+/// its own and dropping the result costs at most four downloads.
 enum PhotoKitImages {
 
     /// A downscaled working image for Vision. With `highQualityFormat`,
@@ -53,16 +58,25 @@ enum PhotoKitImages {
         side: CGFloat,
         resizeMode: PHImageRequestOptionsResizeMode
     ) async -> CGImage? {
+        // A child created just as its group was cancelled must not issue a
+        // request it will never wait for.
+        guard !Task.isCancelled else { return nil }
         let request = RequestState()
         return await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<CGImage?, Never>) in
-                request.continuation = continuation
+                // If cancellation raced in before the continuation existed,
+                // resume now instead of leaking the child forever.
+                guard request.attach(continuation) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
                 let options = PHImageRequestOptions()
                 options.isSynchronous = false
                 options.deliveryMode = .highQualityFormat
                 options.isNetworkAccessAllowed = true
                 options.resizeMode = resizeMode
-                let id = PHImageManager.default().requestImage(
+                PhotoKitDiag.requestStarted("scan")
+                PHImageManager.default().requestImage(
                     for: asset,
                     targetSize: CGSize(width: side, height: side),
                     contentMode: .aspectFit,
@@ -70,39 +84,39 @@ enum PhotoKitImages {
                 ) { image, info in
                     let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
                     guard !isDegraded else { return }
+                    PhotoKitDiag.requestFinished("scan")
                     request.finish(with: image?.cgImage)
                 }
-                request.started(id)
             }
         } onCancel: {
             request.cancel()
         }
     }
 
-    /// Serialises the request id, the continuation, and the once-only resume
-    /// between the PhotoKit callback thread and the cancellation handler.
+    /// Serialises the continuation and the once-only resume between the
+    /// PhotoKit callback thread and the cancellation handler.
     private final class RequestState: @unchecked Sendable {
         private let lock = NSLock()
-        private var requestID: PHImageRequestID?
         private var cancelled = false
         private var resumed = false
-        var continuation: CheckedContinuation<CGImage?, Never>?
+        private var continuation: CheckedContinuation<CGImage?, Never>?
 
-        func started(_ id: PHImageRequestID) {
+        /// Stores the continuation. Returns false if cancellation already
+        /// happened, in which case the caller resumes immediately.
+        func attach(_ continuation: CheckedContinuation<CGImage?, Never>) -> Bool {
             lock.lock()
-            requestID = id
-            let cancelNow = cancelled
-            lock.unlock()
-            if cancelNow { PHImageManager.default().cancelImageRequest(id) }
+            defer { lock.unlock() }
+            if cancelled { resumed = true; return false }
+            self.continuation = continuation
+            return true
         }
 
         func cancel() {
             lock.lock()
             cancelled = true
-            let id = requestID
             lock.unlock()
-            if let id { PHImageManager.default().cancelImageRequest(id) }
-            // Don't rely on PhotoKit calling back after a cancel.
+            // Resume the waiter now; the PhotoKit request finishes on its own
+            // and its late result is dropped by the once-only guard.
             finish(with: nil)
         }
 
@@ -110,6 +124,7 @@ enum PhotoKitImages {
             lock.lock()
             guard !resumed, let continuation else { lock.unlock(); return }
             resumed = true
+            self.continuation = nil
             lock.unlock()
             continuation.resume(returning: image)
         }

@@ -139,6 +139,7 @@ final class DuplicatesViewModel: ObservableObject {
     /// `isRunning` is left to the run's own `defer` so a follow-up request
     /// can't overlap the cancelled run while it unwinds.
     func cancel() {
+        PhotoKitDiag.log.info("duplicates: cancel (running=\(self.isRunning), visible=\(self.isVisible))")
         queue.cancelAll()
         isRunQueued = false
         isRegroupQueued = false
@@ -185,9 +186,11 @@ final class DuplicatesViewModel: ObservableObject {
         let assets = await service.fetchImages(source: .allPhotos)
         lastAssets = assets
         do {
-            let includeCategories = UserDefaults.standard.bool(forKey: CategoriesViewModel.enabledKey)
+            // Keep the duplicate pass lightweight and predictable. Category
+            // enrichment owns its additional Vision models and runs from the
+            // Categories screen rather than multiplying this scan's work.
             try await indexService.scan(assets: assets, store: store,
-                                        includeCategories: includeCategories) { done, tot in
+                                        includeCategories: false) { done, tot in
                 Task { @MainActor in
                     // Hops can land out of order; the counter never steps back.
                     self.processed = max(self.processed, done)

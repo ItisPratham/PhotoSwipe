@@ -26,6 +26,11 @@ struct AppTabView: View {
 
     @State private var selection: AppTab = .clean
     @State private var showSettings = false
+    /// These models outlive navigation destinations so popping and reopening
+    /// a scan screen reconnects to the same queue instead of starting a
+    /// second library walk beside the first.
+    @StateObject private var duplicatesViewModel = DuplicatesViewModel()
+    @StateObject private var categoriesViewModel = CategoriesViewModel()
 
     var body: some View {
         TabView(selection: $selection) {
@@ -106,9 +111,9 @@ struct AppTabView: View {
         case .albums:
             AlbumListView(service: library)
         case .duplicates:
-            DuplicatesView(service: library)
+            DuplicatesView(service: library, viewModel: duplicatesViewModel)
         case .categories:
-            CategoriesView(service: library)
+            CategoriesView(service: library, viewModel: categoriesViewModel)
         case .category(let category, let ids):
             CategoryDetailView(category: category, ids: ids, service: library, store: reviewStore)
         case .swipe(let source):

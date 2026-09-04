@@ -5,7 +5,7 @@ import SwiftUI
 /// categories with counts. A category opens a Browse-style grid of its photos.
 struct CategoriesView: View {
     @ObservedObject var service: PhotoLibraryService
-    @StateObject private var viewModel = CategoriesViewModel()
+    @ObservedObject var viewModel: CategoriesViewModel
 
     var body: some View {
         content
@@ -37,7 +37,7 @@ struct CategoriesView: View {
         ContentUnavailableView {
             Label("Sort by what's in the photo", systemImage: "square.grid.2x2")
         } description: {
-            Text("PhotoSwipe can look at each photo on your phone and file it under receipts, documents, whiteboards, food, pets, memes, or blurry shots. Nothing is uploaded. The first pass takes a few minutes.")
+            Text("PhotoSwipe can look at each photo on your phone and file it under receipts, documents, whiteboards, food, pets, or memes. Nothing is uploaded. The first pass takes a few minutes.")
         } actions: {
             Button("Sort my library") { viewModel.start(using: service) }
                 .buttonStyle(.borderedProminent)

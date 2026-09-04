@@ -16,10 +16,9 @@ final class CategoriesViewModel: ObservableObject {
         case results
     }
 
-    /// Once the user has opted in, the Duplicates scan measures categories
-    /// for new photos too, so the two passes never diverge.
+    /// Records that the user opted into on-device category analysis, allowing
+    /// later visits and library changes to refresh it incrementally.
     static let enabledKey = "PhotoSwipe.categoriesEnabled"
-    static let blurThresholdKey = "PhotoSwipe.blurThreshold"
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var processed = 0
@@ -144,21 +143,17 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    /// Reads the signals (no vectors), fixes the blur threshold for this
-    /// library, and buckets each photo into its first matching category.
+    /// Reads the signals (no vectors) and buckets each photo into its first
+    /// matching category.
     private func loadResults(assets: [PhotoAsset]) async throws {
         let screenshotIDs = Set(assets.filter(\.isScreenshot).map(\.id))
         let signals = try await store.categorySignals(screenshotIDs: screenshotIDs)
-        let blurThreshold = LibraryIndexService.blurThreshold(from: signals)
-        if let blurThreshold {
-            UserDefaults.standard.set(blurThreshold, forKey: Self.blurThresholdKey)
-        }
         let order = Dictionary(uniqueKeysWithValues: assets.enumerated().map { ($1.id, $0) })
         let bucketed = await Task.detached(priority: .userInitiated) {
             var buckets: [AssetCategory: [String]] = [:]
             for signal in signals {
                 guard order[signal.localIdentifier] != nil,
-                      let category = AssetCategory.primary(for: signal, blurThreshold: blurThreshold)
+                      let category = AssetCategory.primary(for: signal)
                 else { continue }
                 buckets[category, default: []].append(signal.localIdentifier)
             }

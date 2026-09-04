@@ -56,7 +56,7 @@ struct CategorySignals: Sendable, Hashable {
 /// receipt before it is a document, and a document is never a meme. The label
 /// identifiers are the exact ones `VNClassifyImageRequest` reports.
 enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
-    case receipts, documents, whiteboards, food, pets, memes, blurry
+    case receipts, documents, whiteboards, food, pets, memes
 
     var id: String { rawValue }
 
@@ -68,7 +68,6 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
         case .food: return "Food"
         case .pets: return "Pets"
         case .memes: return "Memes"
-        case .blurry: return "Blurry"
         }
     }
 
@@ -80,7 +79,6 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
         case .food: return "Meals, drinks, and desserts"
         case .pets: return "Cats and dogs"
         case .memes: return "Text-heavy images and saved screenshots"
-        case .blurry: return "The least sharp 5% of your photos"
         }
     }
 
@@ -92,7 +90,6 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
         case .food: return "fork.knife"
         case .pets: return "pawprint"
         case .memes: return "text.bubble"
-        case .blurry: return "camera.metering.unknown"
         }
     }
 
@@ -108,14 +105,12 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
     private static let petLabels: Set<String> = ["cat", "adult_cat", "dog", "bulldog", "sheepdog"]
     private static let memeLabels: Set<String> = ["screenshot"]
 
-    /// Whether `signals` fall into this category. `blurThreshold` is the
-    /// library's 5th-percentile sharpness, computed by the categorize pass.
-    ///
-    /// Tuned toward precision: a label alone needs a clear confidence, and
+    /// Whether `signals` fall into this category. Tuned toward precision: a
+    /// label alone needs a clear confidence, and
     /// text coverage on its own (which fires on foliage and patterns too)
     /// never makes a document. Better to miss a few than to fill a category
     /// with wrong photos.
-    func matches(_ s: CategorySignals, blurThreshold: Float?) -> Bool {
+    func matches(_ s: CategorySignals) -> Bool {
         let text = s.textCoverage ?? 0
         switch self {
         case .receipts:
@@ -137,14 +132,11 @@ enum AssetCategory: String, CaseIterable, Hashable, Identifiable {
             guard !s.isScreenshot else { return false }
             return s.hasAny(Self.memeLabels, minConfidence: 0.5)
                 || (text >= 0.45 && s.isUtility != false)
-        case .blurry:
-            guard let sharpness = s.sharpness, let blurThreshold else { return false }
-            return sharpness < blurThreshold
         }
     }
 
     /// The first matching category in declaration order, or nil.
-    static func primary(for s: CategorySignals, blurThreshold: Float?) -> AssetCategory? {
-        allCases.first { $0.matches(s, blurThreshold: blurThreshold) }
+    static func primary(for s: CategorySignals) -> AssetCategory? {
+        allCases.first { $0.matches(s) }
     }
 }

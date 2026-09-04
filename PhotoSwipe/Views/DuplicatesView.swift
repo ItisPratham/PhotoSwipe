@@ -11,7 +11,7 @@ import SwiftUI
 /// aggressively shots are grouped — changing it only re-groups (no rescan).
 struct DuplicatesView: View {
     @ObservedObject var service: PhotoLibraryService
-    @StateObject private var viewModel = DuplicatesViewModel()
+    @ObservedObject var viewModel: DuplicatesViewModel
 
     /// 1–10 scale (masks the underlying 0.05–0.50 distance). Default 6 → 0.30.
     @AppStorage("PhotoSwipe.duplicateSensitivity") private var sensitivity: Double = 6
