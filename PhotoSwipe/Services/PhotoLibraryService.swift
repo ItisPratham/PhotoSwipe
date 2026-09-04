@@ -314,6 +314,12 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             options.predicate = nil
             options.sortDescriptors = nil
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .selection(let ids):
+            // An explicit mixed-media selection whose caller-defined order is
+            // restored below.
+            options.predicate = nil
+            options.sortDescriptors = nil
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
         case .person(let ids, let preservesOrder):
             // Media/date filters don't apply to an explicit id set. When
             // the caller's order is authoritative we re-order after the
@@ -351,6 +357,7 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         // per day, or from a tapped photo backward through the rest of that day).
         let orderedIDs: [String]?
         switch source.scope {
+        case .selection(let ids): orderedIDs = ids
         case .person(let ids, true): orderedIDs = ids
         case .similar(_, let ids): orderedIDs = ids
         case .duplicateGroup(let ids): orderedIDs = ids

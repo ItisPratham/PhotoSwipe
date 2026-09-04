@@ -30,8 +30,8 @@ tab's toolbar.
 | Tab | What it does |
 | --- | --- |
 | **Clean** | Lands straight in the default deck: every photo, oldest first, skipping anything you've already judged. |
-| **Browse** | A day-grouped grid of the library. Tap a photo or a day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, **Videos**, **Screenshots**, **Biggest files**, **Duplicates**, and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes). |
-| **People** | Opt-in on-device face scan. A grid of people; open one to swipe through their photos, or through the photos two people share ("Also with…"). Rename, merge, hide, answer merge suggestions, and tune grouping strength. |
+| **Browse** | A day-grouped grid of the library with a slim overlaid fast-scroll rail. Tap a photo or day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, browse-first grids for **Videos**, **Screenshots**, and **Biggest files**, plus **Duplicates** and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes). |
+| **People** | Opt-in on-device face scan. A grid of people; open one to browse or swipe through their photos. “Also with…” lists only people who actually share a photo, then opens those shared photos as a grid. Rename, merge, hide, answer merge suggestions, and tune grouping strength. |
 
 **Settings** (gear) holds the read-only **Activity** log, the **Swipe up
 does…** choice (favorite, or add to a chosen album), a replay of the first-run
@@ -60,25 +60,28 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
 **Ways in**
 * The whole library, oldest first (the Clean tab).
 * Any **album**, or jump into the timeline from a specific **day** or photo.
-* **Screenshots** — every system screenshot, oldest first (metadata, no ML).
+* **Screenshots** — browse every system screenshot before starting an
+  oldest-first cleaning deck (metadata, no ML).
 * **On this day** — photos taken on today's date in earlier years, when there
   are any.
 * **Categories** — an opt-in on-device pass sorts photos into Receipts,
   Documents, Whiteboards, Food, Pets, and Memes. Each category is a
   Browse-style grid you can swipe from any photo. See *Categories* below.
-* **Videos** — reviewed right in the deck: poster first, then muted looping
+* **Videos** — browse all videos first, then review them in the deck: poster first, then muted looping
   autoplay, a duration badge, tap to play/pause, a scrubber to seek, and a
   per-card mute toggle. Videos get a playable preview in the review grid too.
-* **Biggest files** — sort by on-device size (photos and videos together) to
-  reclaim the most space fastest.
+* **Biggest files** — browse photos and videos sorted by on-device size before
+  starting the same largest-first deck, to reclaim the most space fastest.
 * **Duplicates** — an on-device scan groups camera bursts and near-identical
   shots; open a group to review just those, with the keeper suggested by a
   weighted score (sharpness, face quality, pixel count, and on iOS 18 Vision's
   aesthetics) rather than pixel count alone.
 * **People** — an opt-in on-device face scan clusters your photos by the people
   in them. Open a person to swipe through only their photos — the whole set,
-  a single day, or from a chosen photo onward. A grouping-strength slider tunes
-  how tightly faces group, and you can rename, merge, or hide people.
+  a single day, or from a chosen photo onward. “Also with…” filters out people
+  with no shared photos and opens the shared set as a Browse-style grid. A
+  grouping-strength slider tunes how tightly faces group, and you can rename,
+  merge, or hide people.
 
 **Safe, batched deletion**
 * Swiping only *marks* photos. A **Review** screen lets you spare anything before

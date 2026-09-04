@@ -35,6 +35,7 @@ final class PersonDetailViewModel: ObservableObject {
 
     let personID: String
     let photoIDs: [String]
+    private var cachedCandidates: [PersonCluster]?
 
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "d MMMM yyyy"; return f
@@ -83,16 +84,33 @@ final class PersonDetailViewModel: ObservableObject {
         try? await store.setHidden(personID: personID, true)
     }
 
-    /// Photos this person and `other` both appear in, oldest-first order is
-    /// applied by the deck fetch.
+    /// Photos this person and `other` both appear in, oldest first. The
+    /// current person's assets are already resolved in chronological order,
+    /// so no second PhotoKit fetch is needed to establish the grid order.
     func photoIDs(sharedWith other: PersonCluster) -> [String] {
-        Array(Set(photoIDs).intersection(other.photoIDs)).sorted()
+        let otherIDs = Set(other.photoIDs)
+        return assets.lazy.filter { otherIDs.contains($0.id) }.map(\.id)
     }
 
-    func mergeCandidates() async -> [PersonCluster] {
-        let store = await FaceStore.shared()
-        let all = (try? await store.clusters()) ?? []
-        return all.filter { $0.personID != personID && !$0.isHidden }
+    func mergeCandidates() async throws -> [PersonCluster] {
+        try await allCandidates()
+    }
+
+    /// Only people who share at least one asset with the current person. The
+    /// work is set membership over stored identifiers—no scan, embedding, or
+    /// image load—and candidates with more shared photos appear first.
+    func alsoWithCandidates() async throws -> [PersonCluster] {
+        let ownIDs = Set(photoIDs)
+        return try await allCandidates()
+            .compactMap { candidate -> (PersonCluster, Int)? in
+                let sharedCount = candidate.photoIDs.count { ownIDs.contains($0) }
+                return sharedCount > 0 ? (candidate, sharedCount) : nil
+            }
+            .sorted {
+                ($0.1, $0.0.photoCount, $0.0.personID)
+                    > ($1.1, $1.0.photoCount, $1.0.personID)
+            }
+            .map(\.0)
     }
 
     func merge(into destID: String) async {
@@ -101,6 +119,16 @@ final class PersonDetailViewModel: ObservableObject {
     }
 
     // MARK: - Private
+
+    private func allCandidates() async throws -> [PersonCluster] {
+        if let cachedCandidates { return cachedCandidates }
+        let store = await FaceStore.shared()
+        let candidates = try await store.clusters().filter {
+            $0.personID != personID && !$0.isHidden
+        }
+        cachedCandidates = candidates
+        return candidates
+    }
 
     private func recomputeGroups() {
         let cal = Calendar.current

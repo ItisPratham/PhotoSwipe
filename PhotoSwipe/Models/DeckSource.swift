@@ -12,6 +12,9 @@ struct DeckSource: Hashable {
         case album(PHAssetCollection)
         /// A specific set of assets (a duplicate group), by localIdentifier.
         case duplicateGroup([String])
+        /// An explicit ordered selection used by Browse-first collection
+        /// screens. Unlike a person scope, this can contain any media type.
+        case selection([String])
         /// A person cluster's photos. With `preservesOrder` the deck follows
         /// the caller's sequence exactly (a day's photos newest→oldest, or
         /// from a tapped photo backward); otherwise PhotoKit's oldest-first
@@ -36,6 +39,8 @@ struct DeckSource: Hashable {
                 return a.localIdentifier == b.localIdentifier
             case (.duplicateGroup(let a), .duplicateGroup(let b)):
                 return a == b
+            case (.selection(let a), .selection(let b)):
+                return a == b
             case (.person(let a, let pa), .person(let b, let pb)):
                 return a == b && pa == pb
             case (.similar(let sa, let a), .similar(let sb, let b)):
@@ -58,6 +63,9 @@ struct DeckSource: Hashable {
                 hasher.combine(collection.localIdentifier)
             case .duplicateGroup(let ids):
                 hasher.combine("duplicateGroup")
+                hasher.combine(ids)
+            case .selection(let ids):
+                hasher.combine("selection")
                 hasher.combine(ids)
             case .person(let ids, let preservesOrder):
                 hasher.combine("person")
@@ -145,6 +153,13 @@ struct DeckSource: Hashable {
         return DeckSource(scope: .duplicateGroup(ids),
                           media: .all,
                           suggestedKeeperID: group.suggestedKeeperID)
+    }
+
+    /// Builds a deck from an explicit ordered list. Collection grids use this
+    /// after resolving and sorting their assets so opening the deck neither
+    /// repeats that work nor changes the order the user just browsed.
+    static func selection(_ ids: [String]) -> DeckSource {
+        DeckSource(scope: .selection(ids), media: .all)
     }
 
     /// Builds the deck scoped to a person cluster's photos. `preservesOrder`

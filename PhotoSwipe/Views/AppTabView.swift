@@ -116,6 +116,13 @@ struct AppTabView: View {
             CategoriesView(service: library, viewModel: categoriesViewModel)
         case .category(let category, let ids):
             CategoryDetailView(category: category, ids: ids, service: library, store: reviewStore)
+        case .collection(let collection):
+            PhotoCollectionView(
+                collection: collection,
+                service: library,
+                store: reviewStore,
+                sizes: sizeStore
+            )
         case .swipe(let source):
             SwipeView(service: library,
                       store: reviewStore,

@@ -14,6 +14,8 @@ struct BrowseView: View {
     /// Warms thumbnails around the visible rows. Sized to match
     /// `Thumbnail`'s request exactly, or the cache would miss.
     @State private var prefetcher = GridPrefetcher(targetSize: Thumbnail.requestSize)
+    @State private var scrollSectionID: Date?
+    @State private var fastScrollIndex = 0
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 4),
@@ -75,35 +77,35 @@ struct BrowseView: View {
                     .accessibilityLabel("Browse albums")
 
                     NavigationLink(
-                        value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .videos))
+                        value: AppRoute.collection(.videos)
                     ) {
                         BrowseEntryRow(title: "Videos", systemImage: "video")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Swipe through videos, oldest first")
+                    .accessibilityLabel("Browse videos")
                 }
                 .padding(.horizontal, Theme.Spacing.screenMargin)
                 .padding(.top, 12)
 
-                NavigationLink(value: AppRoute.swipe(.screenshots)) {
+                NavigationLink(value: AppRoute.collection(.screenshots)) {
                     BrowseEntryRow(title: "Screenshots",
                                    subtitle: screenshotsSubtitle,
                                    systemImage: "camera.viewfinder")
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Swipe through screenshots, oldest first")
+                .accessibilityLabel("Browse screenshots")
                 .padding(.horizontal, Theme.Spacing.screenMargin)
 
                 NavigationLink(
-                    value: AppRoute.swipe(DeckSource(scope: .allPhotos, media: .all, order: .largestFirst))
+                    value: AppRoute.collection(.biggestFiles)
                 ) {
                     BrowseEntryRow(title: "Biggest files",
                                    subtitle: "Photos & videos, largest first",
                                    systemImage: "arrow.up.arrow.down.circle")
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Swipe through your biggest files, largest first")
+                .accessibilityLabel("Browse your biggest files, largest first")
                 .padding(.horizontal, Theme.Spacing.screenMargin)
 
                 NavigationLink(value: AppRoute.duplicates) {
@@ -187,12 +189,36 @@ struct BrowseView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Start swiping from \(section.id.formatted(.dateTime.month(.wide).day().year()))")
                         }
+                        .id(section.id)
                     }
                 }
             }
+            .scrollTargetLayout()
             .padding(.bottom, 16)
         }
-        .scrollIndicators(.visible)
+        .scrollIndicators(.hidden)
+        .scrollPosition(id: $scrollSectionID, anchor: .top)
+        .onChange(of: scrollSectionID) { _, id in
+            guard let id,
+                  let index = viewModel.sections.firstIndex(where: { $0.id == id })
+            else { return }
+            fastScrollIndex = index
+        }
+        .overlay(alignment: .leading) {
+            if viewModel.sections.count > 1 {
+                PhotoFastScroller(
+                    itemCount: viewModel.sections.count,
+                    currentIndex: fastScrollIndex,
+                    onSelect: scroll(to:)
+                )
+            }
+        }
+    }
+
+    private func scroll(to index: Int) {
+        guard viewModel.sections.indices.contains(index) else { return }
+        fastScrollIndex = index
+        scrollSectionID = viewModel.sections[index].id
     }
 
     private var onThisDaySubtitle: String {

@@ -16,16 +16,18 @@ struct PersonDetailView: View {
 
     @State private var showRename = false
     @State private var draftName = ""
-    @State private var showMerge = false
-    @State private var mergeCandidates: [PersonCluster] = []
-    /// "Also with…": pick a second person, then push a deck of the photos
-    /// both appear in.
-    @State private var showAlsoWith = false
-    /// The person picked in the "Also with…" sheet. The deck is pushed from
+    @State private var mergePicker: PersonCandidateList?
+    @State private var alsoWithPicker: PersonCandidateList?
+    @State private var isLoadingCandidates = false
+    @State private var candidateErrorMessage: String?
+    @State private var showCandidateError = false
+    /// The person picked in the "Also with…" sheet. The grid is pushed from
     /// the sheet's onDismiss, not from inside it: pushing while the sheet is
     /// still animating away can leave the destination blank.
     @State private var alsoWithPick: PersonCluster?
     @State private var alsoWithRoute: AppRoute?
+    @State private var scrollGroupID: String?
+    @State private var fastScrollIndex = 0
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
@@ -50,27 +52,53 @@ struct PersonDetailView: View {
                 Button("Save") { Task { await viewModel.rename(to: draftName) } }
                 Button("Cancel", role: .cancel) {}
             }
-            .sheet(isPresented: $showMerge) {
-                MergePickerView(title: "Merge into", candidates: mergeCandidates, service: service) { dest in
-                    showMerge = false
+            .sheet(item: $mergePicker) { payload in
+                MergePickerView(
+                    title: "Merge into",
+                    candidates: payload.candidates,
+                    emptyTitle: "No other people",
+                    emptyDescription: "There's no one else to merge into yet.",
+                    service: service
+                ) { dest in
+                    mergePicker = nil
                     Task { await viewModel.merge(into: dest.personID); dismiss() }
                 }
             }
-            .sheet(isPresented: $showAlsoWith, onDismiss: {
+            .sheet(item: $alsoWithPicker, onDismiss: {
                 guard let other = alsoWithPick else { return }
                 alsoWithPick = nil
                 let shared = viewModel.photoIDs(sharedWith: other)
-                alsoWithRoute = .swipe(.person(shared, preservesOrder: false))
-            }) {
-                MergePickerView(title: "Also with", candidates: mergeCandidates, service: service) { other in
+                alsoWithRoute = .collection(.shared(with: other.displayName, ids: shared))
+            }) { payload in
+                MergePickerView(
+                    title: "Also with",
+                    candidates: payload.candidates,
+                    emptyTitle: "No shared people",
+                    emptyDescription: "This person doesn't appear in photos with anyone else.",
+                    service: service
+                ) { other in
                     alsoWithPick = other
-                    showAlsoWith = false
+                    alsoWithPicker = nil
                 }
             }
             .navigationDestination(item: $alsoWithRoute) { route in
-                if case .swipe(let source) = route {
+                switch route {
+                case .collection(let collection):
+                    PhotoCollectionView(
+                        collection: collection,
+                        service: service,
+                        store: store,
+                        sizes: sizes
+                    )
+                case .swipe(let source):
                     SwipeView(service: service, store: store, stats: stats, sizes: sizes, source: source)
+                default:
+                    EmptyView()
                 }
+            }
+            .alert("Couldn't load people", isPresented: $showCandidateError) {
+            } message: {
+                Text(candidateErrorMessage ?? "Please try again.")
             }
     }
 
@@ -87,6 +115,23 @@ struct PersonDetailView: View {
                 VStack(spacing: 0) {
                     cleanAllRow
                     dateGrid
+                }
+            }
+            .scrollIndicators(.hidden)
+            .scrollPosition(id: $scrollGroupID, anchor: .top)
+            .onChange(of: scrollGroupID) { _, id in
+                guard let id,
+                      let index = viewModel.groupedByDate.firstIndex(where: { $0.id == id })
+                else { return }
+                fastScrollIndex = index
+            }
+            .overlay(alignment: .leading) {
+                if viewModel.groupedByDate.count > 1 {
+                    PhotoFastScroller(
+                        itemCount: viewModel.groupedByDate.count,
+                        currentIndex: fastScrollIndex,
+                        onSelect: scroll(to:)
+                    )
                 }
             }
         }
@@ -136,8 +181,16 @@ struct PersonDetailView: View {
                 } header: {
                     dateSectionHeader(group)
                 }
+                .id(group.id)
             }
         }
+        .scrollTargetLayout()
+    }
+
+    private func scroll(to index: Int) {
+        guard viewModel.groupedByDate.indices.contains(index) else { return }
+        fastScrollIndex = index
+        scrollGroupID = viewModel.groupedByDate[index].id
     }
 
     // Tapping the date header swipes only that day's photos, newest → oldest.
@@ -194,18 +247,12 @@ struct PersonDetailView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button {
-                    Task {
-                        mergeCandidates = await viewModel.mergeCandidates()
-                        showMerge = true
-                    }
+                    loadMergeCandidates()
                 } label: {
                     Label("Merge into…", systemImage: "arrow.triangle.merge")
                 }
                 Button {
-                    Task {
-                        mergeCandidates = await viewModel.mergeCandidates()
-                        showAlsoWith = true
-                    }
+                    loadAlsoWithCandidates()
                 } label: {
                     Label("Also with…", systemImage: "person.2")
                 }
@@ -215,8 +262,37 @@ struct PersonDetailView: View {
                     Label("Hide person", systemImage: "eye.slash")
                 }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .accessibilityLabel("Person options")
+                Label("Person options", systemImage: "ellipsis.circle")
+                    .labelStyle(.iconOnly)
+            }
+            .disabled(isLoadingCandidates)
+        }
+    }
+
+    private func loadMergeCandidates() {
+        guard !isLoadingCandidates else { return }
+        isLoadingCandidates = true
+        Task {
+            defer { isLoadingCandidates = false }
+            do {
+                mergePicker = PersonCandidateList(candidates: try await viewModel.mergeCandidates())
+            } catch {
+                candidateErrorMessage = "The saved people couldn't be read. Please try again."
+                showCandidateError = true
+            }
+        }
+    }
+
+    private func loadAlsoWithCandidates() {
+        guard !isLoadingCandidates else { return }
+        isLoadingCandidates = true
+        Task {
+            defer { isLoadingCandidates = false }
+            do {
+                alsoWithPicker = PersonCandidateList(candidates: try await viewModel.alsoWithCandidates())
+            } catch {
+                candidateErrorMessage = "The saved people couldn't be read. Please try again."
+                showCandidateError = true
             }
         }
     }
@@ -227,6 +303,8 @@ struct PersonDetailView: View {
 private struct MergePickerView: View {
     let title: String
     let candidates: [PersonCluster]
+    let emptyTitle: String
+    let emptyDescription: String
     let service: PhotoLibraryService
     let onPick: (PersonCluster) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -235,9 +313,9 @@ private struct MergePickerView: View {
         NavigationStack {
             Group {
                 if candidates.isEmpty {
-                    ContentUnavailableView("No other people",
+                    ContentUnavailableView(emptyTitle,
                                           systemImage: "person.2.slash",
-                                          description: Text("There's no one else to merge into yet."))
+                                          description: Text(emptyDescription))
                 } else {
                     List(candidates) { cluster in
                         Button { onPick(cluster) } label: {
