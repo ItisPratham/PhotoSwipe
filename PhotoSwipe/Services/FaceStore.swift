@@ -36,6 +36,18 @@ enum FaceContainer {
 @ModelActor
 actor FaceStore {
 
+    /// One background-created actor for every face-index caller. The task is
+    /// lazy, so the SwiftData container is not opened until a feature actually
+    /// needs saved people or the user starts a scan. Creating the `@ModelActor`
+    /// off the main thread also keeps its fetches off the UI executor.
+    private static let sharedTask = Task.detached(priority: .userInitiated) {
+        FaceStore(modelContainer: FaceContainer.shared)
+    }
+
+    static func shared() async -> FaceStore {
+        await sharedTask.value
+    }
+
     /// Upper bound on IDs per `contains` predicate. Keeps the generated SQL
     /// well under SQLite's bound-variable limit while still batching well.
     private static let idChunk = 500
@@ -61,11 +73,6 @@ actor FaceStore {
             best[row.localIdentifier] = max(best[row.localIdentifier] ?? 0, row.quality)
         }
         return best
-    }
-
-    /// Number of stored faces — tells the UI whether a first scan has run.
-    func faceCount() throws -> Int {
-        try modelContext.fetchCount(FetchDescriptor<FaceRow>())
     }
 
     // MARK: - Writes

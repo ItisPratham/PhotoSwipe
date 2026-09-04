@@ -11,6 +11,7 @@ import SwiftUI
 final class PeopleViewModel: ObservableObject {
     enum Phase: Equatable {
         case idle          // never scanned — show the explainer
+        case preparing     // opening the store or loading the face model
         case scanning      // detecting + embedding, with progress
         case clustering    // grouping embeddings into people
         case results       // clusters found
@@ -32,8 +33,6 @@ final class PeopleViewModel: ObservableObject {
     @Published private(set) var mergeSuggestions: [MergeSuggestion] = []
 
     var progress: Double { total > 0 ? Double(processed) / Double(total) : 0 }
-    var isModelAvailable: Bool { embedder.isAvailable }
-
     /// Cosine-similarity floor for grouping faces into the same person. Higher =
     /// stricter = more, smaller clusters. Kept in sync with the debug grouping
     /// view so the production People tab uses the validated setting.
@@ -41,49 +40,44 @@ final class PeopleViewModel: ObservableObject {
 
     private let indexService = FaceIndexService()
     private let clusterer = FaceClusterer()
-    private let embedder = FaceEmbedder.shared
-    private let store = FaceStore(modelContainer: FaceContainer.shared)
-    /// Scans and regroups run strictly one at a time through this queue, so a
-    /// library change mid-scan queues a follow-up instead of replacing the
-    /// handle to the running scan, Cancel always reaches the real work, and a
-    /// run requested right after Cancel waits for the old one to unwind.
+    /// Set only by the Scan button. Existing face rows from an older build do
+    /// not silently grant consent or trigger a library read.
+    private static let scanEnabledKey = "PhotoSwipe.peopleScanEnabled"
+    /// User-requested scans and regroups run strictly one at a time, so Cancel
+    /// always reaches the real work and a later action waits for the current
+    /// operation to unwind.
     private let queue = SerialTaskQueue()
     private var isRunning = false
-    /// A run is waiting in the queue; further requests fold into it. The
-    /// queued run is conditional (only if faces exist) unless *any* requester
-    /// asked for it unconditionally.
+    /// A user-requested run is waiting in the queue; repeated taps fold into it.
     private var isRunQueued = false
-    private var queuedRunIsConditional = true
     /// A regroup is waiting; slider ticks fold into it and it reads the latest
     /// threshold when it starts, so the final value is never dropped and the
     /// store never sees two full re-clusters for one drag.
     private var isRegroupQueued = false
-    /// The `libraryVersion` the last run started from. Re-appearing with an
-    /// unchanged library (popping back from a deck, switching tabs) is then a
-    /// no-op instead of another fetch + incremental scan + regroup.
-    private var lastRunLibraryVersion: Int?
+    /// Saved clusters are loaded at most once for this tab instance. This is
+    /// deliberately separate from scanning: appearing never walks the library.
+    private var didLoadSavedPeople = false
 
     // MARK: - Entry points
 
-    /// On appear: if a scan has already run, refresh incrementally; otherwise
-    /// leave the explainer up so the first scan stays opt-in. Surfaces the
-    /// model-missing state up front.
-    func onAppear(using service: PhotoLibraryService) {
-        guard embedder.isAvailable else { phase = .unavailable; return }
-        guard lastRunLibraryVersion != service.libraryVersion else { return }
-        enqueueRun(using: service, onlyIfScanned: true)
-    }
-
-    func onLibraryChange(using service: PhotoLibraryService) {
-        guard embedder.isAvailable else { return }
-        enqueueRun(using: service, onlyIfScanned: true)
+    /// Opening People never scans the photo library. Before opt-in it does no
+    /// face-store or Core ML work at all; after opt-in it only restores the
+    /// clusters already on disk.
+    func onAppear() {
+        guard UserDefaults.standard.bool(forKey: Self.scanEnabledKey),
+              !didLoadSavedPeople
+        else { return }
+        didLoadSavedPeople = true
+        phase = .preparing
+        queue.enqueue { [weak self] in
+            await self?.loadClusters()
+        }
     }
 
     /// The explainer's "Scan library" button — the opt-in first pass.
     func startFirstScan(using service: PhotoLibraryService) {
-        guard embedder.isAvailable else { phase = .unavailable; return }
         service.invalidateFetchCache()
-        enqueueRun(using: service, onlyIfScanned: false)
+        enqueueRun(using: service)
     }
 
     /// Manual reload: must see the library as it is now, so the shared fetch
@@ -91,7 +85,7 @@ final class PeopleViewModel: ObservableObject {
     /// may never have produced a change notification.
     func reload(using service: PhotoLibraryService) {
         service.invalidateFetchCache()
-        enqueueRun(using: service, onlyIfScanned: false)
+        enqueueRun(using: service)
     }
 
     /// Stops the running scan and drops anything queued behind it. `isRunning`
@@ -105,17 +99,25 @@ final class PeopleViewModel: ObservableObject {
         phase = clusters.isEmpty ? .idle : .results
     }
 
-    private func enqueueRun(using service: PhotoLibraryService, onlyIfScanned: Bool) {
-        queuedRunIsConditional = isRunQueued
-            ? (queuedRunIsConditional && onlyIfScanned)
-            : onlyIfScanned
+    private func enqueueRun(using service: PhotoLibraryService) {
         guard !isRunQueued else { return }
         isRunQueued = true
+        phase = .preparing
         queue.enqueue { [weak self] in
             guard let self else { return }
-            let conditional = self.queuedRunIsConditional
             self.isRunQueued = false
-            if conditional, !(await self.hasFaces()) { return }
+            // Core ML model loading is synchronous and can take seconds on
+            // device. Perform it only after consent and away from MainActor.
+            let modelAvailable = await Task.detached(priority: .userInitiated) {
+                FaceEmbedder.shared.isAvailable
+            }.value
+            guard modelAvailable else {
+                self.phase = .unavailable
+                return
+            }
+            guard !Task.isCancelled else { return }
+            UserDefaults.standard.set(true, forKey: Self.scanEnabledKey)
+            self.didLoadSavedPeople = true
             await self.run(using: service)
         }
     }
@@ -125,7 +127,6 @@ final class PeopleViewModel: ObservableObject {
     private func run(using service: PhotoLibraryService) async {
         guard !isRunning, !Task.isCancelled else { return }
         isRunning = true
-        lastRunLibraryVersion = service.libraryVersion
         defer { isRunning = false; isRefreshing = false }
 
         let showProgress = clusters.isEmpty
@@ -139,6 +140,8 @@ final class PeopleViewModel: ObservableObject {
 
         let assets = await service.fetchImages(source: DeckSource(scope: .allPhotos, media: .photos))
         do {
+            let store = await FaceStore.shared()
+            let embedder = FaceEmbedder.shared
             try await indexService.scan(assets: assets, store: store, embedder: embedder) { done, tot in
                 Task { @MainActor in
                     // Hops can land out of order; the counter never steps back.
@@ -161,6 +164,7 @@ final class PeopleViewModel: ObservableObject {
     /// Existing clusters (and their names, merges, hides, and covers) are
     /// untouched. O(1) when nothing new has been scanned since the last run.
     private func reclusterIncremental() async {
+        let store = await FaceStore.shared()
         let unclustered = (try? await store.unclusteredFaces()) ?? []
         guard !unclustered.isEmpty else {
             await loadClusters()
@@ -184,6 +188,7 @@ final class PeopleViewModel: ObservableObject {
     /// Destroys user names, merges, hides, and covers — only call when the user
     /// explicitly requests it (e.g., a "Re-cluster" debug button).
     func reclusterFull() async {
+        let store = await FaceStore.shared()
         guard let faces = try? await store.allFaces(), !faces.isEmpty else {
             await loadClusters()
             return
@@ -220,6 +225,7 @@ final class PeopleViewModel: ObservableObject {
     }
 
     private func loadClusters() async {
+        let store = await FaceStore.shared()
         let all = (try? await store.clusters()) ?? []
         clusters = all.filter { !$0.isHidden }
         hiddenClusters = all.filter { $0.isHidden }
@@ -231,6 +237,7 @@ final class PeopleViewModel: ObservableObject {
     /// the user already declined. The pairwise pass is k² over centroids —
     /// cheap; the centroid read is one pass over the embeddings.
     private func refreshMergeSuggestions() async {
+        let store = await FaceStore.shared()
         guard clusters.count > 1,
               let centroids = try? await store.personCentroids()
         else { mergeSuggestions = []; return }
@@ -256,7 +263,8 @@ final class PeopleViewModel: ObservableObject {
         mergeSuggestions.removeAll { $0.id == suggestion.id }
         Task { [weak self] in
             guard let self else { return }
-            try? await self.store.merge(source.personID, into: dest.personID)
+            let store = await FaceStore.shared()
+            try? await store.merge(source.personID, into: dest.personID)
             await self.loadClusters()
         }
     }
@@ -264,8 +272,9 @@ final class PeopleViewModel: ObservableObject {
     /// "No": remembered on both people so the pair is never asked again.
     func dismissMerge(_ suggestion: MergeSuggestion) {
         mergeSuggestions.removeAll { $0.id == suggestion.id }
-        Task { [weak self] in
-            try? await self?.store.dismissMerge(suggestion.a.personID, suggestion.b.personID)
+        Task {
+            let store = await FaceStore.shared()
+            try? await store.dismissMerge(suggestion.a.personID, suggestion.b.personID)
         }
     }
 
@@ -273,12 +282,9 @@ final class PeopleViewModel: ObservableObject {
     func unhide(_ personID: String) {
         Task { [weak self] in
             guard let self else { return }
-            try? await self.store.setHidden(personID: personID, false)
+            let store = await FaceStore.shared()
+            try? await store.setHidden(personID: personID, false)
             await self.loadClusters()
         }
-    }
-
-    private func hasFaces() async -> Bool {
-        ((try? await store.faceCount()) ?? 0) > 0
     }
 }

@@ -36,7 +36,6 @@ final class PersonDetailViewModel: ObservableObject {
     let personID: String
     let photoIDs: [String]
 
-    private let store: FaceStore
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "d MMMM yyyy"; return f
     }()
@@ -45,7 +44,6 @@ final class PersonDetailViewModel: ObservableObject {
         self.personID = cluster.personID
         self.photoIDs = cluster.photoIDs
         self.name = cluster.name
-        self.store = FaceStore(modelContainer: FaceContainer.shared)
     }
 
     // MARK: - Navigation helpers
@@ -74,12 +72,14 @@ final class PersonDetailViewModel: ObservableObject {
     // MARK: - Cluster management
 
     func rename(to newName: String?) async {
+        let store = await FaceStore.shared()
         try? await store.rename(personID: personID, to: newName)
         let trimmed = newName?.trimmingCharacters(in: .whitespacesAndNewlines)
         name = (trimmed?.isEmpty ?? true) ? nil : trimmed
     }
 
     func hidePerson() async {
+        let store = await FaceStore.shared()
         try? await store.setHidden(personID: personID, true)
     }
 
@@ -90,11 +90,13 @@ final class PersonDetailViewModel: ObservableObject {
     }
 
     func mergeCandidates() async -> [PersonCluster] {
+        let store = await FaceStore.shared()
         let all = (try? await store.clusters()) ?? []
         return all.filter { $0.personID != personID && !$0.isHidden }
     }
 
     func merge(into destID: String) async {
+        let store = await FaceStore.shared()
         try? await store.merge(personID, into: destID)
     }
 

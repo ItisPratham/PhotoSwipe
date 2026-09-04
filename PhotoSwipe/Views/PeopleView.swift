@@ -31,10 +31,7 @@ struct PeopleView: View {
             .toolbar { reloadButton }
             .task {
                 viewModel.similarityThreshold = threshold(for: sensitivity)
-                viewModel.onAppear(using: service)
-            }
-            .onChange(of: service.libraryVersion) { _, _ in
-                viewModel.onLibraryChange(using: service)
+                viewModel.onAppear()
             }
     }
 
@@ -43,6 +40,7 @@ struct PeopleView: View {
         switch viewModel.phase {
         case .unavailable: unavailableState
         case .idle: explainer
+        case .preparing: preparingState
         case .scanning: scanningState
         case .clustering: clusteringState
         case .empty: emptyState
@@ -56,7 +54,7 @@ struct PeopleView: View {
         ContentUnavailableView {
             Label("Find people", systemImage: "person.2")
         } description: {
-            Text("Groups your photos by who's in them. The first scan takes a few minutes and runs on your phone, so nothing is uploaded.")
+            Text("Groups your photos by who's in them. Nothing is scanned until you tap Scan library, and all processing stays on your phone.")
         } actions: {
             Button("Scan library") { viewModel.startFirstScan(using: service) }
                 .buttonStyle(.borderedProminent)
@@ -75,6 +73,16 @@ struct PeopleView: View {
             .padding(.horizontal, 40)
 
             Button("Cancel") { viewModel.cancel() }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var preparingState: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Preparing people…")
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

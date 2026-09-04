@@ -132,10 +132,12 @@ The People feature uses an on-device face-embedding pipeline:
    faces by identity.
 
 All processing is **on-device**. Nothing about your faces is sent anywhere.
-The scan is opt-in, warns you before it runs, shows determinate progress, can
-be cancelled, and is incremental (only new photos are scanned on re-runs; a
-photo whose image could not be loaded is retried next time rather than
-remembered as "no faces").
+Opening the People tab performs no scan, photo fetch, model load, or face-index
+read before you opt in. A scan starts only from the explicit Scan/Rescan
+button, shows determinate progress, can be cancelled, and is incremental (only
+new photos are scanned on re-runs; a photo whose image could not be loaded is
+retried next time rather than remembered as "no faces"). Returning to the tab
+after opting in loads saved clusters but never starts a scan automatically.
 
 Grouping is tunable: a strength slider re-groups from the cached embeddings with
 no re-scan, so you can dial in how tightly the same person collapses across
@@ -224,7 +226,7 @@ Where each piece of state lives:
 | --- | --- |
 | Reviewed and marked-for-deletion photo IDs | JSON file, `Application Support/review.json` (debounced writes; migrated from `UserDefaults` on first launch after 4.1) |
 | Activity log and total space freed | `UserDefaults` |
-| Swipe-up choice (favorite / album id + title), categories opt-in | `UserDefaults` |
+| Swipe-up choice (favorite / album id + title), categories and People scan opt-ins | `UserDefaults` |
 | Per-asset byte-size cache (Biggest files) | `UserDefaults` |
 | Duplicate index (feature prints, sizes, sharpness, aesthetics, category signals) | SwiftData, `Application Support/duplicates.store` |
 | Face index (embeddings, people, names, hides, declined merges) | SwiftData, `Application Support/faces.store` |
