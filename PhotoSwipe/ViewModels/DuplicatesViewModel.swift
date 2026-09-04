@@ -38,7 +38,7 @@ final class DuplicatesViewModel: ObservableObject {
     }
 
     private let indexService = LibraryIndexService()
-    private let store = IndexStore(modelContainer: IndexContainer.shared)
+    private let store = IndexStore.shared
     /// Read-only: best face quality per photo feeds the keeper score.
     private let faceStore = FaceStore(modelContainer: FaceContainer.shared)
     /// Scans and regroups run strictly one at a time through this queue, so a
@@ -70,6 +70,31 @@ final class DuplicatesViewModel: ObservableObject {
     private var lastIndexedVersion: Int?
 
     func asset(for id: String) -> PhotoAsset? { assetsByID[id] }
+
+    // MARK: - Screen lifecycle
+
+    /// Whether the screen is on screen. A scan started from this screen
+    /// stops when the screen is popped; a short grace period tells a pop
+    /// apart from being covered by a pushed deck, which also fires
+    /// onDisappear.
+    private var isVisible = false
+    private var disappearGrace: Task<Void, Never>?
+
+    func viewAppeared() {
+        isVisible = true
+        disappearGrace?.cancel()
+        disappearGrace = nil
+    }
+
+    func viewDisappeared() {
+        isVisible = false
+        disappearGrace?.cancel()
+        disappearGrace = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard let self, !Task.isCancelled, !self.isVisible else { return }
+            self.cancel()
+        }
+    }
 
     // MARK: - Entry points
 
@@ -118,6 +143,7 @@ final class DuplicatesViewModel: ObservableObject {
         isRunQueued = false
         isRegroupQueued = false
         isRefreshing = false
+        lastRunLibraryVersion = nil
         phase = groups.isEmpty ? .idle : .results
     }
 

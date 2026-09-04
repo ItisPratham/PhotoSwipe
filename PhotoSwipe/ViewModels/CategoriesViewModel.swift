@@ -32,12 +32,37 @@ final class CategoriesViewModel: ObservableObject {
     var hasAnyResults: Bool { idsByCategory.values.contains { !$0.isEmpty } }
 
     private let indexService = LibraryIndexService()
-    private let store = IndexStore(modelContainer: IndexContainer.shared)
+    private let store = IndexStore.shared
     private let queue = SerialTaskQueue()
     private var isRunning = false
     private var isRunQueued = false
     private var queuedRunIsConditional = true
     private var lastRunLibraryVersion: Int?
+
+    // MARK: - Screen lifecycle
+
+    /// Whether the screen is on screen. A scan started from this screen
+    /// stops when the screen is popped; a short grace period tells a pop
+    /// apart from being covered by a pushed deck, which also fires
+    /// onDisappear.
+    private var isVisible = false
+    private var disappearGrace: Task<Void, Never>?
+
+    func viewAppeared() {
+        isVisible = true
+        disappearGrace?.cancel()
+        disappearGrace = nil
+    }
+
+    func viewDisappeared() {
+        isVisible = false
+        disappearGrace?.cancel()
+        disappearGrace = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            guard let self, !Task.isCancelled, !self.isVisible else { return }
+            self.cancel()
+        }
+    }
 
     // MARK: - Entry points
 
@@ -61,6 +86,7 @@ final class CategoriesViewModel: ObservableObject {
         queue.cancelAll()
         isRunQueued = false
         isRefreshing = false
+        lastRunLibraryVersion = nil
         phase = hasAnyResults ? .results : .idle
     }
 

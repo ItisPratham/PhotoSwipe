@@ -11,7 +11,11 @@ struct CategoriesView: View {
         content
             .navigationTitle("Categories")
             .navigationBarTitleDisplayMode(.inline)
-            .task { viewModel.onAppear(using: service) }
+            .task {
+                viewModel.viewAppeared()
+                viewModel.onAppear(using: service)
+            }
+            .onDisappear { viewModel.viewDisappeared() }
             .onChange(of: service.libraryVersion) { _, _ in
                 viewModel.onLibraryChange(using: service)
             }

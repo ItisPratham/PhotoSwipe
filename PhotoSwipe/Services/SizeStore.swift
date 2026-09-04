@@ -63,7 +63,7 @@ final class SizeStore: ObservableObject {
     /// Pulls in sizes the duplicate index already recorded for assets this
     /// cache hasn't seen. Cheap: two columns, no feature prints.
     func adoptIndexedSizes() async {
-        let index = IndexStore(modelContainer: IndexContainer.shared)
+        let index = IndexStore.shared
         guard let indexed = try? await index.byteSizes() else { return }
         merge(indexed.filter { sizes[$0.key] == nil })
     }

@@ -82,6 +82,16 @@ enum IndexContainer {
 @ModelActor
 actor IndexStore {
 
+    /// The one index actor every screen uses. Sharing it serialises all
+    /// reads and writes through a single ModelContext, so a scan still
+    /// unwinding after its screen was popped can never race a fresh scan on
+    /// a second context. It is built on a background thread on purpose: a
+    /// `@ModelActor` created on the main thread does its work on the main
+    /// thread, and a 50k-row read there is a visible hang.
+    static let shared: IndexStore = DispatchQueue.global(qos: .userInitiated).sync {
+        IndexStore(modelContainer: IndexContainer.shared)
+    }
+
     /// Local identifiers already indexed — lets the scan skip them. Reads the
     /// identifier column only; the vectors stay on disk.
     func indexedIdentifiers() throws -> Set<String> {

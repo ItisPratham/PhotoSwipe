@@ -17,7 +17,7 @@ final class SimilarPhotosFinder {
     /// default (0.30): these should be *similar* shots, not copies.
     static let maxDistance: Float = 0.8
 
-    private let store = IndexStore(modelContainer: IndexContainer.shared)
+    private let store = IndexStore.shared
     private var indexedIDs: Set<String> = []
     private var indexed: [IndexedAsset] = []
     private var loadedVersion: Int?

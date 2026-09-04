@@ -30,8 +30,10 @@ struct DuplicatesView: View {
             .toolbar { reloadToolbar }
             .task {
                 viewModel.distanceThreshold = threshold
+                viewModel.viewAppeared()
                 viewModel.onAppear(using: service)
             }
+            .onDisappear { viewModel.viewDisappeared() }
             .onChange(of: service.libraryVersion) { _, _ in
                 viewModel.onLibraryChange(using: service)
             }
