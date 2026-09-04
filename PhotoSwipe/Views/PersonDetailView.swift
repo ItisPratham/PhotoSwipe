@@ -26,8 +26,6 @@ struct PersonDetailView: View {
     /// still animating away can leave the destination blank.
     @State private var alsoWithPick: PersonCluster?
     @State private var alsoWithRoute: AppRoute?
-    @State private var scrollGroupID: String?
-    @State private var fastScrollIndex = 0
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
@@ -118,22 +116,6 @@ struct PersonDetailView: View {
                 }
             }
             .scrollIndicators(.hidden)
-            .scrollPosition(id: $scrollGroupID, anchor: .top)
-            .onChange(of: scrollGroupID) { _, id in
-                guard let id,
-                      let index = viewModel.groupedByDate.firstIndex(where: { $0.id == id })
-                else { return }
-                fastScrollIndex = index
-            }
-            .overlay(alignment: .leading) {
-                if viewModel.groupedByDate.count > 1 {
-                    PhotoFastScroller(
-                        itemCount: viewModel.groupedByDate.count,
-                        currentIndex: fastScrollIndex,
-                        onSelect: scroll(to:)
-                    )
-                }
-            }
         }
     }
 
@@ -181,16 +163,8 @@ struct PersonDetailView: View {
                 } header: {
                     dateSectionHeader(group)
                 }
-                .id(group.id)
             }
         }
-        .scrollTargetLayout()
-    }
-
-    private func scroll(to index: Int) {
-        guard viewModel.groupedByDate.indices.contains(index) else { return }
-        fastScrollIndex = index
-        scrollGroupID = viewModel.groupedByDate[index].id
     }
 
     // Tapping the date header swipes only that day's photos, newest → oldest.

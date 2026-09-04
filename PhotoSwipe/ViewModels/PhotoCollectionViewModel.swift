@@ -56,10 +56,6 @@ final class PhotoCollectionViewModel: ObservableObject {
         isLoading = false
     }
 
-    func index(of id: String) -> Int? {
-        positionByID[id]
-    }
-
     func deckSource(startingAt asset: PhotoAsset? = nil) -> DeckSource {
         let ids = assets.map(\.id)
         guard let asset, let index = positionByID[asset.id] else {

@@ -16,7 +16,6 @@
 		F6A010033006000100AA0003 /* PersonCandidateList.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A010043006000100AA0004 /* PersonCandidateList.swift */; };
 		F6A010053006000100AA0005 /* PhotoCollectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A010063006000100AA0006 /* PhotoCollectionViewModel.swift */; };
 		F6A010073006000100AA0007 /* PhotoCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A010083006000100AA0008 /* PhotoCollectionView.swift */; };
-		F6A010093006000100AA0009 /* PhotoFastScroller.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A0100A3006000100AA000A /* PhotoFastScroller.swift */; };
 		D705C6EB3047F5F700A00E92 /* FaceEmbedding.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D705C6EA3047F5F700A00E92 /* FaceEmbedding.mlpackage */; };
 		D748138E3000DCC60039DF72 /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138D3000DCC60039DF72 /* PeopleView.swift */; };
 		D74813903000DCE40039DF72 /* AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D748138F3000DCE40039DF72 /* AppTabView.swift */; };
@@ -172,7 +171,6 @@
 		F6A010043006000100AA0004 /* PersonCandidateList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonCandidateList.swift; sourceTree = "<group>"; };
 		F6A010063006000100AA0006 /* PhotoCollectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCollectionViewModel.swift; sourceTree = "<group>"; };
 		F6A010083006000100AA0008 /* PhotoCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCollectionView.swift; sourceTree = "<group>"; };
-		F6A0100A3006000100AA000A /* PhotoFastScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoFastScroller.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -207,7 +205,6 @@
 				D748139C3000EB650039DF72 /* ThumbnailPreview.swift */,
 				D7A915063001E088009426DD /* PersonDetailView.swift */,
 				F6A010083006000100AA0008 /* PhotoCollectionView.swift */,
-				F6A0100A3006000100AA000A /* PhotoFastScroller.swift */,
 				D74DD0B6304828FD009E7470 /* AcknowledgementsView.swift */,
 			);
 			path = Views;
@@ -415,7 +412,6 @@
 				F6A010033006000100AA0003 /* PersonCandidateList.swift in Sources */,
 				F6A010053006000100AA0005 /* PhotoCollectionViewModel.swift in Sources */,
 				F6A010073006000100AA0007 /* PhotoCollectionView.swift in Sources */,
-				F6A010093006000100AA0009 /* PhotoFastScroller.swift in Sources */,
 				D74813923000E96E0039DF72 /* BrowseEntryRow.swift in Sources */,
 				D7C0A1CB3003100100AA000F /* CategoryDetailView.swift in Sources */,
 				D7C0A1C93003100100AA000E /* CategoriesView.swift in Sources */,

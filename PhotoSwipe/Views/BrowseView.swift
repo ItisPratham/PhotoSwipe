@@ -14,8 +14,6 @@ struct BrowseView: View {
     /// Warms thumbnails around the visible rows. Sized to match
     /// `Thumbnail`'s request exactly, or the cache would miss.
     @State private var prefetcher = GridPrefetcher(targetSize: Thumbnail.requestSize)
-    @State private var scrollSectionID: Date?
-    @State private var fastScrollIndex = 0
 
     private let columns = Array(
         repeating: GridItem(.flexible(), spacing: 4),
@@ -189,36 +187,12 @@ struct BrowseView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Start swiping from \(section.id.formatted(.dateTime.month(.wide).day().year()))")
                         }
-                        .id(section.id)
                     }
                 }
             }
-            .scrollTargetLayout()
             .padding(.bottom, 16)
         }
         .scrollIndicators(.hidden)
-        .scrollPosition(id: $scrollSectionID, anchor: .top)
-        .onChange(of: scrollSectionID) { _, id in
-            guard let id,
-                  let index = viewModel.sections.firstIndex(where: { $0.id == id })
-            else { return }
-            fastScrollIndex = index
-        }
-        .overlay(alignment: .leading) {
-            if viewModel.sections.count > 1 {
-                PhotoFastScroller(
-                    itemCount: viewModel.sections.count,
-                    currentIndex: fastScrollIndex,
-                    onSelect: scroll(to:)
-                )
-            }
-        }
-    }
-
-    private func scroll(to index: Int) {
-        guard viewModel.sections.indices.contains(index) else { return }
-        fastScrollIndex = index
-        scrollSectionID = viewModel.sections[index].id
     }
 
     private var onThisDaySubtitle: String {

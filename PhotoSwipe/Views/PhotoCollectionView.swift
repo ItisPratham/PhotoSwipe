@@ -9,8 +9,6 @@ struct PhotoCollectionView: View {
     let sizes: SizeStore
 
     @StateObject private var viewModel: PhotoCollectionViewModel
-    @State private var scrollID: String?
-    @State private var fastScrollIndex = 0
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 4)
 
@@ -112,7 +110,6 @@ struct PhotoCollectionView: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .id(asset.id)
                         .accessibilityLabel("Start cleaning from \(asset.formattedDate)")
                         .contextMenu {
                             NavigationLink(
@@ -125,35 +122,15 @@ struct PhotoCollectionView: View {
                         }
                     }
                 }
-                .scrollTargetLayout()
                 .padding(.horizontal, 12)
                 .padding(.bottom, 16)
             }
         }
         .scrollIndicators(.hidden)
-        .scrollPosition(id: $scrollID, anchor: .center)
-        .onChange(of: scrollID) { _, id in
-            guard let id, let index = viewModel.index(of: id) else { return }
-            fastScrollIndex = index
-        }
-        .overlay(alignment: .leading) {
-            if viewModel.assets.count > 1 {
-                PhotoFastScroller(
-                    itemCount: viewModel.assets.count,
-                    currentIndex: fastScrollIndex,
-                    onSelect: scroll(to:)
-                )
-            }
-        }
     }
 
     private func load() async {
         await viewModel.loadIfNeeded(using: service, sizes: sizes)
     }
 
-    private func scroll(to index: Int) {
-        guard viewModel.assets.indices.contains(index) else { return }
-        fastScrollIndex = index
-        scrollID = viewModel.assets[index].id
-    }
 }
