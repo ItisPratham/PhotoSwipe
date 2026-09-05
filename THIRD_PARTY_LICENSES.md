@@ -59,7 +59,7 @@ THE SOFTWARE.
 
 ---
 
-## MobileCLIP S2 (research evaluation only; not currently bundled)
+## MobileCLIP S2 (research evaluation only; not in this repository)
 
 **Source code:** [Apple ML-MobileCLIP](https://github.com/apple/ml-mobileclip), MIT,
 Copyright © 2024 Apple Inc. **Tokenizer resources:** `clip-vocab.json` and
@@ -81,6 +81,10 @@ include this attribution:
 
 > Apple Machine Learning Research Model is licensed under the Apple Machine
 > Learning Research Model License Agreement.
+
+No MobileCLIP artifact is tracked here. A build that has been given locally
+converted packages bundles them, and that build is a research evaluation build
+which must not be distributed or sold.
 
 The converter requires a local Apple checkout and checkpoint, records its
 source commit, checkpoint SHA-256, dependency versions, date, and deployment
