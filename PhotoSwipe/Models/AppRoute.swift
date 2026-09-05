@@ -12,3 +12,18 @@ enum AppRoute: Hashable {
     case collection(PhotoCollection)
     case swipe(DeckSource)
 }
+
+extension CleanEntry {
+    /// The existing destination for a deep link — links reuse the screens
+    /// Browse already pushes rather than introducing parallel ones.
+    var route: AppRoute {
+        switch self {
+        case .screenshots:
+            .swipe(PhotoCollection.screenshots.source)
+        case .biggest:
+            .swipe(PhotoCollection.biggestFiles.source)
+        case .duplicates:
+            .duplicates
+        }
+    }
+}

@@ -145,6 +145,21 @@ final class SummaryTests: XCTestCase {
         XCTAssertEqual(written.markedCount, 6)
     }
 
+    func testTheMonthTotalZeroesOutOnceTheSnapshotIsFromAnEarlierMonth() {
+        var snapshot = summary(marked: 3)
+        snapshot.monthKey = "2026-09"
+        snapshot.monthBytesFreed = 4_000
+        XCTAssertEqual(snapshot.bytesFreed(inMonthOf: date("2026-09-30")), 4_000)
+        XCTAssertEqual(snapshot.bytesFreed(inMonthOf: date("2026-10-01")), 0,
+                       "A widget must not show last month's total as this month's.")
+    }
+
+    func testACorruptSummaryFileReadsAsNothingRatherThanZeroes() throws {
+        let url = directory.appending(path: "summary.json")
+        try Data("{ not json".utf8).write(to: url)
+        XCTAssertNil(try? JSONDecoder().decode(CleanupSummary.self, from: Data(contentsOf: url)))
+    }
+
     func testAMissingAppGroupIsSurvivable() async {
         let writer = SummaryWriter(url: nil)
         await writer.write(summary(marked: 1), revision: 1)  // Must not trap.

@@ -36,6 +36,13 @@ struct CleanupSummary: Codable, Equatable {
     /// The single widget kind, used for targeted timeline reloads.
     static let widgetKind = "PhotoSwipeSummary"
 
+    /// The month total as of `date`: zero once the snapshot belongs to an
+    /// earlier month, because last month's progress is not this month's. Lives
+    /// here rather than in the widget so the rollover rule is testable.
+    func bytesFreed(inMonthOf date: Date) -> Int64 {
+        monthKey == Self.monthKey(date) ? monthBytesFreed : 0
+    }
+
     /// Nil when the App Group is not provisioned for this build — an explicit
     /// integration error rather than a silent fallback to a private file that
     /// extensions could never read anyway.

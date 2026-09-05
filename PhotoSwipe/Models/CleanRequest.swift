@@ -2,24 +2,13 @@ import Foundation
 
 /// Where a `photoswipe://clean` link lands. The widget, the Shortcuts intent,
 /// and the URL parser all share these cases, so a new entry cannot be added to
-/// one without the others seeing it.
+/// one without the others seeing it. The mapping to an actual screen lives in
+/// `AppRoute` — this file is compiled into the widget too, and must not drag
+/// the app's route graph in with it.
 enum CleanEntry: String, CaseIterable {
     case screenshots
     case biggest
     case duplicates
-
-    /// The existing destination — deep links reuse the screens Browse already
-    /// pushes rather than introducing parallel ones.
-    var route: AppRoute {
-        switch self {
-        case .screenshots:
-            .swipe(PhotoCollection.screenshots.source)
-        case .biggest:
-            .swipe(PhotoCollection.biggestFiles.source)
-        case .duplicates:
-            .duplicates
-        }
-    }
 
     var title: String {
         switch self {

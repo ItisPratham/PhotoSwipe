@@ -43,6 +43,7 @@ targets:
       - path: PhotoSwipe
     dependencies:
       - package: DMScrollBar
+      - target: PhotoSwipeWidget
     settings:
       base:
         GENERATE_INFOPLIST_FILE: NO
@@ -54,6 +55,25 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  PhotoSwipeWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PhotoSwipeWidget
+      # Shared with the app: the summary the widget reads and the deep-link
+      # values it opens. Nothing else crosses the target boundary.
+      - path: PhotoSwipe/Models/CleanupSummary.swift
+      - path: PhotoSwipe/Models/CleanRequest.swift
+    settings:
+      base:
+        INFOPLIST_FILE: PhotoSwipeWidget/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: PhotoSwipe
+        CODE_SIGN_ENTITLEMENTS: PhotoSwipeWidget/PhotoSwipeWidget.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.phototinder.PhotoSwipe.Widget
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   PhotoSwipeTests:
     type: bundle.unit-test

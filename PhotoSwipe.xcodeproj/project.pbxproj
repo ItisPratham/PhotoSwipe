@@ -109,6 +109,10 @@
 		15C0288F5CDFDD3EF87D364C /* SummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */; };
 		D373BBDC489BFCD57F808D51 /* CleanRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C14537E00F2404DE91F582D /* CleanRequest.swift */; };
 		146B74D9A3344EDCFA060D7A /* CleanRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073123BF9EA97C830EEF813D /* CleanRequestTests.swift */; };
+		97B1D490FF01458CF4A3D265 /* PhotoSwipeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E84EC65A83BD92AC046AE14 /* PhotoSwipeWidget.swift */; };
+		632D75E838DD59D1ACC85FCF /* CleanupSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E669B2DF415E7D25AFFAA2F /* CleanupSummary.swift */; };
+		B219A9A305DDBD840AC5290D /* CleanRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C14537E00F2404DE91F582D /* CleanRequest.swift */; };
+		F227FF90A75AE61448927FFD /* PhotoSwipeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,7 +123,28 @@
 			remoteGlobalIDString = 24F5DFBDA8E50776AC53BBB1;
 			remoteInfo = PhotoSwipe;
 		};
+		D78E27401F9D7DB127D58CB5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DD724C54FDA23DFE126177A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D98968079D70DD7C71212B2;
+			remoteInfo = PhotoSwipeWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1F6101B99DCFB6221CCBB538 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F227FF90A75AE61448927FFD /* PhotoSwipeWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		03852D7BC70D24937F64D3FA /* StatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsStore.swift; sourceTree = "<group>"; };
@@ -231,6 +256,10 @@
 		E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTests.swift; sourceTree = "<group>"; };
 		4C14537E00F2404DE91F582D /* CleanRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanRequest.swift; sourceTree = "<group>"; };
 		073123BF9EA97C830EEF813D /* CleanRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanRequestTests.swift; sourceTree = "<group>"; };
+		4E84EC65A83BD92AC046AE14 /* PhotoSwipeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSwipeWidget.swift; sourceTree = "<group>"; };
+		C17195E3136A33EFACC08754 /* PhotoSwipeWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhotoSwipeWidget.entitlements; sourceTree = "<group>"; };
+		7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PhotoSwipeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF901EA7E4021754BB4A695F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -366,6 +395,7 @@
 			children = (
 				9B925B1AEDACC90072F64FBC /* PhotoSwipe */,
 				CD1D75C70F2B2119149B50C9 /* PhotoSwipeTests */,
+				6EA00C045B2974FA4BEC0DA2 /* PhotoSwipeWidget */,
 				38F397B9832AAB78B9E6EAE6 /* .gitignore */,
 				BB9A181BA45FF3F53D24924D /* PhotoSwipe_Instructions.md */,
 				A1063A930CE720CA8067F608 /* project.yml */,
@@ -452,6 +482,7 @@
 			children = (
 				2981107A74443087108E74FA /* PhotoSwipe.app */,
 				1BE01F83ED0C1A08D871DF54 /* PhotoSwipeTests.xctest */,
+				7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -464,6 +495,16 @@
 			path = CLIPTokenizer;
 			sourceTree = "<group>";
 		};
+		6EA00C045B2974FA4BEC0DA2 /* PhotoSwipeWidget */ = {
+			isa = PBXGroup;
+			children = (
+				4E84EC65A83BD92AC046AE14 /* PhotoSwipeWidget.swift */,
+				C17195E3136A33EFACC08754 /* PhotoSwipeWidget.entitlements */,
+				CF901EA7E4021754BB4A695F /* Info.plist */,
+			);
+			path = PhotoSwipeWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -474,10 +515,12 @@
 				B8C7496907E27492C0218F73 /* Sources */,
 				E763B48F7C8560E17E923F58 /* Resources */,
 				9ADFBD883DBE998C8D27FD20 /* Frameworks */,
+				1F6101B99DCFB6221CCBB538 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7530EBC125D147E4FBFFA106 /* PBXTargetDependency */,
 			);
 			name = PhotoSwipe;
 			packageProductDependencies = (
@@ -506,6 +549,23 @@
 			productReference = 1BE01F83ED0C1A08D871DF54 /* PhotoSwipeTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		1D98968079D70DD7C71212B2 /* PhotoSwipeWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA8AC900A8705F47FF5C806F /* Build configuration list for PBXNativeTarget "PhotoSwipeWidget" */;
+			buildPhases = (
+				36EAA24BF82756C56BFFA238 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PhotoSwipeWidget;
+			packageProductDependencies = (
+			);
+			productName = PhotoSwipeWidget;
+			productReference = 7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -521,6 +581,10 @@
 					};
 					49F24E38B5D2641C3DF5C9D6 = {
 						DevelopmentTeam = TT7LR66US3;
+					};
+					1D98968079D70DD7C71212B2 = {
+						DevelopmentTeam = TT7LR66US3;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -543,6 +607,7 @@
 			targets = (
 				24F5DFBDA8E50776AC53BBB1 /* PhotoSwipe */,
 				49F24E38B5D2641C3DF5C9D6 /* PhotoSwipeTests */,
+				1D98968079D70DD7C71212B2 /* PhotoSwipeWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -680,6 +745,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		36EAA24BF82756C56BFFA238 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97B1D490FF01458CF4A3D265 /* PhotoSwipeWidget.swift in Sources */,
+				632D75E838DD59D1ACC85FCF /* CleanupSummary.swift in Sources */,
+				B219A9A305DDBD840AC5290D /* CleanRequest.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -687,6 +762,11 @@
 			isa = PBXTargetDependency;
 			target = 24F5DFBDA8E50776AC53BBB1 /* PhotoSwipe */;
 			targetProxy = 8E91A18FB830D994CC0690E8 /* PBXContainerItemProxy */;
+		};
+		7530EBC125D147E4FBFFA106 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1D98968079D70DD7C71212B2 /* PhotoSwipeWidget */;
+			targetProxy = D78E27401F9D7DB127D58CB5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -902,6 +982,56 @@
 			};
 			name = Release;
 		};
+		CDD0CC6C2DB6B9B96094EF9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PhotoSwipeWidget/PhotoSwipeWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PhotoSwipeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PhotoSwipe;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phototinder.PhotoSwipe.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3058CD92CC1A4B4897B8D5A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PhotoSwipeWidget/PhotoSwipeWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PhotoSwipeWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PhotoSwipe;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.phototinder.PhotoSwipe.Widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -928,6 +1058,15 @@
 			buildConfigurations = (
 				5E684ECF2008E30B5C5268AC /* Debug */,
 				062D6011FA819017CB089EB4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BA8AC900A8705F47FF5C806F /* Build configuration list for PBXNativeTarget "PhotoSwipeWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CDD0CC6C2DB6B9B96094EF9E /* Debug */,
+				3058CD92CC1A4B4897B8D5A4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
