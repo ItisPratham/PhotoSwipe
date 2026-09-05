@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The app shell shown after onboarding and the permission gate. A bottom tab
-/// bar with three tabs — **Clean** (the fast oldest-first all-photos deck),
+/// bar with four tabs — **Clean** (the fast oldest-first all-photos deck),
 /// **Browse** (the grid plus Videos / Duplicates / Biggest / Albums entries),
 /// and **People** — each backed by its own `NavigationStack`. A settings gear
 /// in every tab's toolbar opens the shared `SettingsView` sheet.
@@ -31,6 +31,7 @@ struct AppTabView: View {
     /// second library walk beside the first.
     @StateObject private var duplicatesViewModel = DuplicatesViewModel()
     @StateObject private var categoriesViewModel = CategoriesViewModel()
+    @StateObject private var searchViewModel = SearchViewModel()
 
     var body: some View {
         TabView(selection: $selection) {
@@ -45,6 +46,10 @@ struct AppTabView: View {
             peopleTab
                 .tabItem { Label("People", systemImage: "person.2") }
                 .tag(AppTab.people)
+
+            searchTab
+                .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                .tag(AppTab.search)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(service: library, store: reviewStore, stats: statsStore)
@@ -86,6 +91,14 @@ struct AppTabView: View {
                     PersonDetailView(cluster: cluster, service: library, store: reviewStore,
                                      stats: statsStore, sizes: sizeStore)
                 }
+                .navigationDestination(for: AppRoute.self) { destination(for: $0) }
+        }
+    }
+
+    private var searchTab: some View {
+        NavigationStack {
+            SearchView(service: library, store: reviewStore, viewModel: searchViewModel)
+                .toolbar { settingsToolbar }
                 .navigationDestination(for: AppRoute.self) { destination(for: $0) }
         }
     }

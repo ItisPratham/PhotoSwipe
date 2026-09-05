@@ -22,7 +22,7 @@ actor SearchIndex {
         query: [Float],
         store: IndexStore,
         libraryVersion: Int,
-        eligibleIdentifiers: Set<String> = [],
+        eligibleIdentifiers: Set<String>? = nil,
         cutoff: Float = SearchIndex.defaultCutoff
     ) async throws -> [SearchResult] {
         try Task.checkCancellation()
@@ -48,13 +48,13 @@ actor SearchIndex {
     static func rank(
         identifiers: [String],
         scores: [Float],
-        eligibleIdentifiers: Set<String> = [],
+        eligibleIdentifiers: Set<String>? = nil,
         cutoff: Float
     ) -> [SearchResult] {
-        let restrictToEligible = !eligibleIdentifiers.isEmpty
+        let restrictToEligible = eligibleIdentifiers != nil
         return zip(identifiers, scores)
             .filter { id, score in
-                score.isFinite && score >= cutoff && (!restrictToEligible || eligibleIdentifiers.contains(id))
+                score.isFinite && score >= cutoff && (!restrictToEligible || eligibleIdentifiers!.contains(id))
             }
             .sorted {
                 $0.1 == $1.1 ? $0.0 < $1.0 : $0.1 > $1.1

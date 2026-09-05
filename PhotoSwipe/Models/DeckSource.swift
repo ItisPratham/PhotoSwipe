@@ -26,6 +26,9 @@ struct DeckSource: Hashable {
         /// A Browse category's photos (ids resolved by `CategoriesViewModel`),
         /// oldest first.
         case category(AssetCategory, ids: [String])
+        /// Search ranking order is authoritative and must survive PhotoKit's
+        /// identifier fetch ordering.
+        case search(query: String, ids: [String])
         /// Photos taken on today's month/day in any earlier year, resolved at
         /// the fetch layer with one date-range predicate per year.
         case onThisDay
@@ -47,6 +50,8 @@ struct DeckSource: Hashable {
                 return sa == sb && a == b
             case (.category(let ca, let a), .category(let cb, let b)):
                 return ca == cb && a == b
+            case (.search(let qa, let a), .search(let qb, let b)):
+                return qa == qb && a == b
             case (.onThisDay, .onThisDay):
                 return true
             default:
@@ -78,6 +83,10 @@ struct DeckSource: Hashable {
             case .category(let category, let ids):
                 hasher.combine("category")
                 hasher.combine(category)
+                hasher.combine(ids)
+            case .search(let query, let ids):
+                hasher.combine("search")
+                hasher.combine(query)
                 hasher.combine(ids)
             case .onThisDay:
                 hasher.combine("onThisDay")
@@ -189,6 +198,10 @@ struct DeckSource: Hashable {
     /// Builds the deck for a Browse category, oldest first.
     static func category(_ category: AssetCategory, ids: [String]) -> DeckSource {
         DeckSource(scope: .category(category, ids: ids), media: .photos)
+    }
+
+    static func search(query: String, ids: [String]) -> DeckSource {
+        DeckSource(scope: .search(query: query, ids: ids), media: .photos)
     }
 
     func hash(into hasher: inout Hasher) {

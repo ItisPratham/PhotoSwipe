@@ -337,6 +337,12 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
             // An explicit id set in PhotoKit's oldest-first order.
             options.predicate = nil
             result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
+        case .search(_, let ids):
+            // Ranking order is restored below; PhotoKit never preserves the
+            // order supplied to this identifier fetch.
+            options.predicate = nil
+            options.sortDescriptors = nil
+            result = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
         case .onThisDay:
             // Media filter stays; the date filter is one range per past year.
             var all = predicates
@@ -361,6 +367,7 @@ final class PhotoLibraryService: NSObject, ObservableObject, PHPhotoLibraryChang
         case .person(let ids, true): orderedIDs = ids
         case .similar(_, let ids): orderedIDs = ids
         case .duplicateGroup(let ids): orderedIDs = ids
+        case .search(_, let ids): orderedIDs = ids
         default: orderedIDs = nil
         }
         if let orderedIDs {
