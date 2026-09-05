@@ -124,7 +124,10 @@ final class SearchPerformanceTests: XCTestCase {
         XCTAssertEqual(matrix.count, Self.libraryCount * dimension)
         XCTAssertEqual(identifiers.count, Self.libraryCount)
         XCTAssertTrue(checksum.isFinite)
-        XCTAssertLessThan(held, 600 * 1024 * 1024,
+        // SigLIP 2 carries a 256k embedding table, so its text tower is about
+        // four times MobileCLIP's and the whole process sits far higher.
+        let budget = SearchEmbedder.spec.family == .sigLIP2 ? 900 : 500
+        XCTAssertLessThan(held, UInt64(budget) * 1024 * 1024,
                           "A resident search index should not put the app near a jetsam limit.")
         matrix.removeAll(keepingCapacity: false)
     }

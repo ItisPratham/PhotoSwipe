@@ -27,6 +27,9 @@ DerivedData/
 Pods/
 Carthage/Build/
 
+## Local signing identity — see Signing.xcconfig.
+Local.xcconfig
+
 ## Editor / tooling local state
 .claude/
 .agents/
@@ -75,6 +78,7 @@ docs/siglip2-provenance.json
 *.md
 !README.md
 !THIRD_PARTY_LICENSES.md
+!LEARNINGS.md
 docs/
 
 ## Claude skills lock (local tooling state, like .agents/)

@@ -12,6 +12,7 @@ fileGroups:
   - README.md
   - project.yml
   - .gitignore
+  - Signing.xcconfig
 
 options:
   bundleIdPrefix: com.phototinder
@@ -28,7 +29,12 @@ settings:
     OTHER_SWIFT_FLAGS: "-Xcc -DACCELERATE_NEW_LAPACK"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_LANGUAGE: en
-    DEVELOPMENT_TEAM: TT7LR66US3
+
+# The signing team lives in a git-ignored Local.xcconfig, included by
+# Signing.xcconfig, so no developer account identifier is committed.
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
 
 packages:
   DMScrollBar:

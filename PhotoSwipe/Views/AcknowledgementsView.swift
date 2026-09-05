@@ -65,6 +65,9 @@ struct AcknowledgementsView: View {
                             .font(.footnote)
                         Text("MIT source · Apple research-model license for weights and converted Core ML derivatives")
                             .font(.footnote)
+                        Text("Tokenizer ported from OpenCLIP (mlfoundations/open_clip), MIT.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 6)
                 } header: {

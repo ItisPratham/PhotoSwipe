@@ -1,8 +1,10 @@
 import Foundation
 
-/// MobileCLIP's 77-token OpenCLIP-compatible BPE tokenizer. The vocabulary and
-/// merges are Apple-provided resources; initialization validates them once so
-/// an unavailable or mismatched search bundle is reported before inference.
+/// MobileCLIP's 77-token byte-pair tokenizer: a Swift port of OpenCLIP's
+/// `tokenizer.py` (mlfoundations/open_clip, MIT), reading the MIT-licensed
+/// vocabulary and merges Apple ships with its iOS sample. Initialization
+/// validates them once, so an unavailable or mismatched search bundle is
+/// reported before inference rather than as wrong results.
 struct CLIPTokenizer {
     enum Error: LocalizedError {
         case missingResource(String)

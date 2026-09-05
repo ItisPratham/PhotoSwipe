@@ -11,9 +11,8 @@ tracking — your library never leaves your phone.
 Current version: **6.1** (iOS 17+). The repository is named `PhotoTinder`;
 the app, target, and bundle identifier are `PhotoSwipe`.
 
-**V6.1 implementation is complete.** The final handoff includes the Search,
-scrolling, widget, persistence, and model-installation fixes. Only optional
-SigLIP 2 real-checkpoint and device validation remains deferred.
+V6 is finished. What was measured, what was left unmeasured, and what I got
+wrong along the way are in the handoff below and in `LEARNINGS.md`.
 
 ---
 
@@ -25,13 +24,12 @@ SigLIP 2 real-checkpoint and device validation remains deferred.
 > converted Search build a research build rather than something you can hand
 > out.
 >
-> Alternatives are documented. Faces can use OpenCV SFace
-> (Apache-2.0 weights, `scripts/convert_sface.py`). Search has experimental
-> SigLIP 2 support,
-> whose checkpoint page puts the software under Apache 2.0 and everything else,
-> weights included, under CC-BY 4.0. CC-BY allows commercial use as long as you
+> Both have a documented way out. Faces can use OpenCV SFace (Apache-2.0
+> weights, `scripts/convert_sface.py`). Search can use SigLIP 2, whose
+> checkpoint page puts the software under Apache 2.0 and everything else,
+> weights included, under CC-BY 4.0 — commercial use is allowed there if you
 > credit the source and say the weights were changed, which a Core ML
-> conversion is. Details for both live in `THIRD_PARTY_LICENSES.md`.
+> conversion is. Both are described in `THIRD_PARTY_LICENSES.md`.
 
 ---
 
@@ -54,6 +52,19 @@ history**, and **Acknowledgements**.
 
 Every entry point feeds the same deck engine through a `DeckSource` value, so
 reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
+
+## How it works
+
+Three things read your photos: duplicate detection, face clustering, and
+search. They share one walk of the library and one 256 px thumbnail per photo,
+and each writes its results as optional columns on a single index. That is why
+the app can do all three without scanning three times, and why adding search in
+v6 cost an embedding on a thumbnail that was already in memory rather than a
+new traversal. A scan computes only what is missing, so opting into a second
+feature later backfills the gap instead of starting over.
+
+Everything runs on the phone. The models are Core ML, the maths is Accelerate,
+and nothing is uploaded.
 
 ## Highlights
 
@@ -138,11 +149,12 @@ path; an experimental SigLIP 2 path has also been added:
 * **MobileCLIP S2** (`scripts/convert_mobileclip.py`) is what the app was
   developed against. Its weights are research-only, so a build using it can't
   be distributed.
-* **SigLIP 2** (`scripts/convert_siglip2.py`) is an experimental alternative
-  with the license terms described in `THIRD_PARTY_LICENSES.md`. A real
-  checkpoint conversion and device evaluation have not yet been recorded.
-  Its packages, vocabulary, and provenance are included automatically when
-  installed locally.
+* **SigLIP 2** (`scripts/convert_siglip2.py`) is the permissively licensed
+  alternative, and it works: converted, tokenizer-verified on device, and
+  faster than MobileCLIP on a 14 Plus. It is not the default because its
+  results were noticeably worse on a real 30,000-photo library, at every
+  cutoff tried, and it costs 720 MB against 193 MB. Choose it when the
+  licence matters more than the ranking.
 
 They are different models, not two names for the same thing: SigLIP 2 uses the
 Gemma SentencePiece tokenizer instead of CLIP's byte-pair encoding, squares the
@@ -162,12 +174,12 @@ family in the app bundle.
 
 ## Final V6 handoff
 
-The previously documented limitations are resolved: streaks expire from the last
-swipe, summaries wait for successful review persistence, Search shows failures
-over existing results, Settings names the installed search model, and optional
-model resources are compiled and cleaned up consistently.
+Every limitation recorded at the v6 review has been fixed: streaks now age from
+the last swipe, the widget summary waits for the review file to reach disk,
+Search reports a failed query over existing results, Settings names the
+installed model, and stale compiled models are cleaned out of the bundle.
 
-The final simulator build passed with all 49 regression tests.
+The simulator build passes 52 regression tests.
 
 Validated on device: signed App Group access from both the app and the widget,
 widget rendering from the shared summary, and all three intents through
@@ -177,21 +189,29 @@ Search performance, measured with `PhotoSwipeTests/SearchPerformanceTests`
 against a 30,000-vector index. Run the class on a phone to reproduce it;
 Simulator timings mean nothing here, as the Mac has no Neural Engine.
 
-| Measurement | iPhone 14 Plus (A15) | iPhone 14 Pro (A16) |
-| --- | --- | --- |
-| Warm query, end to end | 35.9 ms | 15.6 ms |
-| Text query | 6.5 ms | 3.1 ms |
-| Ranking 30,000 vectors | 2.4 ms | 1.5 ms |
-| Image embedding, per photo | 26.1 ms | 11.7 ms |
-| Inference for 30,000 photos | ~13 min | ~6 min |
-| Cold load and first query | 8.3 s | 3.1 s |
-| Process footprint, index and both towers resident | 169.2 MB | 169.6 MB |
+| Measurement | MobileCLIP, 14 Plus | MobileCLIP, 14 Pro | SigLIP 2, 14 Plus* |
+| --- | --- | --- | --- |
+| Warm query, end to end | 35.9 ms | 15.6 ms | 22.6 ms |
+| Text query | 6.5 ms | 3.1 ms | 6.7 ms |
+| Ranking 30,000 vectors | 2.4 ms | 1.5 ms | 2.8 ms |
+| Image embedding, per photo | 26.1 ms | 11.7 ms | 22.2 ms |
+| Inference for 30,000 photos | ~13 min | ~6 min | ~11 min |
+| Cold load and first query | 8.3 s | 3.1 s | 7.0 s |
+| Process footprint, index and towers resident | 169.2 MB | 169.6 MB | 550.3 MB |
+| Bundle cost | 193 MB | — | 720 MB |
+
+\* SigLIP 2 is faster on the same phone and permissively licensed, and it is
+not the default: its results were clearly worse on a real 30,000-photo library
+at every cutoff I tried. The conversion was ruled out as the cause — Float16
+preserves the reference's ranking, preprocessing matches each model's own, and
+the tokenizer passes parity on device. `LEARNINGS.md` has the rest.
 
 The 300 ms warm-query bar is asserted by the test, not just printed, so a
 regression fails the suite. Ranking is negligible; a query is almost entirely
-text inference. The resident index itself is 58.6 MB for 30,000 photos.
+text inference. The resident index is 58.6 MB for 30,000 photos with
+MobileCLIP, 87.9 MB with SigLIP's wider vectors.
 
-What Search adds to the app:
+What MobileCLIP adds to the app:
 
 | Artifact | Size |
 | --- | --- |
@@ -204,10 +224,7 @@ A15 to load and compile for the Neural Engine. Opening the Search tab now
 starts that load in the background, so it overlaps whatever the user types
 instead of blocking the first query.
 
-Still open: **SigLIP 2** has no converted checkpoint, so its tokenizer and
-embedding parity, relevance, and performance are unproven and it stays
-experimental. The long scrollbar endurance run and the accessibility sweep are
-also unrecorded.
+Still unrecorded: the long scrollbar endurance run and the accessibility sweep.
 
 V6 is closed. Nothing follows it.
 

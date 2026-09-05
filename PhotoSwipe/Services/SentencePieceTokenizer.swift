@@ -1,16 +1,18 @@
 import Foundation
 
-/// The SentencePiece **Unigram** tokenizer SigLIP 2 uses (the Gemma
-/// vocabulary, 256k pieces). It is the counterpart to `CLIPTokenizer`: the
-/// converter exports the vocabulary and its scores as JSON, this reproduces
-/// the reference segmentation on device, and `SearchEmbedder` picks whichever
-/// tokenizer the installed model family needs.
+/// The SentencePiece **BPE** tokenizer SigLIP 2 uses — Gemma's 256k
+/// vocabulary. The counterpart to `CLIPTokenizer`: the converter exports the
+/// vocabulary and its merge scores, this reproduces the reference
+/// segmentation on device, and `SearchEmbedder` picks whichever tokenizer the
+/// installed model family needs.
 ///
-/// Unigram is not BPE. Rather than replaying merges, it scores every way the
-/// text could be cut into known pieces and keeps the highest-scoring path
-/// (Viterbi over the piece lattice). Byte-fallback pieces (`<0x41>`) cover
-/// anything the vocabulary cannot spell, which is what keeps emoji and unusual
-/// scripts from collapsing into a single unknown token.
+/// SentencePiece can hold either a Unigram or a BPE model, and Gemma's is BPE:
+/// the per-piece "scores" are merge ranks, not log probabilities. So this
+/// merges greedily by rank rather than searching for a best-scoring
+/// segmentation. Getting that wrong is not a crash — it silently produces
+/// different tokens and therefore different search results, which is why the
+/// converter re-tokenizes twenty reference strings and refuses to finish if
+/// this implementation disagrees with the reference.
 struct SentencePieceTokenizer {
     enum Error: LocalizedError {
         case missingResource(String)
@@ -34,10 +36,10 @@ struct SentencePieceTokenizer {
         var beginID: Int32?
         var endID: Int32?
         var contextLength: Int
-        /// SentencePiece's `add_dummy_prefix`: the reference prefixes a space
-        /// so a leading word is tokenized like a mid-sentence one.
+        /// SentencePiece's `add_dummy_prefix`. False for Gemma, which is why
+        /// it is read from the model rather than assumed.
         var addDummyPrefix: Bool
-        /// True when the vocabulary contains `<0xNN>` pieces.
+        /// True when the vocabulary carries the 256 `<0xNN>` pieces.
         var byteFallback: Bool
     }
 
@@ -45,10 +47,12 @@ struct SentencePieceTokenizer {
 
     let contextLength: Int
     let vocabularyCount: Int
-    private let ids: [String: Int32]
-    private let scores: [String: Float]
-    private let byteIDs: [UInt8: Int32]
-    private let maxPieceLength: Int
+    /// Keyed by UTF-8 bytes, not by `String`. Swift compares strings by
+    /// canonical equivalence, so "café" and "cafe" + U+0301 would collide as
+    /// dictionary keys — and the reference tokenizer treats them as different
+    /// pieces with different ids. Bytes keep them apart.
+    private let ids: [[UInt8]: Int32]
+    private let scores: [[UInt8]: Float]
     private let resources: Resources
 
     init(bundle: Bundle = .main) throws {
@@ -72,33 +76,26 @@ struct SentencePieceTokenizer {
             throw Error.invalidVocabulary("unknown-token id out of range")
         }
 
-        var ids: [String: Int32] = [:]
-        var scores: [String: Float] = [:]
-        var byteIDs: [UInt8: Int32] = [:]
+        var ids: [[UInt8]: Int32] = [:]
+        var scores: [[UInt8]: Float] = [:]
         ids.reserveCapacity(resources.pieces.count)
         scores.reserveCapacity(resources.pieces.count)
-        var longest = 0
         for (index, piece) in resources.pieces.enumerated() {
-            let id = Int32(index)
+            let key = Array(piece.utf8)
+            guard ids[key] == nil else { continue }
             // The first spelling wins, matching SentencePiece's own id order.
-            if ids[piece] == nil {
-                ids[piece] = id
-                scores[piece] = resources.scores[index]
-            }
-            longest = max(longest, piece.utf8.count)
-            if resources.byteFallback, let byte = Self.byteValue(of: piece) {
-                byteIDs[byte] = id
-            }
+            ids[key] = Int32(index)
+            scores[key] = resources.scores[index]
         }
-        guard longest > 0 else { throw Error.invalidVocabulary("empty pieces") }
-        if resources.byteFallback, byteIDs.count != 256 {
-            throw Error.invalidVocabulary("byte fallback declared but \(byteIDs.count) byte pieces present")
+        if resources.byteFallback {
+            let missing = (0...255).first { ids[Array(Self.bytePiece(UInt8($0)).utf8)] == nil }
+            if let missing {
+                throw Error.invalidVocabulary("byte fallback declared but <0x\(String(format: "%02X", missing))> is absent")
+            }
         }
 
         self.ids = ids
         self.scores = scores
-        self.byteIDs = byteIDs
-        maxPieceLength = longest
         vocabularyCount = resources.pieces.count
         contextLength = resources.contextLength
         self.resources = resources
@@ -109,7 +106,7 @@ struct SentencePieceTokenizer {
     func encode(_ text: String) -> [Int32] {
         var tokens: [Int32] = []
         if let begin = resources.beginID { tokens.append(begin) }
-        tokens.append(contentsOf: pieces(in: Self.normalize(text, addDummyPrefix: resources.addDummyPrefix)))
+        tokens.append(contentsOf: merge(symbols(in: normalized(text))))
         if let end = resources.endID { tokens.append(end) }
 
         if tokens.count > contextLength {
@@ -122,85 +119,51 @@ struct SentencePieceTokenizer {
         return tokens
     }
 
-    /// Viterbi over the piece lattice: `best[i]` is the score of the best way
-    /// to cover the first `i` bytes.
-    private func pieces(in text: String) -> [Int32] {
-        let bytes = Array(text.utf8)
-        guard !bytes.isEmpty else { return [] }
-        let count = bytes.count
+    /// Spaces become "▁" and nothing else changes.
+    ///
+    /// Deliberately no Unicode normalisation and no whitespace collapsing: the
+    /// reference applies neither, and NFC or NFKC would rewrite decomposed
+    /// input such as "cafe\u{301}" into different tokens. Verified against all
+    /// twenty reference strings during conversion.
+    func normalized(_ text: String) -> String {
+        let prefixed = resources.addDummyPrefix ? " " + text : text
+        return prefixed.replacingOccurrences(of: " ", with: Self.spaceMarker)
+    }
 
-        var best = [Float](repeating: -.infinity, count: count + 1)
-        var backStart = [Int](repeating: 0, count: count + 1)
-        var backToken = [Int32](repeating: resources.unknownID, count: count + 1)
-        best[0] = 0
-
-        for end in 1...count {
-            let earliest = max(0, end - maxPieceLength)
-            for start in earliest..<end where best[start] > -.infinity {
-                // ponytail: substring per candidate span. Queries are short, so
-                // this stays well under a millisecond; switch to a byte trie if
-                // it ever runs over long text.
-                let piece = String(decoding: bytes[start..<end], as: UTF8.self)
-                guard let id = ids[piece], let score = scores[piece] else { continue }
-                let candidate = best[start] + score
-                if candidate > best[end] {
-                    best[end] = candidate
-                    backStart[end] = start
-                    backToken[end] = id
-                }
-            }
-            guard best[end] == -.infinity else { continue }
-            // Nothing in the vocabulary ends here: fall back to this single
-            // byte, heavily penalised so it is never preferred to a real piece.
-            let start = end - 1
-            guard best[start] > -.infinity else { continue }
-            best[end] = best[start] - 10
-            backStart[end] = start
-            backToken[end] = byteIDs[bytes[start]] ?? resources.unknownID
+    /// One symbol per Unicode scalar, not per grapheme cluster: the reference
+    /// works in code points, so a family emoji is several symbols joined by
+    /// zero-width joiners rather than one. Anything the vocabulary cannot
+    /// spell becomes its UTF-8 bytes.
+    private func symbols(in text: String) -> [[UInt8]] {
+        text.unicodeScalars.flatMap { scalar -> [[UInt8]] in
+            let bytes = Array(String(scalar).utf8)
+            if ids[bytes] != nil { return [bytes] }
+            guard resources.byteFallback else { return [bytes] }
+            return bytes.map { Array(Self.bytePiece($0).utf8) }
         }
-
-        guard best[count] > -.infinity else { return [resources.unknownID] }
-        var output: [Int32] = []
-        var cursor = count
-        while cursor > 0 {
-            output.append(backToken[cursor])
-            cursor = backStart[cursor]
-        }
-        return output.reversed()
     }
 
-    /// SentencePiece's NMT_NFKC normalisation, as far as it affects real
-    /// queries: compatibility composition, control characters dropped, runs of
-    /// whitespace collapsed, and spaces written as "▁".
-    static func normalize(_ text: String, addDummyPrefix: Bool) -> String {
-        let folded = text.precomposedStringWithCompatibilityMapping
-        let collapsed = folded
-            .unicodeScalars
-            .map { scalar -> String in
-                // Whitespace first: tab and newline are control characters
-                // too, and dropping them would run adjacent words together.
-                if scalar.properties.isWhitespace { return " " }
-                return scalar.properties.generalCategory.isDiscarded ? "" : String(scalar)
+    /// Greedy BPE: merge the adjacent pair with the best rank, repeat.
+    private func merge(_ initial: [[UInt8]]) -> [Int32] {
+        var symbols = initial
+        // ponytail: rescans every pair after each merge, O(n^2) on query-length
+        // text. A pair heap only pays off on documents, which never reach here.
+        while symbols.count > 1 {
+            var bestIndex = -1
+            var bestScore = -Float.infinity
+            for index in 0..<(symbols.count - 1) {
+                guard let score = scores[symbols[index] + symbols[index + 1]], score > bestScore else { continue }
+                bestScore = score
+                bestIndex = index
             }
-            .joined()
-            .split(separator: " ", omittingEmptySubsequences: true)
-            .joined(separator: " ")
-        guard !collapsed.isEmpty else { return "" }
-        let prefixed = addDummyPrefix ? " " + collapsed : collapsed
-        return prefixed.replacingOccurrences(of: " ", with: spaceMarker)
+            guard bestIndex >= 0 else { break }
+            symbols[bestIndex].append(contentsOf: symbols[bestIndex + 1])
+            symbols.remove(at: bestIndex + 1)
+        }
+        return symbols.map { ids[$0] ?? resources.unknownID }
     }
 
-    /// `<0x41>` -> 0x41.
-    private static func byteValue(of piece: String) -> UInt8? {
-        guard piece.count == 6, piece.hasPrefix("<0x"), piece.hasSuffix(">") else { return nil }
-        return UInt8(piece.dropFirst(3).dropLast(), radix: 16)
-    }
-}
-
-private extension Unicode.GeneralCategory {
-    /// Control and format characters the reference normaliser removes.
-    /// Whitespace is mapped to a space before this filter runs.
-    var isDiscarded: Bool {
-        self == .control || self == .format || self == .surrogate || self == .privateUse
+    private static func bytePiece(_ byte: UInt8) -> String {
+        String(format: "<0x%02X>", byte)
     }
 }

@@ -67,6 +67,34 @@ Copyright © 2024 Apple Inc. **Tokenizer resources:** `clip-vocab.json` and
 assets:** `MobileCLIPS2Image.mlpackage` and `MobileCLIPS2Text.mlpackage`, produced
 from the Apple `mobileclip_s2.pt` checkpoint by `scripts/convert_mobileclip.py`.
 
+The two tokenizer files are the only third-party artifacts this repository
+contains, and they are MIT, not research-licensed. Apple's notice, which
+travels with them:
+
+MIT License
+
+Copyright (c) 2024 Apple Inc.
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALING IN THE
+SOFTWARE.
+```
+
 The checkpoint and converted packages are governed by the **Apple Machine
 Learning Research Model License Agreement**. Read the
 [license at the recorded source revision](https://github.com/apple/ml-mobileclip/blob/aecfb5453d022e9deff12f81a150ea8f35194baa/LICENSE_MODELS);
@@ -155,8 +183,71 @@ clear and rebuild. Vectors from two embedding spaces are never compared.
 
 ---
 
+## OpenCLIP
+
+**Source:** [mlfoundations/open_clip](https://github.com/mlfoundations/open_clip), MIT.
+`PhotoSwipe/Services/CLIPTokenizer.swift` is a Swift port of its byte-pair
+tokenizer — the cleaning, byte mapping, ranked merges, and end-token-preserving
+truncation all reproduce that implementation, which is why the two agree on the
+20 reference sequences the tests check. The vocabulary itself originates in
+OpenAI's CLIP, also MIT.
+
+MIT License
+
+Copyright (c) 2012-2021 Gabriel Ilharco, Mitchell Wortsman, Nicholas Carlini,
+Rohan Taori, Achal Dave, Vaishaal Shankar, John Miller, Hongseok Namkoong,
+Hannaneh Hajishirzi, Ali Farhadi, Ludwig Schmidt
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALING IN THE
+SOFTWARE.
+```
+
+---
+
 ## DMScrollBar
 
 **Source:** [batanus/DMScrollBar](https://github.com/batanus/DMScrollBar), MIT,
 Copyright © 2022 Dmitrii Medvedev. PhotoSwipe pins revision
-`52b662428629e659c18c7641d76ee4a8d495a1de`.
+`52b662428629e659c18c7641d76ee4a8d495a1de`. Fetched by Swift Package Manager
+rather than vendored here, so nothing of it is redistributed in this
+repository; it reaches a device only inside a built app.
+
+MIT License
+
+Copyright (c) 2022 Dmitrii Medvedev
+
+```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALING IN THE
+SOFTWARE.
+```

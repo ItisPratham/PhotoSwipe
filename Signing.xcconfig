@@ -1,0 +1,12 @@
+// Signing configuration.
+//
+// DEVELOPMENT_TEAM is deliberately not committed: it identifies an Apple
+// developer account, and this repository is public. Put your own team in a
+// Local.xcconfig beside this file, which Git ignores:
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//
+// Without it, Xcode builds until it needs to sign, then asks you to pick a
+// team in Signing & Capabilities. Beware: choosing one there writes the value
+// back into the project file, so move it here and undo that change.
+#include? "Local.xcconfig"

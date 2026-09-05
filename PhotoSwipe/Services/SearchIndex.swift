@@ -10,9 +10,11 @@ actor SearchIndex {
         SearchIndexMemoryPressure.start()
         return SearchIndex()
     }()
-    /// Cosine floor for a result. The former two-tier "Show more" was
-    /// dropped; everything above the wider floor shows at once.
-    static let defaultCutoff: Float = 0.15
+    /// Cosine floor for a result, taken from the installed model: the two
+    /// families score on different scales, and a CLIP-calibrated floor filters
+    /// out every SigLIP result. The former two-tier "Show more" was dropped;
+    /// everything above the floor shows at once.
+    static var defaultCutoff: Float { SearchEmbedder.spec.cutoff }
     static let resultLimit = 200
 
     private var identifiers: [String] = []

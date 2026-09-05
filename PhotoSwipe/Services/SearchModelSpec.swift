@@ -34,6 +34,13 @@ struct SearchModelSpec: Equatable {
     /// accepts the distortion; MobileCLIP's fills the square and crops. Using
     /// the wrong one shifts every embedding slightly.
     let squashesAspectRatio: Bool
+    /// Cosine floor for a result, and **not** transferable between families.
+    /// CLIP-style contrastive training puts a good match around 0.20-0.35;
+    /// SigLIP's sigmoid loss, with its learned scale of ~113 and bias of
+    /// ~-17, compresses everything below about 0.15 — a perfect caption
+    /// scores ~0.13 and an unrelated one ~-0.03. Sharing one constant means
+    /// one of the two models returns nothing at all.
+    let cutoff: Float
 
     var embeddingByteCount: Int { dimension * MemoryLayout<Float16>.size }
 
@@ -49,7 +56,8 @@ struct SearchModelSpec: Equatable {
         contextLength: CLIPTokenizer.contextLength,
         pixelMean: 0,
         pixelStd: 1,
-        squashesAspectRatio: false
+        squashesAspectRatio: false,
+        cutoff: 0.15
     )
 
     /// Defaults for the base fixed-resolution checkpoint. The converter writes
@@ -65,7 +73,11 @@ struct SearchModelSpec: Equatable {
         contextLength: 64,
         pixelMean: 0.5,
         pixelStd: 0.5,
-        squashesAspectRatio: true
+        squashesAspectRatio: true,
+        // Starting point from the measured scale, not from use: unrelated text
+        // sits near zero or below, a plausible description around 0.06-0.08.
+        // Tune on a real library the way 0.15 was tuned for MobileCLIP.
+        cutoff: 0.09
     )
 
     /// Resolved once for the app's own bundle; every constant the rest of the
@@ -147,7 +159,8 @@ struct SearchModelSpec: Equatable {
             contextLength: contextLength ?? self.contextLength,
             pixelMean: pixelMean,
             pixelStd: pixelStd,
-            squashesAspectRatio: squashesAspectRatio
+            squashesAspectRatio: squashesAspectRatio,
+            cutoff: cutoff
         )
     }
 }
