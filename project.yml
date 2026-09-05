@@ -1,9 +1,10 @@
 name: PhotoSwipe
 
 # NOTE: PhotoSwipe.xcodeproj is committed and Xcode-managed — it is the
-# authoritative project. This spec is kept in sync as documentation of the
-# target layout; regenerating from it would drop the manually added model
-# packages and pull in git-ignored test fixtures.
+# authoritative project; this spec is kept in sync as a readable description
+# of the same targets. It is validated by generating into a scratch directory
+# (`xcodegen generate --spec project.yml --project /tmp/somewhere`), never by
+# regenerating over the committed project.
 
 # Non-compiled files surfaced in the Xcode navigator (repo-root docs/config).
 fileGroups:
@@ -41,6 +42,30 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: PhotoSwipe
+        # Git-ignored, optional Core ML artifacts. They are compiled into the
+        # bundle by the build phase below when installed, so a checkout
+        # without them still builds.
+        excludes:
+          - "Resources/*.mlpackage"
+          - "Resources/mobileclip-provenance.json"
+    postBuildScripts:
+      - name: Compile installed Core ML models
+        runOnlyWhenInstalling: false
+        script: |
+          if [ "$ACTION" = "clean" ]; then exit 0; fi
+          resources="$SRCROOT/PhotoSwipe/Resources"
+          destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          mkdir -p "$destination"
+          for name in FaceEmbedding MobileCLIPS2Image MobileCLIPS2Text; do
+            package="$resources/$name.mlpackage"
+            if [ -d "$package" ]; then
+              xcrun coremlcompiler compile "$package" "$destination" || exit 1
+            else
+              echo "note: $name.mlpackage is not installed; the feature it backs stays gated off."
+            fi
+          done
+          provenance="$resources/mobileclip-provenance.json"
+          if [ -f "$provenance" ]; then cp "$provenance" "$destination/"; fi
     dependencies:
       - package: DMScrollBar
       - target: PhotoSwipeWidget
@@ -81,6 +106,10 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: PhotoSwipeTests
+        # Parity fixtures are produced by the converter and git-ignored; the
+        # tracked tokenizer vectors next to them are not.
+        excludes:
+          - "Fixtures/MobileCLIP"
     dependencies:
       - target: PhotoSwipe
     settings:

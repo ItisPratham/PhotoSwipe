@@ -46,7 +46,6 @@
 		7356033ABF1BEA0F64F15C46 /* SearchEmbedder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D490157011265CF60DAAF68F /* SearchEmbedder.swift */; };
 		786AFDDC76258202A2E0AC90 /* SwipeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB89DCA1E9A0E6A26E16BD0 /* SwipeView.swift */; };
 		7F9DB70EC32DB2A5CDFEDC52 /* SwipeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9811A0D255385421785AEEB /* SwipeViewModel.swift */; };
-		80ECD9BAB686B60948CEC181 /* FaceEmbedding.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 37F5BDD1E0A4F35D1C5D7C0C /* FaceEmbedding.mlpackage */; };
 		81E1060CBACFABF53A2D9AAA /* CategoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88321A851740A29C8C9858D2 /* CategoryDetailView.swift */; };
 		878AEAC212317629270DDCAD /* PersonCandidateList.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2AF6B0FFEFB024C44683739 /* PersonCandidateList.swift */; };
 		889D10E7457021866BBD9650 /* DuplicatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1266794E6CD9E0E539E482 /* DuplicatesView.swift */; };
@@ -92,9 +91,6 @@
 		CF668FE1DCB57ACCB1D05015 /* Thumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E6857CC407AB421A2D6E52 /* Thumbnail.swift */; };
 		D20CE6087E6FED9770FA107B /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E29EF7AE92CC97CD6F7449 /* CardView.swift */; };
 		D5329E75EB4810B977E4C73C /* CaughtUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A515DDF8B1CDD474A65ED9 /* CaughtUpView.swift */; };
-		D77E4413304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D77E4412304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage */; };
-		D77E4414304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D77E4411304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage */; };
-		D77E4416304BEB1000D89B67 /* mobileclip-provenance.json in Resources */ = {isa = PBXBuildFile; fileRef = D77E4415304BEB1000D89B67 /* mobileclip-provenance.json */; };
 		DCFBA1EE044AE703BF5986F7 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A673A693C123DD8FDFC5474E /* IndexStore.swift */; };
 		DDEF0FE90F7E707BD45623D8 /* DeleteRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF1D1ADAD5131C07FBB993D /* DeleteRecord.swift */; };
 		E2AD3C136408DE1D1C25D623 /* ScrollBarInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2785CE27C5D52DF9CD55C022 /* ScrollBarInstallerTests.swift */; };
@@ -519,6 +515,7 @@
 				E763B48F7C8560E17E923F58 /* Resources */,
 				9ADFBD883DBE998C8D27FD20 /* Frameworks */,
 				1F6101B99DCFB6221CCBB538 /* Embed Foundation Extensions */,
+				94991910A668A1969C82535B /* Compile installed Core ML models */,
 			);
 			buildRules = (
 			);
@@ -631,11 +628,28 @@
 				485311E8F87ACD436A22CD47 /* Assets.xcassets in Resources */,
 				BE7F6B8424CA583F6F998607 /* clip-merges.txt in Resources */,
 				CA803C753F3762C6767F7EEA /* clip-vocab.json in Resources */,
-				D77E4416304BEB1000D89B67 /* mobileclip-provenance.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		94991910A668A1969C82535B /* Compile installed Core ML models */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Compile installed Core ML models";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$ACTION\" = \"clean\" ]; then exit 0; fi\nresources=\"$SRCROOT/PhotoSwipe/Resources\"\ndestination=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nmkdir -p \"$destination\"\nfor name in FaceEmbedding MobileCLIPS2Image MobileCLIPS2Text; do\n  package=\"$resources/$name.mlpackage\"\n  if [ -d \"$package\" ]; then\n    xcrun coremlcompiler compile \"$package\" \"$destination\" || exit 1\n  else\n    echo \"note: $name.mlpackage is not installed; the feature it backs stays gated off.\"\n  fi\ndone\nprovenance=\"$resources/mobileclip-provenance.json\"\nif [ -f \"$provenance\" ]; then cp \"$provenance\" \"$destination/\"; fi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5C80610B6BE5C68C79FB37B7 /* Sources */ = {
@@ -666,8 +680,6 @@
 				568897060C4C2B47BE7F4647 /* AppTab.swift in Sources */,
 				018B1A8B965DDBBF79EB7846 /* AppTabView.swift in Sources */,
 				B71E33FF2091D5D6854E7698 /* AssetCategory.swift in Sources */,
-				D77E4413304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage in Sources */,
-				D77E4414304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage in Sources */,
 				6506FA9AE6D7BAC43CF73F1B /* AssetIndex.swift in Sources */,
 				2044D29AA99A119C2BBC501E /* BrowseEntryRow.swift in Sources */,
 				1264E1BA17D7DC02833D7A96 /* BrowseView.swift in Sources */,
@@ -689,7 +701,6 @@
 				182FB0B1FC69D24CE216B2FB /* FaceAligner.swift in Sources */,
 				BFFAA7802F6EADCE3BF904D9 /* FaceClusterer.swift in Sources */,
 				6413950B5A04820003F63F1D /* FaceEmbedder.swift in Sources */,
-				80ECD9BAB686B60948CEC181 /* FaceEmbedding.mlpackage in Sources */,
 				30416AA42FEEEC0CF3EACF8D /* FaceIndexService.swift in Sources */,
 				B41BEBBA6BABFFB28C5F816E /* FaceObservation.swift in Sources */,
 				6FF15E3BEBBBD37E8CDF7793 /* FaceRow.swift in Sources */,
