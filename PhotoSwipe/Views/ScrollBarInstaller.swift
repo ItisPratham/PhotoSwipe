@@ -55,8 +55,11 @@ struct ScrollBarInstaller: UIViewRepresentable {
         private var scrollBar: DMScrollBar?
         private var previousIndicatorVisibility: Bool?
         private var pendingInstall: DispatchWorkItem?
+        /// Bounded so a probe that never lands inside a scroll view stops
+        /// rescheduling itself; layout and window changes still retry.
+        private var pendingAttempts = 0
+        private static let maxPendingAttempts = 10
         private var offsetObservation: NSKeyValueObservation?
-        private var topContentOffset: CGFloat?
         /// DMScrollBar lays its scroll view out during initialization. That
         /// synchronously invokes ProbeView.layoutSubviews(), so installation
         /// must not re-enter before `scrollBar` has been assigned.
@@ -72,6 +75,7 @@ struct ScrollBarInstaller: UIViewRepresentable {
 
             pendingInstall?.cancel()
             pendingInstall = nil
+            pendingAttempts = 0
 
             if scrollView !== candidate {
                 uninstall()
@@ -88,7 +92,6 @@ struct ScrollBarInstaller: UIViewRepresentable {
             defer { isInstalling = false }
 
             previousIndicatorVisibility = candidate.showsVerticalScrollIndicator
-            topContentOffset = candidate.contentOffset.y
             let bar = DMScrollBar(scrollView: candidate, configuration: Self.configuration)
             candidate.scrollBar = bar
             scrollBar = bar
@@ -99,6 +102,7 @@ struct ScrollBarInstaller: UIViewRepresentable {
         func uninstall() {
             pendingInstall?.cancel()
             pendingInstall = nil
+            pendingAttempts = 0
             offsetObservation = nil
             guard let scrollView else { return }
             if scrollView.scrollBar === scrollBar { scrollView.scrollBar = nil }
@@ -106,12 +110,12 @@ struct ScrollBarInstaller: UIViewRepresentable {
             if let previousIndicatorVisibility { scrollView.showsVerticalScrollIndicator = previousIndicatorVisibility }
             self.scrollBar = nil
             self.scrollView = nil
-            topContentOffset = nil
             previousIndicatorVisibility = nil
         }
 
         private func scheduleInstall(from probe: UIView) {
-            guard pendingInstall == nil else { return }
+            guard pendingInstall == nil, pendingAttempts < Self.maxPendingAttempts else { return }
+            pendingAttempts += 1
             let task = DispatchWorkItem { [weak self, weak probe] in
                 guard let self, let probe else { return }
                 self.pendingInstall = nil
@@ -137,7 +141,8 @@ struct ScrollBarInstaller: UIViewRepresentable {
 
         private func observeDirectDragOffsets(in scrollView: UIScrollView) {
             offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self, weak scrollView] _, _ in
-                guard let self, let scrollView, let topContentOffset = self.topContentOffset else { return }
+                guard let self, let scrollView else { return }
+                let topContentOffset = -scrollView.adjustedContentInset.top
                 let isDirectScrollbarDrag = self.scrollBar?.gestureRecognizers?.contains {
                     $0.state == .began || $0.state == .changed
                 } == true

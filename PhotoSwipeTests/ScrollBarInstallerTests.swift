@@ -18,10 +18,22 @@ final class ScrollBarInstallerTests: XCTestCase {
         ))
     }
 
-    func testDirectScrollBarDragCannotOverscrollPastTheOpeningPosition() {
+    func testDirectScrollBarDragCannotOverscrollPastTheContentTop() {
+        // `top` is derived from the live adjusted inset, not from wherever the
+        // bar happened to be installed, so a bar installed mid-scroll can
+        // still be dragged all the way back to the first photo.
         XCTAssertEqual(
             ScrollBarInstaller.correctedDirectDragOffset(-44, top: 0, isDirectScrollbarDrag: true),
             0
+        )
+        XCTAssertEqual(
+            ScrollBarInstaller.correctedDirectDragOffset(-140, top: -96, isDirectScrollbarDrag: true),
+            -96,
+            "Under a large title the top of the content sits above zero."
+        )
+        XCTAssertEqual(
+            ScrollBarInstaller.correctedDirectDragOffset(-96, top: -96, isDirectScrollbarDrag: true),
+            -96
         )
     }
 
