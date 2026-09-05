@@ -51,6 +51,10 @@ struct ScrollBarInstaller: UIViewRepresentable {
         private var scrollBar: DMScrollBar?
         private var previousIndicatorVisibility: Bool?
         private var pendingInstall: DispatchWorkItem?
+        /// DMScrollBar lays its scroll view out during initialization. That
+        /// synchronously invokes ProbeView.layoutSubviews(), so installation
+        /// must not re-enter before `scrollBar` has been assigned.
+        private var isInstalling = false
 
         deinit { uninstall() }
 
@@ -72,6 +76,10 @@ struct ScrollBarInstaller: UIViewRepresentable {
                 refreshVisibility(in: candidate)
                 return
             }
+
+            guard !isInstalling else { return }
+            isInstalling = true
+            defer { isInstalling = false }
 
             previousIndicatorVisibility = candidate.showsVerticalScrollIndicator
             let bar = DMScrollBar(scrollView: candidate, configuration: Self.configuration)
