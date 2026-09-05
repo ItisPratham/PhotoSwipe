@@ -48,6 +48,11 @@ final class ReviewStore: ObservableObject {
     /// `@Published` value: the root view must not observe every swipe.
     var onPersist: (() -> Void)?
 
+    private var revision = 0
+    private var persistedRevision = 0
+    /// Summary readers must never publish decisions still waiting for disk.
+    var isPersisted: Bool { isLoaded && revision == persistedRevision }
+
     private let fileURL: URL
     /// All disk writes go through this queue in order, so a debounced write
     /// still in flight can never land after a later `flush()`.
@@ -191,14 +196,16 @@ final class ReviewStore: ObservableObject {
         guard isLoaded else { writeAfterLoad = true; return }
         let snapshot = currentSnapshot()
         let url = fileURL
-        writeQueue.sync { Self.write(snapshot, to: url) }
-        onPersist?()
+        if writeQueue.sync(execute: { Self.write(snapshot, to: url) }) {
+            didPersist(revision)
+        }
     }
 
     /// Debounced by default: a run of swipes produces one write, a short
     /// moment after the last one. In-memory state is always current, so
     /// readers never see the delay.
     private func persist(immediately: Bool = false) {
+        revision += 1
         pendingWrite?.cancel()
         guard isLoaded else { writeAfterLoad = true; return }
         if immediately {
@@ -210,13 +217,17 @@ final class ReviewStore: ObservableObject {
             guard !Task.isCancelled, let self else { return }
             let snapshot = self.currentSnapshot()
             let url = self.fileURL
+            let revision = self.revision
             self.writeQueue.async { [weak self] in
-                Self.write(snapshot, to: url)
-                // Only now: the widget must never be shown state that a crash
-                // could still take back, and a run of swipes publishes once.
-                Task { @MainActor in self?.onPersist?() }
+                guard Self.write(snapshot, to: url) else { return }
+                Task { @MainActor in self?.didPersist(revision) }
             }
         }
+    }
+
+    private func didPersist(_ revision: Int) {
+        persistedRevision = max(persistedRevision, revision)
+        if isPersisted { onPersist?() }
     }
 
     private func currentSnapshot() -> Snapshot {
@@ -260,8 +271,13 @@ final class ReviewStore: ObservableObject {
         return try? JSONDecoder().decode(Snapshot.self, from: data)
     }
 
-    nonisolated private static func write(_ snapshot: Snapshot, to url: URL) {
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: url, options: .atomic)
+    nonisolated private static func write(_ snapshot: Snapshot, to url: URL) -> Bool {
+        do {
+            try JSONEncoder().encode(snapshot).write(to: url, options: .atomic)
+            return true
+        } catch {
+            print("[PhotoSwipe] Failed to save review history: \(error)")
+            return false
+        }
     }
 }

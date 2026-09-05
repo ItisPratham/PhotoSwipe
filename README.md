@@ -11,9 +11,9 @@ tracking — your library never leaves your phone.
 Current version: **6.1** (iOS 17+). The repository is named `PhotoTinder`;
 the app, target, and bundle identifier are `PhotoSwipe`.
 
-V6 feature work is closed. The final source overview on 2026-09-05 covered
-Search, scrolling, widgets, intents, and the review fixes. It did not run builds
-or tests or certify device performance. Known limits are recorded below.
+**V6.1 implementation is complete.** The final handoff includes the Search,
+scrolling, widget, persistence, and model-installation fixes. Only optional
+SigLIP 2 real-checkpoint and device validation remains deferred.
 
 ---
 
@@ -141,8 +141,8 @@ path; an experimental SigLIP 2 path has also been added:
 * **SigLIP 2** (`scripts/convert_siglip2.py`) is an experimental alternative
   with the license terms described in `THIRD_PARTY_LICENSES.md`. A real
   checkpoint conversion and device evaluation have not yet been recorded.
-  The committed Xcode build phase also still needs its two packages,
-  vocabulary, and provenance added; `project.yml` already lists them.
+  Its packages, vocabulary, and provenance are included automatically when
+  installed locally.
 
 They are different models, not two names for the same thing: SigLIP 2 uses the
 Gemma SentencePiece tokenizer instead of CLIP's byte-pair encoding, squares the
@@ -156,26 +156,22 @@ Install neither and the Search tab says the model isn't available. Everything
 else in the app carries on as usual.
 
 When both complete model families are installed, MobileCLIP takes precedence.
-Use a clean build when removing or switching model packages: the optional
-compilation phase does not remove artifacts left by an earlier build.
+The optional compilation phase removes stale compiled models and metadata when
+their source artifacts are removed, so a model switch does not retain the old
+family in the app bundle.
 
-## Known limits at V6 closeout
+## Final V6 handoff
 
-* Widget streak expiry uses the summary's publication day rather than the last
-  decision day. Opening the app without swiping can therefore keep the widget's
-  streak visible a day too long.
-* Review changes now trigger summary publication after the debounced write,
-  but a failed review-file write is still swallowed and does not suppress the
-  publication callback. The summary is not a durable backup of review state.
-* Search preserves existing results after a failed query, but the retry error
-  state is only visible when the results grid is empty. Existing results can
-  remain on screen without an error indication.
-* Settings does not yet display search-model status; Search itself has the
-  missing-model gate. SigLIP 2 remains experimental as described above.
+The previously documented limitations are resolved: streaks expire from the last
+swipe, summaries wait for successful review persistence, Search shows failures
+over existing results, Settings names the installed search model, and optional
+model resources are compiled and cleaned up consistently.
 
-Device acceptance for scrolling, retrieval latency, and signed widget/Siri
-behavior is separate from the completed source overview. These limits are
-recorded for the final handoff, not a new feature roadmap.
+The final simulator build and all 18 focused summary regression tests passed.
+
+The sole deferred item is **SigLIP 2 validation**: convert a real checkpoint,
+verify tokenizer/embedding parity, and evaluate relevance and performance on a
+device. It remains experimental until that work is done.
 
 ## Why deletion is batched
 
@@ -364,10 +360,8 @@ PhotoTinder/
 ```
 
 `PhotoSwipe.xcodeproj` is hand-managed and authoritative. `project.yml` describes
-the targets, but its SigLIP 2 resource handling is ahead of the committed Xcode
-build phase. Do not regenerate the project in place to resolve that difference.
-Optional model packages are handled by a build phase, and converter fixtures
-stay local.
+the same optional-model build phase. Do not regenerate the project in place.
+Converter fixtures stay local.
 
 Of the Markdown documentation, only `README.md` and `THIRD_PARTY_LICENSES.md`
 are tracked. The build briefs, engineering notes under `docs/`, and personal

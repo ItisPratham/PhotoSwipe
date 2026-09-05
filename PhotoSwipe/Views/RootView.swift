@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Routes between the first-run onboarding, the permission flow, and the
 /// swipe flow. Onboarding is shown once — the seen-flag lives in
@@ -79,6 +80,7 @@ struct RootView: View {
                 library.checkForMissedChanges()
                 // The calendar may have rolled over while we were away, which
                 // ages the streak and the month total.
+                if !stores.review.isPersisted { stores.review.flush() }
                 stores.publishSummary()
             case .background:
                 // Land any debounced decision write before we can be killed.
@@ -155,7 +157,7 @@ final class AppStores {
     /// A no-op until review decisions have finished loading — publishing an
     /// empty set would tell the widget the user had nothing marked.
     func publishSummary(now: Date = Date()) {
-        guard review.isLoaded else { return }
+        guard review.isPersisted else { return }
         revision += 1
         let window = Set(CleanupSummary.recentDayKeys(endingAt: now))
         let summary = CleanupSummary(
@@ -170,7 +172,20 @@ final class AppStores {
             activeDayKeys: review.decisionsByDay.keys.filter(window.contains).sorted()
         )
         let revision = revision
-        Task { await SummaryWriter.shared.write(summary, revision: revision) }
+        var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Publish cleanup summary") {
+            if backgroundTask != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+                backgroundTask = .invalid
+            }
+        }
+        Task {
+            await SummaryWriter.shared.write(summary, revision: revision)
+            if backgroundTask != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+                backgroundTask = .invalid
+            }
+        }
     }
 }
 

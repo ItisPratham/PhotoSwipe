@@ -108,10 +108,10 @@ the app picks up `SigLIP2Image.mlpackage`, `SigLIP2Text.mlpackage`,
 `siglip2-vocab.json`, and `siglip2-provenance.json` when MobileCLIP is absent.
 Nothing SigLIP 2 produces is tracked in this repository.
 
-Runtime and conversion code is present, but no real-checkpoint conversion or
-device acceptance is recorded. The committed Xcode build phase does not yet
-include the SigLIP 2 model and tokenizer artifacts. License eligibility alone
-does not establish that this path is ready to distribute.
+Runtime, conversion, and optional build-resource integration are complete.
+Real-checkpoint conversion and device validation remain deferred, so SigLIP 2
+is experimental. License eligibility alone does not establish that this path
+has been validated for distribution.
 
 **License (read from the repository on 2026-09-05):** the SigLIP 2 checkpoint
 page states, verbatim:

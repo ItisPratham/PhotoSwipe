@@ -157,12 +157,36 @@ final class SummaryTests: XCTestCase {
     func testAStreakExpiresOnceTheSnapshotIsTwoDaysOld() {
         var snapshot = summary(marked: 0)
         snapshot.generatedAt = date("2026-09-05")
+        snapshot.lastSessionDate = date("2026-09-05")
         snapshot.streakDays = 6
         XCTAssertEqual(snapshot.streakDays(on: date("2026-09-05")), 6)
         XCTAssertEqual(snapshot.streakDays(on: date("2026-09-06")), 6,
                        "A streak may still end yesterday.")
         XCTAssertEqual(snapshot.streakDays(on: date("2026-09-07")), 0,
                        "Two silent days means the streak is over, not frozen.")
+        snapshot.generatedAt = date("2026-09-06")
+        XCTAssertEqual(snapshot.streakDays(on: date("2026-09-07")), 0,
+                       "Opening without swiping must not extend the streak.")
+        snapshot.lastSessionDate = nil
+        XCTAssertEqual(snapshot.streakDays(on: date("2026-09-06")), 0)
+    }
+
+    @MainActor
+    func testFailedReviewSaveDoesNotPublishAndSuccessfulRetryDoes() async throws {
+        let url = directory.appending(path: "missing/review.json")
+        let store = ReviewStore(fileURL: url)
+        await store.waitUntilLoaded()
+        var publications = 0
+        store.onPersist = { publications += 1 }
+        store.markForDeletion("a")
+        XCTAssertFalse(store.isPersisted)
+        store.flush()
+        XCTAssertEqual(publications, 0)
+        XCTAssertFalse(store.isPersisted)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        store.flush()
+        XCTAssertEqual(publications, 1)
+        XCTAssertTrue(store.isPersisted)
     }
 
     func testACorruptSummaryFileReadsAsNothingRatherThanZeroes() throws {

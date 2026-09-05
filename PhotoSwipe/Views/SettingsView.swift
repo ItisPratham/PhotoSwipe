@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showStats = false
     @State private var showResetConfirm = false
+    @State private var searchModelStatus = "Not installed"
 
     @AppStorage(SwipeUpAction.kindKey) private var swipeUpKind = "favorite"
     @AppStorage(SwipeUpAction.albumIDKey) private var swipeUpAlbumID = ""
@@ -22,6 +23,9 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Search") {
+                    LabeledContent("Model", value: searchModelStatus)
+                }
                 Section {
                     Button {
                         showStats = true
@@ -84,6 +88,11 @@ struct SettingsView: View {
 
             }
             .navigationTitle("Settings")
+            .task {
+                if let model = SearchModelSpec.installed(in: .main) {
+                    searchModelStatus = model.family == .mobileCLIPS2 ? "MobileCLIP S2" : "SigLIP 2"
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

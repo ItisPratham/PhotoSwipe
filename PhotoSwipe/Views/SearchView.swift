@@ -108,6 +108,15 @@ struct SearchView: View {
                             .padding(.top, 40)
                     }
                 } else {
+                    if viewModel.queryFailed {
+                        HStack {
+                            Label("Search failed. Showing previous results.", systemImage: "exclamationmark.triangle")
+                            Spacer()
+                            Button("Retry") { viewModel.submit(using: service) }
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, Theme.Spacing.screenMargin)
+                    }
                     if !viewModel.results.isEmpty {
                         NavigationLink(value: AppRoute.swipe(.search(
                             query: viewModel.query,
