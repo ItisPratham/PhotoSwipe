@@ -30,12 +30,7 @@ actor SearchIndex {
         try await loadIfNeeded(store: store, libraryVersion: libraryVersion)
         guard !identifiers.isEmpty, let query = Self.normalized(query) else { return [] }
 
-        var scores = [Float](repeating: 0, count: identifiers.count)
-        cblas_sgemv(
-            CblasRowMajor, CblasNoTrans,
-            Int32(identifiers.count), Int32(SearchEmbedder.dimension),
-            1, matrix, Int32(SearchEmbedder.dimension), query, 1, 0, &scores, 1
-        )
+        let scores = Self.scores(query: query, matrix: matrix, rows: identifiers.count)
         try Task.checkCancellation()
 
         return Self.rank(
@@ -44,6 +39,19 @@ actor SearchIndex {
             eligibleIdentifiers: eligibleIdentifiers,
             cutoff: cutoff
         )
+    }
+
+    /// One matrix-vector product against the whole library. Separate so the
+    /// performance tests can time the shipping path rather than a copy of it.
+    static func scores(query: [Float], matrix: [Float], rows: Int,
+                       dimension: Int = SearchEmbedder.dimension) -> [Float] {
+        var scores = [Float](repeating: 0, count: rows)
+        cblas_sgemv(
+            CblasRowMajor, CblasNoTrans,
+            Int32(rows), Int32(dimension),
+            1, matrix, Int32(dimension), query, 1, 0, &scores, 1
+        )
+        return scores
     }
 
     static func rank(

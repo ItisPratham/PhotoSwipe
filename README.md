@@ -167,11 +167,34 @@ swipe, summaries wait for successful review persistence, Search shows failures
 over existing results, Settings names the installed search model, and optional
 model resources are compiled and cleaned up consistently.
 
-The final simulator build and all 18 focused summary regression tests passed.
+The final simulator build passed with all 44 regression tests.
 
-The sole deferred item is **SigLIP 2 validation**: convert a real checkpoint,
-verify tokenizer/embedding parity, and evaluate relevance and performance on a
-device. It remains experimental until that work is done.
+Validated on device: signed App Group access from both the app and the widget,
+widget rendering from the shared summary, and all three intents through
+Shortcuts and Siri.
+
+Measured on an iPhone 14 Plus and 14 Pro with
+`PhotoSwipeTests/SearchPerformanceTests`: a warm query on a 30,000-photo index
+takes 35.9 ms and 15.6 ms respectively, against the 300 ms bar the test
+asserts. Ranking is 2.4 ms and 1.5 ms; embedding a photo is 26.1 ms and
+11.7 ms, so inference for a 30,000-photo library runs about 13 and 6 minutes.
+The resident index costs 58.6 MB inside a 169 MB process footprint. Search adds
+193 MB to the app: a 68 MB image tower, a 121 MB text tower, and 4.2 MB of
+tokenizer resources.
+
+The one soft spot is cold start. The first query after launch waits about
+8.3 seconds on the A15 while the text tower loads and compiles; nothing warms
+it beforehand.
+
+Still open: **SigLIP 2** has no converted checkpoint, so its tokenizer and
+embedding parity, relevance, and performance are unproven and it stays
+experimental. The long scrollbar endurance run and the accessibility sweep are
+also unrecorded.
+
+Test coverage is narrower than the v6 plan asked for: model gating and parity,
+scan behaviour, the result limit and revision invalidation, the v5 store
+migration, search-field debounce and staleness, and the intent/widget reads all
+lack tests. The local `docs/v6-acceptance.md` tracks both lists.
 
 ## Why deletion is batched
 

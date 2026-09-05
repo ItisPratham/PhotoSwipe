@@ -113,6 +113,7 @@
 		A4AAEF738C96B3BE7C527990 /* SearchModelSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71E0751D13C0ED010B2E0EB /* SearchModelSpec.swift */; };
 		A53982B4D2716ED162667B96 /* SentencePieceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E3809FA135759BA39564CD /* SentencePieceTokenizer.swift */; };
 		D8BC1976FCAE3832160F17D6 /* SentencePieceTokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */; };
+		780514A97167A56D62111499 /* SearchPerformanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9365C009479CA9584901F387 /* SearchPerformanceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -264,6 +265,7 @@
 		E71E0751D13C0ED010B2E0EB /* SearchModelSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchModelSpec.swift; sourceTree = "<group>"; };
 		23E3809FA135759BA39564CD /* SentencePieceTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePieceTokenizer.swift; sourceTree = "<group>"; };
 		49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePieceTokenizerTests.swift; sourceTree = "<group>"; };
+		9365C009479CA9584901F387 /* SearchPerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchPerformanceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -441,6 +443,7 @@
 		CD1D75C70F2B2119149B50C9 /* PhotoSwipeTests */ = {
 			isa = PBXGroup;
 			children = (
+				9365C009479CA9584901F387 /* SearchPerformanceTests.swift */,
 				49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */,
 				073123BF9EA97C830EEF813D /* CleanRequestTests.swift */,
 				E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */,
@@ -665,6 +668,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				780514A97167A56D62111499 /* SearchPerformanceTests.swift in Sources */,
 				D8BC1976FCAE3832160F17D6 /* SentencePieceTokenizerTests.swift in Sources */,
 				146B74D9A3344EDCFA060D7A /* CleanRequestTests.swift in Sources */,
 				15C0288F5CDFDD3EF87D364C /* SummaryTests.swift in Sources */,
