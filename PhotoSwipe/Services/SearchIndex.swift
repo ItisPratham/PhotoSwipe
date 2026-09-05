@@ -10,8 +10,9 @@ actor SearchIndex {
         SearchIndexMemoryPressure.start()
         return SearchIndex()
     }()
-    static let defaultCutoff: Float = 0.20
-    static let expandedCutoff: Float = 0.15
+    /// Cosine floor for a result. The former two-tier "Show more" was
+    /// dropped; everything above the wider floor shows at once.
+    static let defaultCutoff: Float = 0.15
     static let resultLimit = 200
 
     private var identifiers: [String] = []

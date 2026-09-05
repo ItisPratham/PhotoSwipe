@@ -24,7 +24,6 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var people: [PersonCluster] = []
     @Published private(set) var selectedPeople: [PersonCluster] = []
     @Published private(set) var isRefreshing = false
-    @Published private(set) var showingMore = false
 
     var progress: Double { total > 0 ? Double(processed) / Double(total) : 0 }
 
@@ -99,15 +98,6 @@ final class SearchViewModel: ObservableObject {
     func useRecent(_ query: String, using service: PhotoLibraryService) {
         self.query = query
         submit(using: service)
-    }
-
-    func toggleMore(using service: PhotoLibraryService) {
-        showingMore.toggle()
-        generation &+= 1
-        let generation = generation
-        Task { [weak self] in
-            await self?.runSearch(using: service, generation: generation, remember: false)
-        }
     }
 
     func togglePerson(_ person: PersonCluster, using service: PhotoLibraryService) {
@@ -185,8 +175,7 @@ final class SearchViewModel: ObservableObject {
                 query: try await embedder.textEmbedding(for: text),
                 store: indexStore,
                 libraryVersion: service.libraryVersion,
-                eligibleIdentifiers: eligible,
-                cutoff: showingMore ? SearchIndex.expandedCutoff : SearchIndex.defaultCutoff
+                eligibleIdentifiers: eligible
             )
             let photoByID = Dictionary(
                 (await service.fetchAssets(withIDs: Set(found.map(\.assetID)))).map { ($0.id, $0) },

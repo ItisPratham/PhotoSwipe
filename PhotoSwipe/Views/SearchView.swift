@@ -3,7 +3,7 @@ import SwiftUI
 struct SearchView: View {
     @ObservedObject var service: PhotoLibraryService
     @ObservedObject var store: ReviewStore
-    let viewModel: SearchViewModel
+    @ObservedObject var viewModel: SearchViewModel
 
     @State private var prefetcher = GridPrefetcher(targetSize: Thumbnail.requestSize)
     @State private var inspectedAsset: PhotoAsset?
@@ -109,11 +109,6 @@ struct SearchView: View {
                         }
                     }
                     .padding(.horizontal, 12)
-                    Button(viewModel.showingMore ? "Show fewer" : "Show more") {
-                        viewModel.toggleMore(using: service)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
                 }
             }
             .padding(.top, 12)
