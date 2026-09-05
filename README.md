@@ -209,6 +209,25 @@ embedding parity, relevance, and performance are unproven and it stays
 experimental. The long scrollbar endurance run and the accessibility sweep are
 also unrecorded.
 
+V6 is closed. Nothing follows it.
+
+## Version history
+
+| Version | Added |
+| --- | --- |
+| 1.0 | Swipe deck, undo, one confirmed batch delete |
+| 2.0 | Onboarding you swipe through, app icons |
+| 2.1 | `DeckSource`, Browse as home, albums, zoom inspector |
+| 3.0 | Video in the deck |
+| 3.1 | Largest-first order |
+| 3.2 | Duplicate grouping, SwiftData, iOS 17 |
+| 4.0 | Tab bar, People face clustering |
+| 5.0 | Screenshots, 50-step undo, swipe up to favourite or file |
+| 5.1 | More like this, keeper scoring |
+| 5.2 | Categories, On this day, merge suggestions, Also with |
+| 6.0 | Search, fast scrollbar |
+| 6.1 | Widget, App Intents, deep links, streaks |
+
 ## Why deletion is batched
 
 iOS never lets an app silently delete photos — every deletion is confirmed
