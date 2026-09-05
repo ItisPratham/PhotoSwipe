@@ -53,6 +53,7 @@ struct BrowseView: View {
 
     private var scroll: some View {
         ScrollView {
+            ScrollBarInstaller().frame(height: 0)
             LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
                 if viewModel.onThisDayCount > 0 {
                     NavigationLink(value: AppRoute.swipe(.onThisDay)) {
@@ -192,7 +193,6 @@ struct BrowseView: View {
             }
             .padding(.bottom, 16)
         }
-        .scrollIndicators(.hidden)
     }
 
     private var onThisDaySubtitle: String {

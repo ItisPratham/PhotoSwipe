@@ -110,12 +110,12 @@ struct PersonDetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
+                ScrollBarInstaller().frame(height: 0)
                 VStack(spacing: 0) {
                     cleanAllRow
                     dateGrid
                 }
             }
-            .scrollIndicators(.hidden)
         }
     }
 

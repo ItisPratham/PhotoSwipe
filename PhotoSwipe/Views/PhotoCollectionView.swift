@@ -76,6 +76,7 @@ struct PhotoCollectionView: View {
 
     private var collectionGrid: some View {
         ScrollView {
+            ScrollBarInstaller().frame(height: 0)
             LazyVStack(spacing: 12) {
                 NavigationLink(value: AppRoute.swipe(viewModel.deckSource())) {
                     BrowseEntryRow(
@@ -126,7 +127,6 @@ struct PhotoCollectionView: View {
                 .padding(.bottom, 16)
             }
         }
-        .scrollIndicators(.hidden)
     }
 
     private func load() async {

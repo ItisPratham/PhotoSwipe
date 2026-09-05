@@ -1,0 +1,14 @@
+{
+  "originHash" : "a2dda4a057528fa3449fb28200dd9fd6b90c1cbf8bb6be4a518ba6ee15726b6d",
+  "pins" : [
+    {
+      "identity" : "dmscrollbar",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/batanus/DMScrollBar.git",
+      "state" : {
+        "revision" : "52b662428629e659c18c7641d76ee4a8d495a1de"
+      }
+    }
+  ],
+  "version" : 3
+}

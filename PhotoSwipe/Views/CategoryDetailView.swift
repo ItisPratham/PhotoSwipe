@@ -38,6 +38,7 @@ struct CategoryDetailView: View {
             ContentUnavailableView("Nothing here", systemImage: category.systemImage)
         } else {
             ScrollView {
+                ScrollBarInstaller().frame(height: 0)
                 LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
                     NavigationLink(value: AppRoute.swipe(.category(category, ids: viewModel.oldestFirstIDs))) {
                         BrowseEntryRow(title: "Swipe all",
@@ -93,7 +94,6 @@ struct CategoryDetailView: View {
                 }
                 .padding(.bottom, 16)
             }
-            .scrollIndicators(.hidden)
         }
     }
 }

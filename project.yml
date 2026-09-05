@@ -16,13 +16,18 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "5.2"
+    MARKETING_VERSION: "6.0"
     CURRENT_PROJECT_VERSION: "1"
     # Accelerate's CBLAS (duplicate matching) without the deprecated headers.
     OTHER_SWIFT_FLAGS: "-Xcc -DACCELERATE_NEW_LAPACK"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_LANGUAGE: en
     DEVELOPMENT_TEAM: TT7LR66US3
+
+packages:
+  DMScrollBar:
+    url: https://github.com/batanus/DMScrollBar.git
+    revision: 52b662428629e659c18c7641d76ee4a8d495a1de
 
 targets:
   PhotoSwipe:
@@ -31,6 +36,8 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: PhotoSwipe
+    dependencies:
+      - package: DMScrollBar
     settings:
       base:
         GENERATE_INFOPLIST_FILE: NO
@@ -41,3 +48,16 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  PhotoSwipeTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PhotoSwipeTests
+    dependencies:
+      - target: PhotoSwipe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phototinder.PhotoSwipeTests
+        GENERATE_INFOPLIST_FILE: YES
