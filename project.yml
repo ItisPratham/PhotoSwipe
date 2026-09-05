@@ -1,5 +1,10 @@
 name: PhotoSwipe
 
+# NOTE: PhotoSwipe.xcodeproj is committed and Xcode-managed — it is the
+# authoritative project. This spec is kept in sync as documentation of the
+# target layout; regenerating from it would drop the manually added model
+# packages and pull in git-ignored test fixtures.
+
 # Non-compiled files surfaced in the Xcode navigator (repo-root docs/config).
 fileGroups:
   - PhotoSwipe_Instructions.md
@@ -16,7 +21,7 @@ options:
 
 settings:
   base:
-    MARKETING_VERSION: "6.0"
+    MARKETING_VERSION: "6.1"
     CURRENT_PROJECT_VERSION: "1"
     # Accelerate's CBLAS (duplicate matching) without the deprecated headers.
     OTHER_SWIFT_FLAGS: "-Xcc -DACCELERATE_NEW_LAPACK"
@@ -42,6 +47,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: PhotoSwipe/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: PhotoSwipe/Resources/PhotoSwipe.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.phototinder.PhotoSwipe
         PRODUCT_NAME: PhotoSwipe
         TARGETED_DEVICE_FAMILY: "1,2"

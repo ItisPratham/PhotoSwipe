@@ -43,6 +43,11 @@ final class ReviewStore: ObservableObject {
         var lastSessionDate: Date?
     }
 
+    /// Called after every state change that persists, so `AppStores` can
+    /// republish the App Group summary. A plain closure rather than an
+    /// `@Published` value: the root view must not observe every swipe.
+    var onPersist: (() -> Void)?
+
     private let fileURL: URL
     /// All disk writes go through this queue in order, so a debounced write
     /// still in flight can never land after a later `flush()`.
@@ -187,6 +192,7 @@ final class ReviewStore: ObservableObject {
         let snapshot = currentSnapshot()
         let url = fileURL
         writeQueue.sync { Self.write(snapshot, to: url) }
+        onPersist?()
     }
 
     /// Debounced by default: a run of swipes produces one write, a short
@@ -199,6 +205,7 @@ final class ReviewStore: ObservableObject {
             flush()
             return
         }
+        onPersist?()
         pendingWrite = Task { [weak self] in
             try? await Task.sleep(for: Self.writeDelay)
             guard !Task.isCancelled, let self else { return }
@@ -214,21 +221,19 @@ final class ReviewStore: ObservableObject {
     }
 
     /// Current streak may end today or yesterday; any earlier gap resets it.
-    func streakDays(now: Date = Date(), calendar: Calendar = Calendar(identifier: .gregorian)) -> Int {
-        var calendar = calendar
-        calendar.timeZone = .current
+    func streakDays(now: Date = Date(), calendar: Calendar = .localGregorian) -> Int {
         let today = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
         var cursor: Date
-        if decisionsByDay[Self.dayKey(today, calendar: calendar)] != nil {
+        if decisionsByDay[CleanupSummary.dayKey(today, calendar: calendar)] != nil {
             cursor = today
-        } else if decisionsByDay[Self.dayKey(yesterday, calendar: calendar)] != nil {
+        } else if decisionsByDay[CleanupSummary.dayKey(yesterday, calendar: calendar)] != nil {
             cursor = yesterday
         } else {
             return 0
         }
         var streak = 0
-        while decisionsByDay[Self.dayKey(cursor, calendar: calendar)] != nil {
+        while decisionsByDay[CleanupSummary.dayKey(cursor, calendar: calendar)] != nil {
             streak += 1
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor)!
         }
@@ -236,9 +241,7 @@ final class ReviewStore: ObservableObject {
     }
 
     private func recordActivity(at date: Date = Date()) {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .current
-        let key = Self.dayKey(date, calendar: calendar)
+        let key = CleanupSummary.dayKey(date)
         decisionsByDay[key, default: 0] += 1
         lastSessionDate = date
         let kept = decisionsByDay.keys.sorted(by: >).prefix(400)
@@ -247,10 +250,6 @@ final class ReviewStore: ObservableObject {
         })
     }
 
-    private static func dayKey(_ date: Date, calendar: Calendar) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-    }
 
     nonisolated private static func read(from url: URL) -> Snapshot? {
         guard let data = try? Data(contentsOf: url) else { return nil }

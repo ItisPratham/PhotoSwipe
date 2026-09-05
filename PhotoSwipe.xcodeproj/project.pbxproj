@@ -104,6 +104,9 @@
 		F5C6135ECC944F010FACF764 /* PhotoZoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C7E47266D1DC5BE33AB5E0 /* PhotoZoomView.swift */; };
 		F86DDEC087FA83B00F618E98 /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A618FC9184BBE2518C09B54 /* CategoriesView.swift */; };
 		F9CC454A46BEF411D6D4B0DC /* ThumbnailPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53737FF73AF5723F6D0B4D39 /* ThumbnailPreview.swift */; };
+		D73A6E724B5A07F7A59EF093 /* CleanupSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E669B2DF415E7D25AFFAA2F /* CleanupSummary.swift */; };
+		25DF8DF00441CF7556164088 /* SummaryWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B9BE1A9B01435663F5C77B /* SummaryWriter.swift */; };
+		15C0288F5CDFDD3EF87D364C /* SummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -220,6 +223,10 @@
 		FB2160E22161582996A65078 /* SimilarPhotos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimilarPhotos.swift; sourceTree = "<group>"; };
 		FCF0BD6A50077FE5896359E2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		FDB89DCA1E9A0E6A26E16BD0 /* SwipeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeView.swift; sourceTree = "<group>"; };
+		2E669B2DF415E7D25AFFAA2F /* CleanupSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanupSummary.swift; sourceTree = "<group>"; };
+		05B9BE1A9B01435663F5C77B /* SummaryWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryWriter.swift; sourceTree = "<group>"; };
+		D124F3E062F4F2BEABCD97E6 /* PhotoSwipe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhotoSwipe.entitlements; sourceTree = "<group>"; };
+		E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -307,6 +314,7 @@
 		76BBF63374BA9031FECB536B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				D124F3E062F4F2BEABCD97E6 /* PhotoSwipe.entitlements */,
 				7F7456B03761C59A40EC6FB4 /* CLIPTokenizer */,
 				9C8CF1D1165DEA0C4119F99A /* Assets.xcassets */,
 				37F5BDD1E0A4F35D1C5D7C0C /* FaceEmbedding.mlpackage */,
@@ -365,6 +373,7 @@
 		B1182CEF30E7DB3E3E9E1E60 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				2E669B2DF415E7D25AFFAA2F /* CleanupSummary.swift */,
 				E264FCE5D258820DC0764F46 /* AppRoute.swift */,
 				1F8573E56946617B2C4018BA /* AppTab.swift */,
 				DF7E5E6CC38E44017810F7C7 /* AssetCategory.swift */,
@@ -392,6 +401,7 @@
 		CD1D75C70F2B2119149B50C9 /* PhotoSwipeTests */ = {
 			isa = PBXGroup;
 			children = (
+				E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */,
 				A9BD45125382F3C491267796 /* Fixtures */,
 				CF6A6D80F5FE4712C291D4B0 /* CLIPTokenizerTests.swift */,
 				5843264FD7E9779E0A194376 /* DeckSourceSearchTests.swift */,
@@ -405,6 +415,7 @@
 		E79EAACDAEB716487F29CC79 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				05B9BE1A9B01435663F5C77B /* SummaryWriter.swift */,
 				A197BC488F60FA0240A76345 /* CLIPTokenizer.swift */,
 				F8E16488C4E4196E974A04F1 /* ConcurrentScan.swift */,
 				EDEC87B7083866615DB96F21 /* FaceAligner.swift */,
@@ -557,6 +568,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				15C0288F5CDFDD3EF87D364C /* SummaryTests.swift in Sources */,
 				46DD9D564B95899F68703BD3 /* CLIPTokenizerTests.swift in Sources */,
 				C25A9F5CA9D373066F03A23C /* DeckSourceSearchTests.swift in Sources */,
 				E2AD3C136408DE1D1C25D623 /* ScrollBarInstallerTests.swift in Sources */,
@@ -569,6 +581,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				25DF8DF00441CF7556164088 /* SummaryWriter.swift in Sources */,
+				D73A6E724B5A07F7A59EF093 /* CleanupSummary.swift in Sources */,
 				EF0754CF0F3832CAB50EE5A0 /* AcknowledgementsView.swift in Sources */,
 				1D731D1836D656A5B03482B2 /* AlbumListView.swift in Sources */,
 				6C2B1F2F1DDE539114EC53B6 /* AppRoute.swift in Sources */,
@@ -677,6 +691,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = PhotoSwipe/Resources/PhotoSwipe.entitlements;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -699,6 +714,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				CODE_SIGN_ENTITLEMENTS = PhotoSwipe/Resources/PhotoSwipe.entitlements;
 				INFOPLIST_FILE = PhotoSwipe/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -780,7 +796,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 6.0;
+				MARKETING_VERSION = 6.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				OTHER_SWIFT_FLAGS = "-Xcc -DACCELERATE_NEW_LAPACK";
@@ -847,7 +863,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 6.0;
+				MARKETING_VERSION = 6.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

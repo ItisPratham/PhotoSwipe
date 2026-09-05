@@ -11,6 +11,10 @@ final class StatsStore: ObservableObject {
     /// Most-recent-first ordering so the log view can render without resorting.
     @Published private(set) var history: [DeleteRecord]
 
+    /// Called after a successful persist so `AppStores` can republish the
+    /// App Group summary. Deliberately not `@Published`.
+    var onPersist: (() -> Void)?
+
     private let defaults: UserDefaults
     private let bytesKey = "PhotoSwipe.stats.totalBytesFreed"
     private let historyKey = "PhotoSwipe.stats.deleteHistory"
@@ -31,6 +35,16 @@ final class StatsStore: ObservableObject {
         history.reduce(0) { $0 + $1.count }
     }
 
+    /// Bytes reclaimed in the calendar month containing `date`. Derived from
+    /// the delete log rather than a separate counter, so it stays correct
+    /// across month rollovers without anything having to reset it.
+    func bytesFreed(inMonthOf date: Date) -> Int64 {
+        let month = CleanupSummary.monthKey(date)
+        return history
+            .filter { CleanupSummary.monthKey($0.date) == month }
+            .reduce(0) { $0 + $1.bytesFreed }
+    }
+
     /// Record a successful batch delete. Called by SwipeViewModel after
     /// PhotoKit confirms deletion, so `count`/`bytesFreed` reflect real work.
     func recordDelete(count: Int, bytesFreed: Int64) {
@@ -45,5 +59,6 @@ final class StatsStore: ObservableObject {
         if let data = try? JSONEncoder().encode(history) {
             defaults.set(data, forKey: historyKey)
         }
+        onPersist?()
     }
 }

@@ -56,6 +56,12 @@ struct RootView: View {
             try? await Task.sleep(nanoseconds: 1_300_000_000)
             minTimeElapsed = true
         }
+        .task {
+            // First publish once the decisions are actually loaded, so the
+            // widget picks up this install's real numbers.
+            await stores.review.waitUntilLoaded()
+            stores.publishSummary()
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
@@ -63,8 +69,13 @@ struct RootView: View {
                 // and catch library changes made while we were suspended.
                 library.refreshAccessState()
                 library.checkForMissedChanges()
+                // The calendar may have rolled over while we were away, which
+                // ages the streak and the month total.
+                stores.publishSummary()
             case .background:
                 // Land any debounced decision write before we can be killed.
+                // `flush` republishes the summary through the persist hook,
+                // so the widget sees the session's final numbers.
                 stores.review.flush()
             default:
                 break
@@ -109,11 +120,46 @@ struct RootView: View {
 /// view; not observable itself, so holding it in `@State` doesn't subscribe
 /// the root to the stores' changes. Screens that display store values still
 /// observe the individual store they read.
+///
+/// It also owns the one place that turns both stores into the App Group
+/// snapshot the widget and intents read. The stores call back here after they
+/// persist; because those callbacks are plain closures rather than published
+/// changes, a swipe still doesn't re-render the tab tree.
 @MainActor
 final class AppStores {
     let review = ReviewStore()
     let stats = StatsStore()
     let sizes = SizeStore()
+
+    /// Monotonic, so the writer can drop a snapshot that lost a race.
+    private var revision = 0
+
+    init() {
+        review.onPersist = { [weak self] in self?.publishSummary() }
+        stats.onPersist = { [weak self] in self?.publishSummary() }
+    }
+
+    /// Reads both stores together and hands the writer one complete snapshot.
+    /// A no-op until review decisions have finished loading — publishing an
+    /// empty set would tell the widget the user had nothing marked.
+    func publishSummary(now: Date = Date()) {
+        guard review.isLoaded else { return }
+        revision += 1
+        let window = Set(CleanupSummary.recentDayKeys(endingAt: now))
+        let summary = CleanupSummary(
+            markedCount: review.markedForDeletionIDs.count,
+            totalBytesFreed: stats.totalBytesFreed,
+            totalPhotosDeleted: stats.totalPhotosDeleted,
+            lastSessionDate: review.lastSessionDate,
+            streakDays: review.streakDays(now: now),
+            monthBytesFreed: stats.bytesFreed(inMonthOf: now),
+            generatedAt: now,
+            monthKey: CleanupSummary.monthKey(now),
+            activeDayKeys: review.decisionsByDay.keys.filter(window.contains).sorted()
+        )
+        let revision = revision
+        Task { await SummaryWriter.shared.write(summary, revision: revision) }
+    }
 }
 
 #Preview {
