@@ -31,10 +31,16 @@ enum ReviewDecision {
 final class ReviewStore: ObservableObject {
     @Published private(set) var reviewedIDs: Set<String> = []
     @Published private(set) var markedForDeletionIDs: Set<String> = []
+    /// Local-calendar activity, independent of current review decisions. Undo,
+    /// deletion, pruning, and reset intentionally never subtract from it.
+    @Published private(set) var decisionsByDay: [String: Int] = [:]
+    @Published private(set) var lastSessionDate: Date?
 
     private struct Snapshot: Codable {
         var reviewed: [String]
         var marked: [String]
+        var decisionsByDay: [String: Int]?
+        var lastSessionDate: Date?
     }
 
     private let fileURL: URL
@@ -80,6 +86,8 @@ final class ReviewStore: ObservableObject {
         if let snapshot {
             reviewedIDs.formUnion(snapshot.reviewed)
             markedForDeletionIDs.formUnion(snapshot.marked)
+            decisionsByDay.merge(snapshot.decisionsByDay ?? [:], uniquingKeysWith: +)
+            lastSessionDate = [lastSessionDate, snapshot.lastSessionDate].compactMap { $0 }.max()
         } else {
             let legacyReviewed = defaults.stringArray(forKey: Self.legacyReviewedKey) ?? []
             let legacyMarked = defaults.stringArray(forKey: Self.legacyDeletionKey) ?? []
@@ -111,13 +119,13 @@ final class ReviewStore: ObservableObject {
 
     /// Right-swipe: keep and never show again.
     func markKept(_ id: String) {
-        reviewedIDs.insert(id)
+        if reviewedIDs.insert(id).inserted { recordActivity() }
         persist()
     }
 
     /// Left-swipe: keep out of the deck and queue for batch deletion.
     func markForDeletion(_ id: String) {
-        reviewedIDs.insert(id)
+        if reviewedIDs.insert(id).inserted { recordActivity() }
         markedForDeletionIDs.insert(id)
         persist()
     }
@@ -201,7 +209,47 @@ final class ReviewStore: ObservableObject {
     }
 
     private func currentSnapshot() -> Snapshot {
-        Snapshot(reviewed: Array(reviewedIDs), marked: Array(markedForDeletionIDs))
+        Snapshot(reviewed: Array(reviewedIDs), marked: Array(markedForDeletionIDs),
+                 decisionsByDay: decisionsByDay, lastSessionDate: lastSessionDate)
+    }
+
+    /// Current streak may end today or yesterday; any earlier gap resets it.
+    func streakDays(now: Date = Date(), calendar: Calendar = Calendar(identifier: .gregorian)) -> Int {
+        var calendar = calendar
+        calendar.timeZone = .current
+        let today = calendar.startOfDay(for: now)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        var cursor: Date
+        if decisionsByDay[Self.dayKey(today, calendar: calendar)] != nil {
+            cursor = today
+        } else if decisionsByDay[Self.dayKey(yesterday, calendar: calendar)] != nil {
+            cursor = yesterday
+        } else {
+            return 0
+        }
+        var streak = 0
+        while decisionsByDay[Self.dayKey(cursor, calendar: calendar)] != nil {
+            streak += 1
+            cursor = calendar.date(byAdding: .day, value: -1, to: cursor)!
+        }
+        return streak
+    }
+
+    private func recordActivity(at date: Date = Date()) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let key = Self.dayKey(date, calendar: calendar)
+        decisionsByDay[key, default: 0] += 1
+        lastSessionDate = date
+        let kept = decisionsByDay.keys.sorted(by: >).prefix(400)
+        decisionsByDay = Dictionary(uniqueKeysWithValues: kept.map { key in
+            (key, decisionsByDay[key]!)
+        })
+    }
+
+    private static func dayKey(_ date: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     nonisolated private static func read(from url: URL) -> Snapshot? {
