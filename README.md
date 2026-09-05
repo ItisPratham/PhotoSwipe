@@ -11,6 +11,10 @@ tracking — your library never leaves your phone.
 Current version: **6.1** (iOS 17+). The repository is named `PhotoTinder`;
 the app, target, and bundle identifier are `PhotoSwipe`.
 
+V6 feature work is closed. The final source overview on 2026-09-05 covered
+Search, scrolling, widgets, intents, and the review fixes. It did not run builds
+or tests or certify device performance. Known limits are recorded below.
+
 ---
 
 > **License notice:** This project is **not licensed for reuse** (all rights
@@ -21,8 +25,9 @@ the app, target, and bundle identifier are `PhotoSwipe`.
 > converted Search build a research build rather than something you can hand
 > out.
 >
-> Both have a way out, and the app supports both. Faces can use OpenCV SFace
-> (Apache-2.0 weights, `scripts/convert_sface.py`). Search can use SigLIP 2,
+> Alternatives are documented. Faces can use OpenCV SFace
+> (Apache-2.0 weights, `scripts/convert_sface.py`). Search has experimental
+> SigLIP 2 support,
 > whose checkpoint page puts the software under Apache 2.0 and everything else,
 > weights included, under CC-BY 4.0. CC-BY allows commercial use as long as you
 > credit the source and say the weights were changed, which a Core ML
@@ -127,15 +132,17 @@ Typing runs the query through the text tower and ranks everything by cosine
 similarity in a single Accelerate matrix-vector product, keeping the top 200
 above a fixed cutoff.
 
-No model is in the repository. Two are supported, and the app uses whichever
-one you have converted locally:
+Model weights are not in the repository. MobileCLIP is the established search
+path; an experimental SigLIP 2 path has also been added:
 
 * **MobileCLIP S2** (`scripts/convert_mobileclip.py`) is what the app was
   developed against. Its weights are research-only, so a build using it can't
   be distributed.
-* **SigLIP 2** (`scripts/convert_siglip2.py`) is the one to use if the build
-  has to go out. Its weights are CC-BY 4.0, which means commercial use with
-  attribution.
+* **SigLIP 2** (`scripts/convert_siglip2.py`) is an experimental alternative
+  with the license terms described in `THIRD_PARTY_LICENSES.md`. A real
+  checkpoint conversion and device evaluation have not yet been recorded.
+  The committed Xcode build phase also still needs its two packages,
+  vocabulary, and provenance added; `project.yml` already lists them.
 
 They are different models, not two names for the same thing: SigLIP 2 uses the
 Gemma SentencePiece tokenizer instead of CLIP's byte-pair encoding, squares the
@@ -147,6 +154,28 @@ vectors from two embedding spaces never get compared.
 
 Install neither and the Search tab says the model isn't available. Everything
 else in the app carries on as usual.
+
+When both complete model families are installed, MobileCLIP takes precedence.
+Use a clean build when removing or switching model packages: the optional
+compilation phase does not remove artifacts left by an earlier build.
+
+## Known limits at V6 closeout
+
+* Widget streak expiry uses the summary's publication day rather than the last
+  decision day. Opening the app without swiping can therefore keep the widget's
+  streak visible a day too long.
+* Review changes now trigger summary publication after the debounced write,
+  but a failed review-file write is still swallowed and does not suppress the
+  publication callback. The summary is not a durable backup of review state.
+* Search preserves existing results after a failed query, but the retry error
+  state is only visible when the results grid is empty. Existing results can
+  remain on screen without an error indication.
+* Settings does not yet display search-model status; Search itself has the
+  missing-model gate. SigLIP 2 remains experimental as described above.
+
+Device acceptance for scrolling, retrieval latency, and signed widget/Siri
+behavior is separate from the completed source overview. These limits are
+recorded for the final handoff, not a new feature roadmap.
 
 ## Why deletion is batched
 
@@ -233,8 +262,8 @@ python scripts/convert_adaface.py \
     --out PhotoSwipe/Resources/FaceEmbedding.mlpackage
 ```
 
-Then add `FaceEmbedding.mlpackage` to the Xcode target (drag into the
-Resources group, "Copy items if needed", target = PhotoSwipe). Without it
+Leave `FaceEmbedding.mlpackage` in `PhotoSwipe/Resources/`; the optional-model
+build phase compiles it automatically. Do not add it to Sources again. Without it
 the People scan shows a "face model not installed" state — all other features
 work normally. The checkpoint, the ONNX alternative, and the converted package
 are all git-ignored.
@@ -298,9 +327,9 @@ Where each piece of state lives:
 | --- | --- |
 | Reviewed and marked-for-deletion photo IDs | JSON file, `Application Support/review.json` (debounced writes; migrated from `UserDefaults` on first launch after 4.1) |
 | Activity log and total space freed | `UserDefaults` |
-| Swipe-up choice (favorite / album id + title), categories and People scan opt-ins | `UserDefaults` |
+| Swipe-up choice (favorite / album id + title), categories, People, and Search scan opt-ins | `UserDefaults` |
 | Per-asset byte-size cache (Biggest files) | `UserDefaults` |
-| Duplicate index (feature prints, sizes, sharpness, aesthetics, category signals) | SwiftData, `Application Support/duplicates.store` |
+| Duplicate index (feature prints, sizes, sharpness, aesthetics, category signals, search embeddings and model fingerprint) | SwiftData, `Application Support/duplicates.store` |
 | Face index (embeddings, people, names, hides, declined merges) | SwiftData, `Application Support/faces.store` |
 | Per-day swipe activity and the last session time (streaks) | inside `review.json` |
 | Recent search queries | `UserDefaults` |
@@ -330,15 +359,16 @@ PhotoTinder/
 ├── PhotoSwipeTests/         # Tokenizer, retrieval, streak, summary, link tests
 ├── scripts/                 # convert_adaface.py, convert_sface.py, convert_mobileclip.py, convert_siglip2.py
 ├── Design/                  # Owner-supplied app-icon source SVGs
-├── THIRD_PARTY_LICENSES.md  # AdaFace, MobileCLIP, DMScrollBar attribution
+├── THIRD_PARTY_LICENSES.md  # Model and DMScrollBar license notes
 └── project.yml              # Documentation of the target layout; see below
 ```
 
 `PhotoSwipe.xcodeproj` is hand-managed and authoritative. `project.yml` describes
-the same targets and is kept in sync, but don't regenerate the project from it.
-XcodeGen drops the manually added model packages and pulls git-ignored test
-fixtures into the test target. To check the spec still parses, generate it into
-a scratch directory instead.
+the targets, but its SigLIP 2 resource handling is ahead of the committed Xcode
+build phase. Do not regenerate the project in place to resolve that difference.
+Optional model packages are handled by a build phase, and converter fixtures
+stay local.
 
-Only `README.md` and `THIRD_PARTY_LICENSES.md` are tracked. The build briefs,
-the engineering notes under `docs/`, and personal scratch notes stay local.
+Of the Markdown documentation, only `README.md` and `THIRD_PARTY_LICENSES.md`
+are tracked. The build briefs, engineering notes under `docs/`, and personal
+scratch notes stay local.

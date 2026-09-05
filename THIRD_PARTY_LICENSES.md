@@ -68,8 +68,10 @@ assets:** `MobileCLIPS2Image.mlpackage` and `MobileCLIPS2Text.mlpackage`, produc
 from the Apple `mobileclip_s2.pt` checkpoint by `scripts/convert_mobileclip.py`.
 
 The checkpoint and converted packages are governed by the **Apple Machine
-Learning Research Model License Agreement**, reproduced in
-`docs/MobileCLIP_LICENSE_MODELS.txt`. The license limits use, modification,
+Learning Research Model License Agreement**. Read the
+[license at the recorded source revision](https://github.com/apple/ml-mobileclip/blob/aecfb5453d022e9deff12f81a150ea8f35194baa/LICENSE_MODELS);
+the local copy in `docs/MobileCLIP_LICENSE_MODELS.txt` is not tracked.
+The license limits use, modification,
 redistribution, and derivatives to research purposes; it expressly excludes
 commercial exploitation, product development, and use in a commercial product
 or service.
@@ -82,7 +84,8 @@ include this attribution:
 > Apple Machine Learning Research Model is licensed under the Apple Machine
 > Learning Research Model License Agreement.
 
-No MobileCLIP artifact is tracked here. A build that has been given locally
+MobileCLIP checkpoints and converted model packages are not tracked here;
+the tokenizer vocabulary and merges are tracked. A build that has been given locally
 converted packages bundles them, and that build is a research evaluation build
 which must not be distributed or sold.
 
@@ -92,7 +95,7 @@ target in `docs/mobileclip-provenance.json`, and leaves model artifacts ignored.
 
 ---
 
-## SigLIP 2 (supported commercial alternative for search — not bundled here)
+## SigLIP 2 (experimental search alternative — not bundled here)
 
 **Source:** Google's SigLIP 2 image–text encoders, released through
 [google-research/big_vision](https://github.com/google-research/big_vision).
@@ -104,6 +107,11 @@ undistributable. Convert a local checkpoint with `scripts/convert_siglip2.py`;
 the app picks up `SigLIP2Image.mlpackage`, `SigLIP2Text.mlpackage`,
 `siglip2-vocab.json`, and `siglip2-provenance.json` when MobileCLIP is absent.
 Nothing SigLIP 2 produces is tracked in this repository.
+
+Runtime and conversion code is present, but no real-checkpoint conversion or
+device acceptance is recorded. The committed Xcode build phase does not yet
+include the SigLIP 2 model and tokenizer artifacts. License eligibility alone
+does not establish that this path is ready to distribute.
 
 **License (read from the repository on 2026-09-05):** the SigLIP 2 checkpoint
 page states, verbatim:
@@ -117,9 +125,8 @@ The repository's top-level README says instead that "Unless explicitly noted
 otherwise, everything in the big_vision codebase (including models and colabs)
 is released under the Apache2 license." The two statements do not agree about
 the weights. Treat the checkpoints as **CC-BY 4.0** — the narrower reading —
-until Google resolves it. That is still commercially usable, unlike
-MobileCLIP's research-only terms, but it is **not** the no-obligation grant
-Apache 2.0 gives: CC-BY requires attributing the source and stating that
+until Google resolves it. Under the documented CC-BY terms, use requires
+attributing the source and stating that
 changes were made, and a Core ML conversion is a change. Verify the terms at
 the exact revision and checkpoint you download before shipping.
 
