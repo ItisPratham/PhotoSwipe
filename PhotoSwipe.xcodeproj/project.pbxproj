@@ -113,6 +113,7 @@
 		632D75E838DD59D1ACC85FCF /* CleanupSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E669B2DF415E7D25AFFAA2F /* CleanupSummary.swift */; };
 		B219A9A305DDBD840AC5290D /* CleanRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C14537E00F2404DE91F582D /* CleanRequest.swift */; };
 		F227FF90A75AE61448927FFD /* PhotoSwipeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8869C3ACCE6051A6A219E54A /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D60A0DD49777428230A17B7 /* Intents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -260,6 +261,7 @@
 		C17195E3136A33EFACC08754 /* PhotoSwipeWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhotoSwipeWidget.entitlements; sourceTree = "<group>"; };
 		7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PhotoSwipeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF901EA7E4021754BB4A695F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2D60A0DD49777428230A17B7 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -314,6 +316,7 @@
 		022DDA5F326FC76D896A6429 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				2D60A0DD49777428230A17B7 /* Intents.swift */,
 				4DD4BFCFA42E704998845D5E /* PhotoSwipeApp.swift */,
 			);
 			path = App;
@@ -653,6 +656,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8869C3ACCE6051A6A219E54A /* Intents.swift in Sources */,
 				D373BBDC489BFCD57F808D51 /* CleanRequest.swift in Sources */,
 				25DF8DF00441CF7556164088 /* SummaryWriter.swift in Sources */,
 				D73A6E724B5A07F7A59EF093 /* CleanupSummary.swift in Sources */,
