@@ -167,34 +167,47 @@ swipe, summaries wait for successful review persistence, Search shows failures
 over existing results, Settings names the installed search model, and optional
 model resources are compiled and cleaned up consistently.
 
-The final simulator build passed with all 44 regression tests.
+The final simulator build passed with all 49 regression tests.
 
 Validated on device: signed App Group access from both the app and the widget,
 widget rendering from the shared summary, and all three intents through
 Shortcuts and Siri.
 
-Measured on an iPhone 14 Plus and 14 Pro with
-`PhotoSwipeTests/SearchPerformanceTests`: a warm query on a 30,000-photo index
-takes 35.9 ms and 15.6 ms respectively, against the 300 ms bar the test
-asserts. Ranking is 2.4 ms and 1.5 ms; embedding a photo is 26.1 ms and
-11.7 ms, so inference for a 30,000-photo library runs about 13 and 6 minutes.
-The resident index costs 58.6 MB inside a 169 MB process footprint. Search adds
-193 MB to the app: a 68 MB image tower, a 121 MB text tower, and 4.2 MB of
-tokenizer resources.
+Search performance, measured with `PhotoSwipeTests/SearchPerformanceTests`
+against a 30,000-vector index. Run the class on a phone to reproduce it;
+Simulator timings mean nothing here, as the Mac has no Neural Engine.
 
-The one soft spot is cold start. The first query after launch waits about
-8.3 seconds on the A15 while the text tower loads and compiles; nothing warms
-it beforehand.
+| Measurement | iPhone 14 Plus (A15) | iPhone 14 Pro (A16) |
+| --- | --- | --- |
+| Warm query, end to end | 35.9 ms | 15.6 ms |
+| Text query | 6.5 ms | 3.1 ms |
+| Ranking 30,000 vectors | 2.4 ms | 1.5 ms |
+| Image embedding, per photo | 26.1 ms | 11.7 ms |
+| Inference for 30,000 photos | ~13 min | ~6 min |
+| Cold load and first query | 8.3 s | 3.1 s |
+| Process footprint, index and both towers resident | 169.2 MB | 169.6 MB |
+
+The 300 ms warm-query bar is asserted by the test, not just printed, so a
+regression fails the suite. Ranking is negligible; a query is almost entirely
+text inference. The resident index itself is 58.6 MB for 30,000 photos.
+
+What Search adds to the app:
+
+| Artifact | Size |
+| --- | --- |
+| Image tower | 68 MB |
+| Text tower | 121 MB |
+| Tokenizer resources | 4.2 MB |
+
+The one soft spot is cold start: the text tower takes about 8.3 seconds on the
+A15 to load and compile for the Neural Engine. Opening the Search tab now
+starts that load in the background, so it overlaps whatever the user types
+instead of blocking the first query.
 
 Still open: **SigLIP 2** has no converted checkpoint, so its tokenizer and
 embedding parity, relevance, and performance are unproven and it stays
 experimental. The long scrollbar endurance run and the accessibility sweep are
 also unrecorded.
-
-Test coverage is narrower than the v6 plan asked for: model gating and parity,
-scan behaviour, the result limit and revision invalidation, the v5 store
-migration, search-field debounce and staleness, and the intent/widget reads all
-lack tests. The local `docs/v6-acceptance.md` tracks both lists.
 
 ## Why deletion is batched
 

@@ -51,6 +51,11 @@ final class SearchViewModel: ObservableObject {
     private var hasIndexedBefore: Bool
     private var isVisible = false
     private var disappearGrace: Task<Void, Never>?
+    /// The text tower costs seconds to load and compile for the Neural Engine
+    /// (8.3 s measured on an A15). Loading it when the tab opens rather than
+    /// on the first query moves that wait off the query path — it is the same
+    /// work either way, just started while the user is still typing.
+    private var hasWarmedTextTower = false
 
     init() {
         recentQueries = UserDefaults.standard.stringArray(forKey: Self.recentsKey) ?? []
@@ -68,7 +73,18 @@ final class SearchViewModel: ObservableObject {
         disappearGrace?.cancel()
         refreshPeople(using: service)
         guard UserDefaults.standard.bool(forKey: Self.enabledKey) else { return }
+        warmTextTower()
         enqueueIndex(using: service, onlyIfNeeded: true)
+    }
+
+    /// Loads the text tower in the background, once per session. Cheap to get
+    /// wrong in the other direction: skipping it means the first search of a
+    /// launch waits for the whole model.
+    private func warmTextTower() {
+        guard !hasWarmedTextTower, embedder.availability == .ready else { return }
+        hasWarmedTextTower = true
+        let embedder = self.embedder
+        Task.detached(priority: .utility) { _ = try? await embedder.textEmbedding(for: "photo") }
     }
 
     /// Leaving the tab stops the scan, like the other scan screens. The grace
