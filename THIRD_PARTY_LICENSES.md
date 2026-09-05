@@ -92,6 +92,62 @@ target in `docs/mobileclip-provenance.json`, and leaves model artifacts ignored.
 
 ---
 
+## SigLIP 2 (supported commercial alternative for search — not bundled here)
+
+**Source:** Google's SigLIP 2 image–text encoders, released through
+[google-research/big_vision](https://github.com/google-research/big_vision).
+Checkpoints are published as `.npz` files under
+`storage.googleapis.com/big_vision/siglip2/` and mirrored on Hugging Face.
+**Replaces:** `MobileCLIPS2Image.mlpackage` and `MobileCLIPS2Text.mlpackage`,
+and with them the research-only restriction that keeps a search build
+undistributable. Convert a local checkpoint with `scripts/convert_siglip2.py`;
+the app picks up `SigLIP2Image.mlpackage`, `SigLIP2Text.mlpackage`,
+`siglip2-vocab.json`, and `siglip2-provenance.json` when MobileCLIP is absent.
+Nothing SigLIP 2 produces is tracked in this repository.
+
+**License (read from the repository on 2026-09-05):** the SigLIP 2 checkpoint
+page states, verbatim:
+
+> All software is licensed under the Apache License, Version 2.0 (Apache 2.0);
+> you may not use this file except in compliance with the Apache 2.0 license.
+> All other materials are licensed under the Creative Commons Attribution 4.0
+> International License (CC-BY).
+
+The repository's top-level README says instead that "Unless explicitly noted
+otherwise, everything in the big_vision codebase (including models and colabs)
+is released under the Apache2 license." The two statements do not agree about
+the weights. Treat the checkpoints as **CC-BY 4.0** — the narrower reading —
+until Google resolves it. That is still commercially usable, unlike
+MobileCLIP's research-only terms, but it is **not** the no-obligation grant
+Apache 2.0 gives: CC-BY requires attributing the source and stating that
+changes were made, and a Core ML conversion is a change. Verify the terms at
+the exact revision and checkpoint you download before shipping.
+
+**Attribution when you ship.** CC-BY needs the source credited and the changes
+stated. The Acknowledgements screen and this file must name SigLIP 2 and say
+the weights were converted to Core ML as split image and text encoders at
+Float16 internal precision.
+
+**What the app does differently for it.** SigLIP 2 is a different model family,
+not a renamed MobileCLIP, and `SearchModelSpec` holds each difference:
+
+* **Tokenizer.** The Gemma SentencePiece vocabulary, 256k pieces, ported in
+  `SentencePieceTokenizer` (Unigram, Viterbi segmentation, byte fallback).
+  CLIP's byte-pair encoding and its bundled merges do not apply.
+* **Image preprocessing.** The whole frame is resized to the checkpoint's
+  square resolution rather than cropped, then normalised with mean 0.5 and
+  std 0.5. Fixed-resolution variants run from 224x224 to 512x512; the NaFlex
+  variants keep the native aspect ratio and are not supported here.
+* **Embedding width.** Read from the converted model and recorded in the
+  provenance file, since it varies by checkpoint. Available sizes are ViT-B
+  (86M), L (303M), So400m (400M) and g (1B); the small end is what fits on a
+  phone.
+
+Switching families changes the stored model fingerprint, so the search columns
+clear and rebuild. Vectors from two embedding spaces are never compared.
+
+---
+
 ## DMScrollBar
 
 **Source:** [batanus/DMScrollBar](https://github.com/batanus/DMScrollBar), MIT,

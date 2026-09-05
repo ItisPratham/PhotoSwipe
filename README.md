@@ -15,14 +15,18 @@ the app, target, and bundle identifier are `PhotoSwipe`.
 
 > **License notice:** This project is **not licensed for reuse** (all rights
 > reserved). The bundled AdaFace IR-50 model is for **non-commercial research
-> use only** — see `THIRD_PARTY_LICENSES.md`. This app is therefore **not for
-> sale or App Store distribution** while that model is bundled. The MobileCLIP
-> S2 weights behind Search carry a **research-only** license that excludes
-> product development, so a locally converted Search build is a research
-> evaluation build and not distributable either. To ship commercially, swap to
-> the OpenCV SFace model (Apache-2.0 weights, documented in
-> `THIRD_PARTY_LICENSES.md` and `scripts/convert_sface.py`) *and* a
-> commercially licensed search model.
+> use only**, so the app is **not for sale or App Store distribution** while it
+> ships. MobileCLIP S2, behind Search, is in the same position: its weights are
+> licensed for research and exclude product development, which makes a locally
+> converted Search build a research build rather than something you can hand
+> out.
+>
+> Both have a way out, and the app supports both. Faces can use OpenCV SFace
+> (Apache-2.0 weights, `scripts/convert_sface.py`). Search can use SigLIP 2,
+> whose checkpoint page puts the software under Apache 2.0 and everything else,
+> weights included, under CC-BY 4.0. CC-BY allows commercial use as long as you
+> credit the source and say the weights were changed, which a Core ML
+> conversion is. Details for both live in `THIRD_PARTY_LICENSES.md`.
 
 ---
 
@@ -35,7 +39,7 @@ tab's toolbar.
 | --- | --- |
 | **Clean** | Lands straight in the default deck: every photo, oldest first, skipping anything you've already judged. |
 | **Browse** | A day-grouped grid of the library. Tap a photo or day header to start swiping from there. Entry points at the top for **On this day**, **Albums**, browse-first grids for **Videos**, **Screenshots**, and **Biggest files**, plus **Duplicates** and the opt-in **Categories** (Receipts, Documents, Whiteboards, Food, Pets, Memes). |
-| **Search** | Natural-language search over your own photos ("dog on the beach"), matched on-device. Person chips intersect results with a face cluster. Results open the zoom inspector, or the whole ranked list as a deck. Needs the MobileCLIP packages described below; without them the tab says so and everything else still works. |
+| **Search** | Describe a photo ("dog on the beach") and get ranked matches, worked out on the phone. Person chips narrow the results to a face cluster. Tap a result to inspect it, or send the whole ranked list to the deck. Needs a search model installed (see below); without one the tab says so and nothing else changes. |
 | **People** | Opt-in on-device face scan. A grid of people; open one to browse or swipe through their photos. “Also with…” lists only people who actually share a photo, then opens those shared photos as a grid. Rename, merge, hide, answer merge suggestions, and tune grouping strength. |
 
 **Settings** (gear) holds the read-only **Activity** log, the **Swipe up
@@ -91,19 +95,21 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
   merge, or hide people.
 
 **On the home screen**
-* A **widget** (small and medium) shows space freed this month and how many
-  photos are marked; the medium size adds a seven-day activity strip and a
-  Clean link. It reads a summary the app publishes to a shared App Group
-  container — never the app's own files — and says "Open PhotoSwipe to update"
-  rather than showing zeroes it cannot verify.
-* **Siri and Shortcuts**: "Start cleaning in PhotoSwipe" (optionally on
-  Screenshots, Biggest files, or Duplicates), "How much space have I freed
-  with PhotoSwipe", and "How many photos are marked in PhotoSwipe". The two
-  questions answer without opening the app or touching your library.
-* **Deep links**: `photoswipe://clean`, plus `?entry=screenshots`,
-  `?entry=biggest`, or `?entry=duplicates`. Links are held until onboarding,
-  permission, and the launch splash are done, then replace the Clean
-  destination instead of stacking screens.
+* A **widget** in small and medium sizes shows how much space you have freed
+  this month and how many photos are waiting to be deleted. The medium one adds
+  a seven-day activity strip and a Clean link. An extension can't read the app's
+  own files, so the app writes a small summary to a shared App Group container
+  and the widget reads that. If the summary isn't there yet it says "Open
+  PhotoSwipe to update" instead of showing zeroes it can't stand behind.
+* **Siri and Shortcuts**: "Start cleaning in PhotoSwipe" (Screenshots, Biggest
+  files and Duplicates work as starting points too), "How much space have I
+  freed with PhotoSwipe", "How many photos are marked in PhotoSwipe". The two
+  questions answer straight from that summary, without opening the app or
+  touching your library.
+* **Deep links**: `photoswipe://clean`, with `?entry=screenshots`,
+  `?entry=biggest` or `?entry=duplicates`. A link that arrives during
+  onboarding or the launch splash waits until you are through them, then
+  replaces whatever Clean was showing rather than piling up screens.
 
 **Safe, batched deletion**
 * Swiping only *marks* photos. A **Review** screen lets you spare anything before
@@ -113,20 +119,34 @@ reviewed-skipping, undo, marks, and batch delete behave identically everywhere.
 
 ## Search
 
-Search is opt-in and runs entirely on-device. An image-embedding pass rides on
-the same shared scan and the same 256 px thumbnail the duplicate and category
-passes already use — there is no second walk of the library — and stores a
-512-dimension vector per photo as an optional column on the duplicate index.
-Typing a query embeds the text with the matching tower and ranks the library by
-cosine similarity (one Accelerate matrix-vector product), keeping the top 200
+Search is opt-in and stays on the phone. The embedding pass rides along with
+the scan that already runs for duplicates and categories, reusing the same
+256 px thumbnail, so your library never gets walked twice. Each photo ends up
+with one vector stored as another optional column on the duplicate index.
+Typing runs the query through the text tower and ranks everything by cosine
+similarity in a single Accelerate matrix-vector product, keeping the top 200
 above a fixed cutoff.
 
-The models are **not** in the repository. `scripts/convert_mobileclip.py`
-converts Apple's MobileCLIP-S2 image and text towers to Core ML locally; the
-weights are research-only and are git-ignored along with their conversion
-outputs (see the license notice above and `THIRD_PARTY_LICENSES.md`). Without
-them the Search tab shows "Search model not installed" and the rest of the app
-is unaffected.
+No model is in the repository. Two are supported, and the app uses whichever
+one you have converted locally:
+
+* **MobileCLIP S2** (`scripts/convert_mobileclip.py`) is what the app was
+  developed against. Its weights are research-only, so a build using it can't
+  be distributed.
+* **SigLIP 2** (`scripts/convert_siglip2.py`) is the one to use if the build
+  has to go out. Its weights are CC-BY 4.0, which means commercial use with
+  attribution.
+
+They are different models, not two names for the same thing: SigLIP 2 uses the
+Gemma SentencePiece tokenizer instead of CLIP's byte-pair encoding, squares the
+image off instead of cropping it, normalises pixels differently, and produces
+wider vectors. `SearchModelSpec` holds everything that differs and resolves it
+once from whichever packages are installed. Switching families changes the
+stored model fingerprint, which clears the search columns and reindexes, so
+vectors from two embedding spaces never get compared.
+
+Install neither and the Search tab says the model isn't available. Everything
+else in the app carries on as usual.
 
 ## Why deletion is batched
 
@@ -240,11 +260,15 @@ open PhotoSwipe.xcodeproj
 In Xcode: select the **PhotoSwipe** target → **Signing & Capabilities** → choose
 your Apple Developer Team, then build and run on a connected device. The widget
 needs the **App Groups** capability with `group.com.phototinder.PhotoSwipe` on
-both the app and the `PhotoSwipeWidget` target; without it the app runs
-normally but the widget and the two read-only intents have nothing to read. The
-committed Xcode project is the source of truth. The marketing version is set
-once at the project level (`MARKETING_VERSION`) and `Info.plist` reads it from
-there, so a release bump is a single edit.
+both the app and the `PhotoSwipeWidget` target. Without it the app still runs;
+the widget and the two read-only intents just have nothing to read.
+
+Every Core ML package is git-ignored and optional at build time. A build phase
+compiles whichever ones it finds, so a fresh clone builds with no models at all
+and the features they back stay switched off. The committed Xcode project is
+the source of truth. The marketing version is set once at the project level
+(`MARKETING_VERSION`) and `Info.plist` reads it from there, so a release bump
+is one edit.
 
 ## Tech Stack
 
@@ -255,8 +279,8 @@ there, so a release bump is a single edit.
   batched delete
 * AVFoundation / AVKit — video playback in the deck
 * Vision — face detection/landmarks (People) and feature prints (Duplicates)
-* Core ML — AdaFace IR-50 face embedding and, when installed, MobileCLIP-S2
-  image/text embedding (fp16, on-device)
+* Core ML — AdaFace IR-50 face embedding and, when installed, MobileCLIP S2 or
+  SigLIP 2 image/text embedding (fp16, on-device)
 * Accelerate / vDSP — feature-print distances and cosine-similarity clustering
 * SwiftData — on-disk stores for the duplicate index and the face/people index
 
@@ -282,9 +306,9 @@ Where each piece of state lives:
 | Recent search queries | `UserDefaults` |
 | Widget/intent summary (marks, freed space, streak, 7-day activity) | JSON file in the `group.com.phototinder.PhotoSwipe` App Group container |
 
-The App Group file is the **only** thing extensions can read; it is written by
-the app as one complete snapshot, never partially updated, and the widget and
-intents never fall back to the app's private container.
+The App Group file is the only thing extensions can read. The app writes it as
+one complete snapshot, never a partial update, and neither the widget nor the
+intents fall back to the app's private container.
 
 The two SwiftData indexes deliberately use separate files: a shared default
 store would let each container migrate the other's tables away on open.
@@ -304,16 +328,17 @@ PhotoTinder/
 │   └── Resources/           # Assets, Info.plist, .mlpackages (ignored)
 ├── PhotoSwipeWidget/        # WidgetKit extension (reads the App Group summary)
 ├── PhotoSwipeTests/         # Tokenizer, retrieval, streak, summary, link tests
-├── scripts/                 # convert_adaface.py, convert_sface.py, convert_mobileclip.py
+├── scripts/                 # convert_adaface.py, convert_sface.py, convert_mobileclip.py, convert_siglip2.py
 ├── Design/                  # Owner-supplied app-icon source SVGs
 ├── THIRD_PARTY_LICENSES.md  # AdaFace, MobileCLIP, DMScrollBar attribution
 └── project.yml              # Documentation of the target layout; see below
 ```
 
-`PhotoSwipe.xcodeproj` is hand-managed and authoritative. `project.yml` is kept
-in sync as a description of the targets, but **do not regenerate the project
-from it** — XcodeGen drops the manually added model packages and pulls
-git-ignored test fixtures into the test target.
+`PhotoSwipe.xcodeproj` is hand-managed and authoritative. `project.yml` describes
+the same targets and is kept in sync, but don't regenerate the project from it.
+XcodeGen drops the manually added model packages and pulls git-ignored test
+fixtures into the test target. To check the spec still parses, generate it into
+a scratch directory instead.
 
 Only `README.md` and `THIRD_PARTY_LICENSES.md` are tracked. The build briefs,
 the engineering notes under `docs/`, and personal scratch notes stay local.
