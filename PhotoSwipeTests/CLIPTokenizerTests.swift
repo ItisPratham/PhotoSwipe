@@ -27,6 +27,17 @@ final class CLIPTokenizerTests: XCTestCase {
         XCTAssertEqual(overlength.ids.last, 49_407)
     }
 
+    /// The reference runs ftfy before tokenizing, so a smart apostrophe or
+    /// curly quotes must produce exactly the tokens their straight
+    /// equivalents do. Without that, a query typed on an iPhone keyboard
+    /// silently searches a different string than the same words pasted in.
+    func testSmartPunctuationTokenizesLikeItsStraightEquivalent() throws {
+        let tokenizer = try CLIPTokenizer(bundle: .main)
+        XCTAssertEqual(tokenizer.encode("don\u{2019}t"), tokenizer.encode("don't"))
+        XCTAssertEqual(tokenizer.encode("\u{201C}beach day\u{201D}"), tokenizer.encode("\"beach day\""))
+        XCTAssertEqual(tokenizer.encode("mum\u{02BC}s cake"), tokenizer.encode("mum's cake"))
+    }
+
     private func fixture() throws -> Fixture {
         let bundle = Bundle(for: Self.self)
         let url = try XCTUnwrap(bundle.url(forResource: "reference-token-sequences", withExtension: "json"))

@@ -24,7 +24,10 @@ struct SearchView: View {
             }
             .onChange(of: service.libraryVersion) { _, _ in viewModel.libraryChanged(using: service) }
             .onChange(of: viewModel.assets) { _, assets in prefetcher.update(assets: assets) }
-            .onDisappear { prefetcher.release() }
+            .onDisappear {
+                prefetcher.release()
+                viewModel.viewDisappeared()
+            }
             .fullScreenCover(item: $inspectedAsset) { asset in
                 PhotoZoomView(asset: asset, service: service)
             }
@@ -76,6 +79,7 @@ struct SearchView: View {
         ScrollView {
             ScrollBarInstaller().frame(height: 0)
             LazyVStack(alignment: .leading, spacing: 12) {
+                indexStatus
                 peoplePicker
                 if viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     recentSearches
@@ -84,6 +88,17 @@ struct SearchView: View {
                         VStack(spacing: 12) {
                             ProgressView().controlSize(.large)
                             Text("Searching…").foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                    } else if viewModel.queryFailed {
+                        ContentUnavailableView {
+                            Label("Search didn't finish", systemImage: "exclamationmark.triangle")
+                        } description: {
+                            Text("Something went wrong running that query.")
+                        } actions: {
+                            Button("Try again") { viewModel.submit(using: service) }
+                                .buttonStyle(.borderedProminent)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
@@ -121,6 +136,36 @@ struct SearchView: View {
                 }
             }
             .padding(.top, 12)
+        }
+    }
+
+    /// Refreshes never take the results away; they report themselves here.
+    /// A partial index says so and offers the two ways out of it.
+    @ViewBuilder
+    private var indexStatus: some View {
+        if viewModel.isIndexing {
+            HStack(spacing: 12) {
+                ProgressView(value: viewModel.progress)
+                Text(viewModel.total == 0 ? "Indexing…" : "\(viewModel.processed) of \(viewModel.total)")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Button("Cancel") { viewModel.cancel() }
+                    .font(.caption)
+            }
+            .padding(.horizontal, Theme.Spacing.screenMargin)
+        } else if viewModel.phase == .partial {
+            HStack(spacing: 12) {
+                Label("Some photos aren't indexed yet", systemImage: "clock.badge.exclamationmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button("Resume") { viewModel.retry(using: service) }
+                    .font(.caption)
+                Button("Rescan") { viewModel.rescan(using: service) }
+                    .font(.caption)
+            }
+            .padding(.horizontal, Theme.Spacing.screenMargin)
         }
     }
 

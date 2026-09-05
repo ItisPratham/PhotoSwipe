@@ -92,12 +92,28 @@ struct CLIPTokenizer {
     private static func clean(_ text: String) -> String {
         // OpenCLIP uses ftfy.fix_text(), then two HTML unescapes, whitespace
         // normalization, and Unicode lowercasing. Canonical composition covers
-        // the composed/decomposed Unicode cases in the shipped parity vectors.
-        let unescaped = htmlUnescape(htmlUnescape(text)).precomposedStringWithCanonicalMapping
+        // the composed/decomposed Unicode cases in the shipped parity vectors;
+        // straightening quotes covers ftfy's uncurl_quotes, without which
+        // "don't" typed with a smart apostrophe tokenizes differently from the
+        // same words typed with a straight one.
+        let unescaped = uncurlQuotes(htmlUnescape(htmlUnescape(text)))
+            .precomposedStringWithCanonicalMapping
         return unescaped
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
             .lowercased()
+    }
+
+    /// ftfy's `uncurl_quotes`: U+02BC and U+2018-U+201B become an apostrophe,
+    /// U+201C-U+201F become a straight double quote.
+    private static func uncurlQuotes(_ text: String) -> String {
+        String(text.map { character in
+            switch character.unicodeScalars.first?.value ?? 0 {
+            case 0x02BC, 0x2018...0x201B: "'"
+            case 0x201C...0x201F: "\""
+            default: character
+            }
+        })
     }
 
     private static func htmlUnescape(_ text: String) -> String {

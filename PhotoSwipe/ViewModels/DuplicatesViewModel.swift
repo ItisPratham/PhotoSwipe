@@ -187,8 +187,12 @@ final class DuplicatesViewModel: ObservableObject {
             // Keep the duplicate pass lightweight and predictable. Category
             // enrichment owns its additional Vision models and runs from the
             // Categories screen rather than multiplying this scan's work.
+            // Search embeddings are different: they ride the thumbnail this
+            // walk already loads, so once the user has opted in, doing them
+            // here saves Search a second walk of the same library.
             try await indexService.scan(assets: assets, store: store,
-                                        includeCategories: false) { done, tot in
+                                        includeCategories: false,
+                                        includeSearch: SearchViewModel.isEnabled) { done, tot in
                 Task { @MainActor in
                     // Hops can land out of order; the counter never steps back.
                     self.processed = max(self.processed, done)

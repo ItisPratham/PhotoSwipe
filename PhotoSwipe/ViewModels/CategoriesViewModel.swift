@@ -122,7 +122,8 @@ final class CategoriesViewModel: ObservableObject {
 
         let assets = await service.fetchImages(source: .allPhotos)
         do {
-            try await indexService.scan(assets: assets, store: store, includeCategories: true) { done, tot in
+            try await indexService.scan(assets: assets, store: store, includeCategories: true,
+                                        includeSearch: SearchViewModel.isEnabled) { done, tot in
                 Task { @MainActor in
                     self.processed = max(self.processed, done)
                     self.total = tot
