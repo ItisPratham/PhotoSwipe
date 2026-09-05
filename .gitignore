@@ -42,10 +42,15 @@ Carthage/Build/
 __pycache__/
 PhotoSwipe/Resources/FaceEmbedding.mlpackage/
 
-## MobileCLIP S2 research-model conversion. Source, tokenizer files, fixtures,
-## and provenance are tracked; model weights and Core ML derivatives are local.
+## MobileCLIP S2 research-model conversion. Source and tokenizer files are
+## tracked; everything scripts/convert_mobileclip.py writes (model weights,
+## Core ML derivatives, parity fixtures, provenance) is local. The app gates
+## Search on the provenance file being present in Resources/.
 PhotoSwipe/Resources/MobileCLIPS2Image.mlpackage/
 PhotoSwipe/Resources/MobileCLIPS2Text.mlpackage/
+PhotoSwipe/Resources/mobileclip-provenance.json
+PhotoSwipeTests/Fixtures/MobileCLIP/
+docs/mobileclip-provenance.json
 mobileclip_s2.pt
 
 ## macOS

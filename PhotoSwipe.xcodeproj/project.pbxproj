@@ -92,6 +92,9 @@
 		CF668FE1DCB57ACCB1D05015 /* Thumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E6857CC407AB421A2D6E52 /* Thumbnail.swift */; };
 		D20CE6087E6FED9770FA107B /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E29EF7AE92CC97CD6F7449 /* CardView.swift */; };
 		D5329E75EB4810B977E4C73C /* CaughtUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A515DDF8B1CDD474A65ED9 /* CaughtUpView.swift */; };
+		D77E4413304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D77E4412304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage */; };
+		D77E4414304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D77E4411304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage */; };
+		D77E4416304BEB1000D89B67 /* mobileclip-provenance.json in Resources */ = {isa = PBXBuildFile; fileRef = D77E4415304BEB1000D89B67 /* mobileclip-provenance.json */; };
 		DCFBA1EE044AE703BF5986F7 /* IndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A673A693C123DD8FDFC5474E /* IndexStore.swift */; };
 		DDEF0FE90F7E707BD45623D8 /* DeleteRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF1D1ADAD5131C07FBB993D /* DeleteRecord.swift */; };
 		E2AD3C136408DE1D1C25D623 /* ScrollBarInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2785CE27C5D52DF9CD55C022 /* ScrollBarInstallerTests.swift */; };
@@ -130,8 +133,8 @@
 		25D58CE934C5A0C6CAC8ED46 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		2785CE27C5D52DF9CD55C022 /* ScrollBarInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollBarInstallerTests.swift; sourceTree = "<group>"; };
 		2981107A74443087108E74FA /* PhotoSwipe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhotoSwipe.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		37F5BDD1E0A4F35D1C5D7C0C /* FaceEmbedding.mlpackage */ = {isa = PBXFileReference; path = FaceEmbedding.mlpackage; sourceTree = "<group>"; };
-		38F397B9832AAB78B9E6EAE6 /* .gitignore */ = {isa = PBXFileReference; path = .gitignore; sourceTree = "<group>"; };
+		37F5BDD1E0A4F35D1C5D7C0C /* FaceEmbedding.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = FaceEmbedding.mlpackage; sourceTree = "<group>"; };
+		38F397B9832AAB78B9E6EAE6 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		3A1D814B7B80F36F157C2B0D /* BrowseViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseViewModel.swift; sourceTree = "<group>"; };
 		423B68AFFA5C10D691077D65 /* GridPrefetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridPrefetcher.swift; sourceTree = "<group>"; };
 		438FB4120CFFE0B00F12F53F /* SerialTaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SerialTaskQueue.swift; sourceTree = "<group>"; };
@@ -196,6 +199,9 @@
 		D490157011265CF60DAAF68F /* SearchEmbedder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEmbedder.swift; sourceTree = "<group>"; };
 		D4BA778C640A9692125106FE /* MergeSuggestionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeSuggestionsSheet.swift; sourceTree = "<group>"; };
 		D509A47F4B1AF296A7982336 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D77E4411304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = MobileCLIPS2Image.mlpackage; sourceTree = "<group>"; };
+		D77E4412304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = MobileCLIPS2Text.mlpackage; sourceTree = "<group>"; };
+		D77E4415304BEB1000D89B67 /* mobileclip-provenance.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "mobileclip-provenance.json"; sourceTree = "<group>"; };
 		DB2971310B774FD2B3E2A721 /* DuplicateGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateGroup.swift; sourceTree = "<group>"; };
 		DD6338753D3A338BAA01A682 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
 		DE03BEF18C6BC44C9BB1381D /* AssetIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetIndex.swift; sourceTree = "<group>"; };
@@ -305,6 +311,9 @@
 				9C8CF1D1165DEA0C4119F99A /* Assets.xcassets */,
 				37F5BDD1E0A4F35D1C5D7C0C /* FaceEmbedding.mlpackage */,
 				03AB91CD9F66CD48272AEF3F /* Info.plist */,
+				D77E4411304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage */,
+				D77E4412304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage */,
+				D77E4415304BEB1000D89B67 /* mobileclip-provenance.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -537,6 +546,7 @@
 				485311E8F87ACD436A22CD47 /* Assets.xcassets in Resources */,
 				BE7F6B8424CA583F6F998607 /* clip-merges.txt in Resources */,
 				CA803C753F3762C6767F7EEA /* clip-vocab.json in Resources */,
+				D77E4416304BEB1000D89B67 /* mobileclip-provenance.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -565,6 +575,8 @@
 				568897060C4C2B47BE7F4647 /* AppTab.swift in Sources */,
 				018B1A8B965DDBBF79EB7846 /* AppTabView.swift in Sources */,
 				B71E33FF2091D5D6854E7698 /* AssetCategory.swift in Sources */,
+				D77E4413304BEB1000D89B67 /* MobileCLIPS2Text.mlpackage in Sources */,
+				D77E4414304BEB1000D89B67 /* MobileCLIPS2Image.mlpackage in Sources */,
 				6506FA9AE6D7BAC43CF73F1B /* AssetIndex.swift in Sources */,
 				2044D29AA99A119C2BBC501E /* BrowseEntryRow.swift in Sources */,
 				1264E1BA17D7DC02833D7A96 /* BrowseView.swift in Sources */,

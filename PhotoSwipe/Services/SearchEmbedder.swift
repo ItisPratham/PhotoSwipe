@@ -16,6 +16,7 @@ final class SearchEmbedder: @unchecked Sendable {
         case missingImageModel
         case missingTextModel
         case missingTokenizer
+        case missingProvenance
     }
 
     enum Error: LocalizedError {
@@ -32,6 +33,7 @@ final class SearchEmbedder: @unchecked Sendable {
                 case .missingImageModel: "The MobileCLIP image model is not installed."
                 case .missingTextModel: "The MobileCLIP text model is not installed."
                 case .missingTokenizer: "The CLIP tokenizer resources are not installed."
+                case .missingProvenance: "The MobileCLIP provenance file is not installed."
                 }
             case .incompatibleModel(let detail): "The installed MobileCLIP model is incompatible: \(detail)"
             case .inferenceFailed(let detail): "MobileCLIP inference failed: \(detail)"
@@ -62,6 +64,11 @@ final class SearchEmbedder: @unchecked Sendable {
         guard bundle.url(forResource: "clip-vocab", withExtension: "json") != nil,
               bundle.url(forResource: "clip-merges", withExtension: "txt") != nil else {
             return .missingTokenizer
+        }
+        // Without the fingerprint the scan would silently skip embeddings
+        // and every query would return nothing.
+        guard bundle.url(forResource: "mobileclip-provenance", withExtension: "json") != nil else {
+            return .missingProvenance
         }
         return .ready
     }
