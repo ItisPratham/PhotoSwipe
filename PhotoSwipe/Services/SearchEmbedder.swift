@@ -106,6 +106,22 @@ final class SearchEmbedder: @unchecked Sendable {
         }
     }
 
+    /// The converter places this small provenance file beside the optional
+    /// packages. Its immutable checkpoint hash is the persisted index key.
+    var modelFingerprint: String? {
+        guard let url = bundle.url(forResource: "mobileclip-provenance", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let checkpoint = values["checkpointSHA256"] as? String,
+              let source = values["sourceCommit"] as? String,
+              !checkpoint.isEmpty, !source.isEmpty else { return nil }
+        return "\(source):\(checkpoint)"
+    }
+
+    func imageEmbeddingIfPossible(_ image: CGImage) async -> Data? {
+        try? await imageEmbedding(for: image)
+    }
+
     fileprivate static func modelURL(named name: String, in bundle: Bundle) -> URL? {
         bundle.url(forResource: name, withExtension: "mlmodelc")
             ?? bundle.url(forResource: name, withExtension: "mlpackage")

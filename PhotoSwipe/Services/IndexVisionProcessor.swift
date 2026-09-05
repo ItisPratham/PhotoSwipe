@@ -47,6 +47,10 @@ actor IndexVisionProcessor {
         }
     }
 
+    nonisolated func categoryMeasurementIfPossible(for image: CGImage) async -> CategoryMeasurement? {
+        try? await categoryMeasurement(for: image)
+    }
+
     /// Acquires one of the two analysis slots without holding the actor while
     /// Vision runs. The synchronous work itself executes on a detached task
     /// because Vision has no async request-handler API.

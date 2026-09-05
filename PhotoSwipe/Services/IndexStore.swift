@@ -13,6 +13,8 @@ struct IndexedAsset: Sendable, Hashable {
     var aestheticScore: Float? = nil
     /// Categorize-pass results, set when the scan ran with categories on.
     var categories: CategoryMeasurement? = nil
+    /// Present only when this scan successfully produced a MobileCLIP vector.
+    var searchEmbedding: Data? = nil
 }
 
 /// What the categorize pass measures for one asset; written to the index
@@ -25,6 +27,32 @@ struct CategoryMeasurement: Sendable, Hashable {
     var hasAnimal: Bool
     var sharpness: Float?
     var aestheticScore: Float?
+}
+
+/// The only search columns retrieval needs. Duplicate/category snapshots do
+/// not include this type, so SwiftData can leave embedding blobs faulted.
+struct SearchEmbeddingSnapshot: Sendable, Hashable {
+    let localIdentifier: String
+    let embedding: Data
+}
+
+/// In-process invalidation for retrieval caches. `libraryVersion` does not
+/// advance for a background enrichment write, so searches also key on this.
+enum SearchIndexRevision {
+    private static let lock = NSLock()
+    private static var value = 0
+
+    static var current: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    static func advance() {
+        lock.lock()
+        value &+= 1
+        lock.unlock()
+    }
 }
 
 /// Where the app's SwiftData stores live. Each index gets its **own file**:
@@ -63,7 +91,7 @@ enum LocalStores {
 enum IndexContainer {
     static let shared: ModelContainer = {
         _ = LocalStores.removeLegacyDefaultStore
-        let schema = Schema([AssetIndex.self])
+        let schema = Schema([AssetIndex.self, IndexMetadata.self])
         let configuration = ModelConfiguration(schema: schema,
                                                url: LocalStores.url(named: "duplicates"))
         do {
@@ -117,6 +145,74 @@ actor IndexStore {
     /// the Categories section has anything to show yet.
     func categorizedCount() throws -> Int {
         try modelContext.fetchCount(FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.categorizedAt != nil }))
+    }
+
+    func pendingSearchEmbeddingIdentifiers() throws -> [String] {
+        var descriptor = FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.searchEmbedding == nil })
+        descriptor.propertiesToFetch = [\.localIdentifier]
+        return try modelContext.fetch(descriptor).map(\.localIdentifier)
+    }
+
+    func searchEmbeddingCount() throws -> Int {
+        try modelContext.fetchCount(FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.searchEmbedding != nil }))
+    }
+
+    func searchEmbeddingSnapshots() throws -> [SearchEmbeddingSnapshot] {
+        var descriptor = FetchDescriptor<AssetIndex>(predicate: #Predicate { $0.searchEmbedding != nil })
+        descriptor.propertiesToFetch = [\.localIdentifier, \.searchEmbedding]
+        return try modelContext.fetch(descriptor).compactMap { row in
+            row.searchEmbedding.map { SearchEmbeddingSnapshot(localIdentifier: row.localIdentifier, embedding: $0) }
+        }
+    }
+
+    /// Clears only search-specific columns when the installed model pair has
+    /// changed. Duplicate vectors and category signals remain untouched.
+    func prepareSearchEmbeddings(modelFingerprint: String) throws {
+        let key = "search"
+        let metadata = try modelContext.fetch(FetchDescriptor<IndexMetadata>(
+            predicate: #Predicate { $0.key == key }
+        )).first ?? {
+            let new = IndexMetadata()
+            modelContext.insert(new)
+            return new
+        }()
+        guard metadata.searchModelFingerprint != modelFingerprint else { return }
+
+        let rows = try modelContext.fetch(FetchDescriptor<AssetIndex>())
+        for row in rows {
+            row.searchEmbedding = nil
+            row.embeddedAt = nil
+        }
+        metadata.searchModelFingerprint = modelFingerprint
+        try modelContext.save()
+        SearchIndexRevision.advance()
+    }
+
+    /// Writes successful image embeddings only. A nil or failed embedding is
+    /// intentionally absent from this dictionary and stays retryable.
+    func applySearchEmbeddings(_ embeddings: [String: Data], at date: Date) throws {
+        guard !embeddings.isEmpty else { return }
+        let ids = Array(embeddings.keys)
+        var start = 0
+        var changed = false
+        while start < ids.count {
+            let chunk = Array(ids[start..<min(ids.count, start + 500)])
+            let rows = try modelContext.fetch(FetchDescriptor<AssetIndex>(
+                predicate: #Predicate { chunk.contains($0.localIdentifier) }
+            ))
+            for row in rows {
+                guard let data = embeddings[row.localIdentifier],
+                      data.count == SearchEmbedder.embeddingByteCount else { continue }
+                row.searchEmbedding = data
+                row.embeddedAt = date
+                changed = true
+            }
+            start += chunk.count
+        }
+        if changed {
+            try modelContext.save()
+            SearchIndexRevision.advance()
+        }
     }
 
     /// Category signals for every categorized row, without the vectors.
@@ -207,6 +303,7 @@ actor IndexStore {
 
     /// Inserts or updates a batch, then saves.
     func upsert(_ items: [IndexedAsset], scannedAt: Date) throws {
+        var changedSearchEmbeddings = false
         for item in items {
             let id = item.localIdentifier
             let existing = try modelContext.fetch(
@@ -222,6 +319,11 @@ actor IndexStore {
                 record.scannedAt = scannedAt
                 record.sharpness = item.sharpness
                 record.aestheticScore = item.aestheticScore
+                if let searchEmbedding = item.searchEmbedding {
+                    record.searchEmbedding = searchEmbedding
+                    record.embeddedAt = scannedAt
+                    changedSearchEmbeddings = true
+                }
                 if let categories = item.categories {
                     Self.write(categories, to: record, at: scannedAt)
                 }
@@ -235,10 +337,16 @@ actor IndexStore {
                 if let categories = item.categories {
                     Self.write(categories, to: record, at: scannedAt)
                 }
+                if let searchEmbedding = item.searchEmbedding {
+                    record.searchEmbedding = searchEmbedding
+                    record.embeddedAt = scannedAt
+                    changedSearchEmbeddings = true
+                }
                 modelContext.insert(record)
             }
         }
         try modelContext.save()
+        if changedSearchEmbeddings { SearchIndexRevision.advance() }
     }
 
     /// Drops rows whose asset is no longer present in the library. Reads the
@@ -252,6 +360,9 @@ actor IndexStore {
             modelContext.delete(record)
             changed = true
         }
-        if changed { try modelContext.save() }
+        if changed {
+            try modelContext.save()
+            SearchIndexRevision.advance()
+        }
     }
 }

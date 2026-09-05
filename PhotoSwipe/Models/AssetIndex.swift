@@ -39,6 +39,12 @@ final class AssetIndex {
     var hasAnimal: Bool?
     var categorizedAt: Date?
 
+    /// MobileCLIP image embedding, encoded as 512 little-endian Float16s.
+    /// Optional columns keep existing duplicate stores migratable, and avoid
+    /// loading these comparatively large blobs in duplicate/category reads.
+    var searchEmbedding: Data?
+    var embeddedAt: Date?
+
     init(localIdentifier: String, vector: Data, byteSize: Int64, scannedAt: Date,
          sharpness: Float? = nil, aestheticScore: Float? = nil) {
         self.localIdentifier = localIdentifier
@@ -48,5 +54,17 @@ final class AssetIndex {
         self.scannedAt = scannedAt
         self.sharpness = sharpness
         self.aestheticScore = aestheticScore
+    }
+}
+
+/// Small per-store metadata. The image/text model fingerprint prevents a
+/// changed MobileCLIP pair from mixing vectors from incompatible spaces.
+@Model
+final class IndexMetadata {
+    @Attribute(.unique) var key: String
+    var searchModelFingerprint: String?
+
+    init(key: String = "search") {
+        self.key = key
     }
 }

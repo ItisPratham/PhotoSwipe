@@ -26,7 +26,7 @@ struct CategoriesView: View {
         switch viewModel.phase {
         case .idle:
             explainer
-        case .indexing, .categorizing:
+        case .indexing:
             progress
         case .results:
             list
@@ -47,7 +47,7 @@ struct CategoriesView: View {
     private var progress: some View {
         VStack(spacing: 20) {
             ProgressView(value: viewModel.progress) {
-                Text(viewModel.phase == .indexing ? "Indexing photos…" : "Sorting into categories…")
+                Text("Sorting photos…")
             } currentValueLabel: {
                 Text(viewModel.total > 0 ? "\(viewModel.processed) of \(viewModel.total)" : "Preparing…")
                     .monospacedDigit()

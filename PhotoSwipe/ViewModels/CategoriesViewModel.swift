@@ -2,9 +2,9 @@ import Foundation
 import SwiftUI
 
 /// Drives the Browse "Categories" section. The first run is opt-in: it runs
-/// the duplicate index scan with category measurement on (so new photos get
-/// a print and their signals in one pass), then the categorize pass for rows
-/// that predate it, then derives the per-category photo lists. Later
+/// the shared index scan with category measurement on. It backfills rows that
+/// predate categories in the same thumbnail traversal, then derives the
+/// per-category photo lists. Later
 /// appearances and library changes refresh incrementally. Everything runs
 /// through a `SerialTaskQueue` like the other scans.
 @MainActor
@@ -12,7 +12,6 @@ final class CategoriesViewModel: ObservableObject {
     enum Phase: Equatable {
         case idle          // never categorized — show the explainer
         case indexing      // scan pass (prints + signals for new photos)
-        case categorizing  // filling rows that predate the pass
         case results
     }
 
@@ -124,13 +123,6 @@ final class CategoriesViewModel: ObservableObject {
         let assets = await service.fetchImages(source: .allPhotos)
         do {
             try await indexService.scan(assets: assets, store: store, includeCategories: true) { done, tot in
-                Task { @MainActor in
-                    self.processed = max(self.processed, done)
-                    self.total = tot
-                }
-            }
-            if showProgress { phase = .categorizing; processed = 0; total = 0 }
-            try await indexService.categorize(assets: assets, store: store) { done, tot in
                 Task { @MainActor in
                     self.processed = max(self.processed, done)
                     self.total = tot

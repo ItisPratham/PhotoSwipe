@@ -138,6 +138,8 @@ def main() -> int:
                         default=Path("PhotoSwipeTests/Fixtures/MobileCLIP"))
     parser.add_argument("--provenance", type=Path,
                         default=Path("docs/mobileclip-provenance.json"))
+    parser.add_argument("--app-provenance", type=Path,
+                        default=Path("PhotoSwipe/Resources/mobileclip-provenance.json"))
     args = parser.parse_args()
 
     repo, checkpoint = args.mobileclip_repo.resolve(), args.checkpoint.resolve()
@@ -221,8 +223,7 @@ def main() -> int:
         "contextLength": TEXT_SHAPE[1],
         "sequences": [{"text": text, "ids": ids.tolist()} for text, ids in zip(REFERENCE_TEXTS, tokens)],
     }, ensure_ascii=False, indent=2) + "\n")
-    args.provenance.parent.mkdir(parents=True, exist_ok=True)
-    args.provenance.write_text(json.dumps({
+    provenance = {
         "model": "MobileCLIP S2", "sourceCommit": source_commit(repo),
         "checkpointSHA256": digest(checkpoint), "conversionDate": datetime.now(timezone.utc).isoformat(),
         "minimumDeploymentTarget": "iOS 17.0", "internalPrecision": "Float16",
@@ -232,7 +233,10 @@ def main() -> int:
         "preprocessing": "RGB, bilinear aspect-fill resize, center crop, pixels / 255; no CLIP mean/std normalization.",
         "derivativeChanges": "reparameterized and split image/text encoders; Core ML ML Programs.",
         "dependencies": {name: package_version(name) for name in ["torch", "torchvision", "numpy", "coremltools", "open-clip-torch", "timm"]},
-    }, indent=2) + "\n")
+    }
+    for provenance_path in [args.provenance, args.app_provenance]:
+        provenance_path.parent.mkdir(parents=True, exist_ok=True)
+        provenance_path.write_text(json.dumps(provenance, indent=2) + "\n")
     print("MobileCLIP S2 conversion verified. Generated model packages are research-only and ignored by Git.")
     return 0
 

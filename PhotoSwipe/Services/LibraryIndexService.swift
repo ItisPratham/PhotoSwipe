@@ -35,6 +35,8 @@ final class LibraryIndexService: @unchecked Sendable {
         assets: [PhotoAsset],
         store: IndexStore,
         includeCategories: Bool = false,
+        includeSearch: Bool = false,
+        searchEmbedder: SearchEmbedder? = nil,
         onProgress: @escaping @Sendable (Int, Int) -> Void
     ) async throws {
         try await IndexScanCoordinator.shared.withPermit { [self] in
@@ -42,6 +44,8 @@ final class LibraryIndexService: @unchecked Sendable {
                 assets: assets,
                 store: store,
                 includeCategories: includeCategories,
+                includeSearch: includeSearch,
+                searchEmbedder: searchEmbedder,
                 onProgress: onProgress
             )
         }
@@ -51,30 +55,55 @@ final class LibraryIndexService: @unchecked Sendable {
         assets: [PhotoAsset],
         store: IndexStore,
         includeCategories: Bool,
+        includeSearch: Bool,
+        searchEmbedder: SearchEmbedder?,
         onProgress: @escaping @Sendable (Int, Int) -> Void
     ) async throws {
+        let embedder = searchEmbedder ?? SearchEmbedder()
+        let fingerprint = includeSearch ? embedder.modelFingerprint : nil
+        let shouldEmbed = includeSearch && embedder.availability == .ready && fingerprint != nil
+        if let fingerprint { try await store.prepareSearchEmbeddings(modelFingerprint: fingerprint) }
+
         let alreadyIndexed = try await store.indexedIdentifiers()
-        let pending = assets.filter { !alreadyIndexed.contains($0.id) }
+        let uncategorized = includeCategories
+            ? Set(try await store.uncategorizedIdentifiers())
+            : []
+        let unembedded = shouldEmbed
+            ? Set(try await store.pendingSearchEmbeddingIdentifiers())
+            : []
+        let pending = assets.compactMap { asset -> PendingWork? in
+            let needsDuplicate = !alreadyIndexed.contains(asset.id)
+            let needsCategories = includeCategories && (needsDuplicate || uncategorized.contains(asset.id))
+            let needsSearch = shouldEmbed && (needsDuplicate || unembedded.contains(asset.id))
+            guard needsDuplicate || needsCategories || needsSearch else { return nil }
+            return PendingWork(asset: asset, needsDuplicate: needsDuplicate,
+                               needsCategories: needsCategories, needsSearch: needsSearch)
+        }
         let total = pending.count
         onProgress(0, total)
         PhotoKitDiag.log.info(
-            "duplicate scan start: \(total) pending of \(assets.count), categories=\(includeCategories), assetLimit=\(self.maxConcurrency), visionLimit=\(IndexVisionProcessor.maxConcurrentAnalyses)"
+            "shared index scan start: \(total) pending of \(assets.count), categories=\(includeCategories), search=\(shouldEmbed), assetLimit=\(self.maxConcurrency), visionLimit=\(IndexVisionProcessor.maxConcurrentAnalyses)"
         )
 
         var batch: [IndexedAsset] = []
+        var categories: [String: CategoryMeasurement] = [:]
+        var embeddings: [String: Data] = [:]
         var processed = 0
 
         do {
-            try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] asset in
-                await self.index(asset, includeCategories: includeCategories)
+            try await ConcurrentScan.run(pending, maxConcurrency: maxConcurrency) { [self] work in
+                await self.index(work, embedder: shouldEmbed ? embedder : nil)
             } onResult: { _, indexed in
-                if let indexed { batch.append(indexed) }
+                if let indexed {
+                    if let asset = indexed.indexed { batch.append(asset) }
+                    if let category = indexed.category { categories[indexed.id] = category }
+                    if let embedding = indexed.embedding { embeddings[indexed.id] = embedding }
+                }
                 processed += 1
                 onProgress(processed, total)
 
-                if batch.count >= 40 {
-                    try await store.upsert(batch, scannedAt: Date())
-                    batch.removeAll(keepingCapacity: true)
+                if batch.count + categories.count + embeddings.count >= 40 {
+                    try await flush(&batch, categories: &categories, embeddings: &embeddings, store: store)
                 }
             }
         } catch {
@@ -82,28 +111,68 @@ final class LibraryIndexService: @unchecked Sendable {
             throw error
         }
 
-        if !batch.isEmpty {
-            try await store.upsert(batch, scannedAt: Date())
-        }
+        try await flush(&batch, categories: &categories, embeddings: &embeddings, store: store)
         // Keep the index in step with the library — drop stale rows.
         try await store.purge(keeping: Set(assets.map(\.id)))
         PhotoKitDiag.log.info("duplicate scan done: \(processed) of \(total)")
     }
 
-    /// One asset: fetch, print, measure. Nil when the image couldn't be
-    /// loaded or the print couldn't be produced. With `includeCategories` the
-    /// category signals are measured on the same thumbnail, so a library
-    /// whose duplicate index is current never needs a second walk.
-    private func index(_ asset: PhotoAsset, includeCategories: Bool) async -> IndexedAsset? {
+    /// One asset, one thumbnail. Existing rows receive only missing enrichment.
+    private func index(_ work: PendingWork, embedder: SearchEmbedder?) async -> ScanResult? {
         guard let cgImage = await PhotoKitImages.workingImage(
-            for: asset.phAsset, side: thumbnailSize, resizeMode: .fast
+            for: work.asset.phAsset, side: thumbnailSize, resizeMode: .fast
         ) else { return nil }
-        return try? await vision.indexedAsset(
-            localIdentifier: asset.id,
-            image: cgImage,
-            byteSize: resourceSize(for: asset.phAsset),
-            includeCategories: includeCategories
-        )
+        if work.needsDuplicate {
+            guard var indexed = try? await vision.indexedAsset(
+                localIdentifier: work.asset.id,
+                image: cgImage,
+                byteSize: resourceSize(for: work.asset.phAsset),
+                includeCategories: work.needsCategories
+            ) else { return nil }
+            if work.needsSearch { indexed.searchEmbedding = await embedder?.imageEmbeddingIfPossible(cgImage) }
+            return ScanResult(id: work.asset.id, indexed: indexed)
+        }
+
+        async let category: CategoryMeasurement? = work.needsCategories
+            ? vision.categoryMeasurementIfPossible(for: cgImage) : nil
+        async let embedding: Data? = work.needsSearch
+            ? embedder?.imageEmbeddingIfPossible(cgImage) : nil
+        return await ScanResult(id: work.asset.id, category: category, embedding: embedding)
+    }
+
+    private func flush(
+        _ indexed: inout [IndexedAsset],
+        categories: inout [String: CategoryMeasurement],
+        embeddings: inout [String: Data],
+        store: IndexStore
+    ) async throws {
+        let date = Date()
+        if !indexed.isEmpty {
+            try await store.upsert(indexed, scannedAt: date)
+            indexed.removeAll(keepingCapacity: true)
+        }
+        if !categories.isEmpty {
+            try await store.applyCategories(categories, at: date)
+            categories.removeAll(keepingCapacity: true)
+        }
+        if !embeddings.isEmpty {
+            try await store.applySearchEmbeddings(embeddings, at: date)
+            embeddings.removeAll(keepingCapacity: true)
+        }
+    }
+
+    private struct PendingWork: Sendable {
+        let asset: PhotoAsset
+        let needsDuplicate: Bool
+        let needsCategories: Bool
+        let needsSearch: Bool
+    }
+
+    private struct ScanResult: Sendable {
+        let id: String
+        var indexed: IndexedAsset?
+        var category: CategoryMeasurement?
+        var embedding: Data?
     }
 
     // MARK: - Categorize
