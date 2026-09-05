@@ -43,6 +43,17 @@ struct CleanupSummary: Codable, Equatable {
         monthKey == Self.monthKey(date) ? monthBytesFreed : 0
     }
 
+    /// The streak as of `date`. A streak may end today or yesterday, so a
+    /// snapshot still describes the day after it was taken; beyond that the
+    /// app has not reported activity we cannot see, and the honest answer is
+    /// zero rather than a number frozen at the last publish.
+    func streakDays(on date: Date, calendar: Calendar = .localGregorian) -> Int {
+        let taken = calendar.startOfDay(for: generatedAt)
+        let shown = calendar.startOfDay(for: date)
+        let elapsed = calendar.dateComponents([.day], from: taken, to: shown).day ?? 0
+        return elapsed <= 1 ? streakDays : 0
+    }
+
     /// Nil when the App Group is not provisioned for this build — an explicit
     /// integration error rather than a silent fallback to a private file that
     /// extensions could never read anyway.

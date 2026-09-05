@@ -64,9 +64,12 @@ struct AppTabView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(service: library, store: reviewStore, stats: statsStore)
         }
-        .onChange(of: cleanRequest) { _, request in
-            guard let request else { return }
-            apply(request)
+        // `task(id:)` rather than `onChange`: a link that arrived during
+        // onboarding or the splash is already set the first time this shell
+        // appears, and a change-only handler would never see it.
+        .task(id: cleanRequest) {
+            guard let cleanRequest else { return }
+            apply(cleanRequest)
             onCleanRequestHandled()
         }
     }

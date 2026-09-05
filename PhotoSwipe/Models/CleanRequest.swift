@@ -5,7 +5,7 @@ import Foundation
 /// one without the others seeing it. The mapping to an actual screen lives in
 /// `AppRoute` — this file is compiled into the widget too, and must not drag
 /// the app's route graph in with it.
-enum CleanEntry: String, CaseIterable {
+enum CleanEntry: String, CaseIterable, Sendable {
     case screenshots
     case biggest
     case duplicates

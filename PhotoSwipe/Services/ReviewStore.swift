@@ -43,7 +43,7 @@ final class ReviewStore: ObservableObject {
         var lastSessionDate: Date?
     }
 
-    /// Called after every state change that persists, so `AppStores` can
+    /// Called after state has actually reached disk, so `AppStores` can
     /// republish the App Group summary. A plain closure rather than an
     /// `@Published` value: the root view must not observe every swipe.
     var onPersist: (() -> Void)?
@@ -205,13 +205,17 @@ final class ReviewStore: ObservableObject {
             flush()
             return
         }
-        onPersist?()
         pendingWrite = Task { [weak self] in
             try? await Task.sleep(for: Self.writeDelay)
             guard !Task.isCancelled, let self else { return }
             let snapshot = self.currentSnapshot()
             let url = self.fileURL
-            self.writeQueue.async { Self.write(snapshot, to: url) }
+            self.writeQueue.async { [weak self] in
+                Self.write(snapshot, to: url)
+                // Only now: the widget must never be shown state that a crash
+                // could still take back, and a run of swipes publishes once.
+                Task { @MainActor in self?.onPersist?() }
+            }
         }
     }
 

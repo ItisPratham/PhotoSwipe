@@ -154,6 +154,17 @@ final class SummaryTests: XCTestCase {
                        "A widget must not show last month's total as this month's.")
     }
 
+    func testAStreakExpiresOnceTheSnapshotIsTwoDaysOld() {
+        var snapshot = summary(marked: 0)
+        snapshot.generatedAt = date("2026-09-05")
+        snapshot.streakDays = 6
+        XCTAssertEqual(snapshot.streakDays(on: date("2026-09-05")), 6)
+        XCTAssertEqual(snapshot.streakDays(on: date("2026-09-06")), 6,
+                       "A streak may still end yesterday.")
+        XCTAssertEqual(snapshot.streakDays(on: date("2026-09-07")), 0,
+                       "Two silent days means the streak is over, not frozen.")
+    }
+
     func testACorruptSummaryFileReadsAsNothingRatherThanZeroes() throws {
         let url = directory.appending(path: "summary.json")
         try Data("{ not json".utf8).write(to: url)

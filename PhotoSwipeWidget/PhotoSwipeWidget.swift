@@ -130,8 +130,10 @@ struct SummaryWidgetView: View {
     /// calendar rather than with the snapshot.
     private var activityStrip: some View {
         let days = CleanupSummary.recentDayKeys(endingAt: entry.date)
-        let active = Set(entry.summary?.activeDayKeys ?? [])
-        let streak = entry.summary?.streakDays ?? 0
+        // Only the days this strip actually draws, so the spoken count and the
+        // squares can never disagree.
+        let active = Set(entry.summary?.activeDayKeys ?? []).intersection(days)
+        let streak = entry.summary?.streakDays(on: entry.date) ?? 0
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 ForEach(days, id: \.self) { day in
