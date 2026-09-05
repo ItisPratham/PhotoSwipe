@@ -48,6 +48,8 @@ targets:
         excludes:
           - "Resources/*.mlpackage"
           - "Resources/mobileclip-provenance.json"
+          - "Resources/siglip2-provenance.json"
+          - "Resources/siglip2-vocab.json"
     postBuildScripts:
       - name: Compile installed Core ML models
         runOnlyWhenInstalling: false
@@ -56,7 +58,7 @@ targets:
           resources="$SRCROOT/PhotoSwipe/Resources"
           destination="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
           mkdir -p "$destination"
-          for name in FaceEmbedding MobileCLIPS2Image MobileCLIPS2Text; do
+          for name in FaceEmbedding MobileCLIPS2Image MobileCLIPS2Text SigLIP2Image SigLIP2Text; do
             package="$resources/$name.mlpackage"
             if [ -d "$package" ]; then
               xcrun coremlcompiler compile "$package" "$destination" || exit 1
@@ -64,8 +66,9 @@ targets:
               echo "note: $name.mlpackage is not installed; the feature it backs stays gated off."
             fi
           done
-          provenance="$resources/mobileclip-provenance.json"
-          if [ -f "$provenance" ]; then cp "$provenance" "$destination/"; fi
+          for file in mobileclip-provenance.json siglip2-provenance.json siglip2-vocab.json; do
+            if [ -f "$resources/$file" ]; then cp "$resources/$file" "$destination/"; fi
+          done
     dependencies:
       - package: DMScrollBar
       - target: PhotoSwipeWidget
@@ -110,6 +113,7 @@ targets:
         # tracked tokenizer vectors next to them are not.
         excludes:
           - "Fixtures/MobileCLIP"
+          - "Fixtures/SigLIP2"
     dependencies:
       - target: PhotoSwipe
     settings:

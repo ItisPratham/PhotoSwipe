@@ -110,6 +110,9 @@
 		B219A9A305DDBD840AC5290D /* CleanRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C14537E00F2404DE91F582D /* CleanRequest.swift */; };
 		F227FF90A75AE61448927FFD /* PhotoSwipeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8869C3ACCE6051A6A219E54A /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D60A0DD49777428230A17B7 /* Intents.swift */; };
+		A4AAEF738C96B3BE7C527990 /* SearchModelSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71E0751D13C0ED010B2E0EB /* SearchModelSpec.swift */; };
+		A53982B4D2716ED162667B96 /* SentencePieceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E3809FA135759BA39564CD /* SentencePieceTokenizer.swift */; };
+		D8BC1976FCAE3832160F17D6 /* SentencePieceTokenizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -258,6 +261,9 @@
 		7633B313D6B900B38EC33018 /* PhotoSwipeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PhotoSwipeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF901EA7E4021754BB4A695F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2D60A0DD49777428230A17B7 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
+		E71E0751D13C0ED010B2E0EB /* SearchModelSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchModelSpec.swift; sourceTree = "<group>"; };
+		23E3809FA135759BA39564CD /* SentencePieceTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePieceTokenizer.swift; sourceTree = "<group>"; };
+		49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentencePieceTokenizerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -435,6 +441,7 @@
 		CD1D75C70F2B2119149B50C9 /* PhotoSwipeTests */ = {
 			isa = PBXGroup;
 			children = (
+				49C30FFB933249D96EC0CA44 /* SentencePieceTokenizerTests.swift */,
 				073123BF9EA97C830EEF813D /* CleanRequestTests.swift */,
 				E25FA1FC2D255B9A4E279729 /* SummaryTests.swift */,
 				A9BD45125382F3C491267796 /* Fixtures */,
@@ -450,6 +457,8 @@
 		E79EAACDAEB716487F29CC79 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				23E3809FA135759BA39564CD /* SentencePieceTokenizer.swift */,
+				E71E0751D13C0ED010B2E0EB /* SearchModelSpec.swift */,
 				05B9BE1A9B01435663F5C77B /* SummaryWriter.swift */,
 				A197BC488F60FA0240A76345 /* CLIPTokenizer.swift */,
 				F8E16488C4E4196E974A04F1 /* ConcurrentScan.swift */,
@@ -656,6 +665,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8BC1976FCAE3832160F17D6 /* SentencePieceTokenizerTests.swift in Sources */,
 				146B74D9A3344EDCFA060D7A /* CleanRequestTests.swift in Sources */,
 				15C0288F5CDFDD3EF87D364C /* SummaryTests.swift in Sources */,
 				46DD9D564B95899F68703BD3 /* CLIPTokenizerTests.swift in Sources */,
@@ -670,6 +680,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A53982B4D2716ED162667B96 /* SentencePieceTokenizer.swift in Sources */,
+				A4AAEF738C96B3BE7C527990 /* SearchModelSpec.swift in Sources */,
 				8869C3ACCE6051A6A219E54A /* Intents.swift in Sources */,
 				D373BBDC489BFCD57F808D51 /* CleanRequest.swift in Sources */,
 				25DF8DF00441CF7556164088 /* SummaryWriter.swift in Sources */,

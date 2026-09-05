@@ -53,6 +53,16 @@ PhotoSwipeTests/Fixtures/MobileCLIP/
 docs/mobileclip-provenance.json
 mobileclip_s2.pt
 
+## SigLIP 2, the distributable alternative (CC-BY 4.0 weights). Same rule: the
+## converter (scripts/convert_siglip2.py) and the Swift tokenizer are tracked,
+## everything the conversion produces is local.
+PhotoSwipe/Resources/SigLIP2Image.mlpackage/
+PhotoSwipe/Resources/SigLIP2Text.mlpackage/
+PhotoSwipe/Resources/siglip2-vocab.json
+PhotoSwipe/Resources/siglip2-provenance.json
+PhotoSwipeTests/Fixtures/SigLIP2/
+docs/siglip2-provenance.json
+
 ## macOS
 .DS_Store
 

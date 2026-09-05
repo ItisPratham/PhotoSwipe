@@ -32,23 +32,46 @@ struct AcknowledgementsView: View {
                 Text("The AdaFace weights are licensed for non-commercial research only, so this app can't be sold or distributed commercially while it includes them. See THIRD_PARTY_LICENSES.md for the full license terms.")
             }
 
-            Section {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("MobileCLIP S2")
-                        .font(.headline)
-                    Text("Optional natural-language search model; only installed for a local research evaluation.")
-                        .foregroundStyle(.secondary)
-                    Link("github.com/apple/ml-mobileclip",
-                         destination: URL(string: "https://github.com/apple/ml-mobileclip")!)
-                        .font(.footnote)
-                    Text("MIT source · Apple research-model license for weights and converted Core ML derivatives")
-                        .font(.footnote)
+            if SearchModelSpec.current.family == .sigLIP2 {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("SigLIP 2")
+                            .font(.headline)
+                        Text("Natural-language search model, converted locally to Core ML.")
+                            .foregroundStyle(.secondary)
+                        Link("github.com/google-research/big_vision",
+                             destination: URL(string: "https://github.com/google-research/big_vision")!)
+                            .font(.footnote)
+                        Text("Apache-2.0 source · CC-BY 4.0 checkpoints")
+                            .font(.footnote)
+                    }
+                    .padding(.vertical, 6)
+                } header: {
+                    Text("Search model")
+                } footer: {
+                    // CC-BY asks for credit and for changes to be stated; this
+                    // is where the app does both.
+                    Text("SigLIP 2 checkpoints are licensed CC-BY 4.0. The image and text encoders bundled here were split apart and converted to Core ML at Float16 internal precision. See THIRD_PARTY_LICENSES.md.")
                 }
-                .padding(.vertical, 6)
-            } header: {
-                Text("Optional research model")
-            } footer: {
-                Text("The model license excludes product development and commercial use. Converted image/text packages are disclosed derivatives and are never committed to this repository.")
+            } else {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("MobileCLIP S2")
+                            .font(.headline)
+                        Text("Optional natural-language search model; only installed for a local research evaluation.")
+                            .foregroundStyle(.secondary)
+                        Link("github.com/apple/ml-mobileclip",
+                             destination: URL(string: "https://github.com/apple/ml-mobileclip")!)
+                            .font(.footnote)
+                        Text("MIT source · Apple research-model license for weights and converted Core ML derivatives")
+                            .font(.footnote)
+                    }
+                    .padding(.vertical, 6)
+                } header: {
+                    Text("Optional research model")
+                } footer: {
+                    Text("The model license excludes product development and commercial use. Converted image/text packages are disclosed derivatives and are never committed to this repository.")
+                }
             }
 
             Section {
