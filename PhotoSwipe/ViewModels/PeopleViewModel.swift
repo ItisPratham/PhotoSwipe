@@ -62,13 +62,14 @@ final class PeopleViewModel: ObservableObject {
 
     /// Opening People never scans the photo library. Before opt-in it does no
     /// face-store or Core ML work at all; after opt-in it only restores the
-    /// clusters already on disk.
+    /// clusters already on disk. Re-read on every appearance: a rename, hide,
+    /// or cover change made in the detail screen must show once it pops.
     func onAppear() {
-        guard UserDefaults.standard.bool(forKey: Self.scanEnabledKey),
-              !didLoadSavedPeople
-        else { return }
-        didLoadSavedPeople = true
-        phase = .preparing
+        guard UserDefaults.standard.bool(forKey: Self.scanEnabledKey) else { return }
+        if !didLoadSavedPeople {
+            didLoadSavedPeople = true
+            phase = .preparing
+        }
         queue.enqueue { [weak self] in
             await self?.loadClusters()
         }
