@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Settings ▸ Acknowledgements: surfaces third-party attribution required by
-/// the bundled AdaFace model. Mirrors THIRD_PARTY_LICENSES.md at the repo root.
+/// bundled and optional research models. Mirrors THIRD_PARTY_LICENSES.md.
 struct AcknowledgementsView: View {
     var body: some View {
         List {
@@ -30,6 +30,42 @@ struct AcknowledgementsView: View {
                 Text("Bundled model")
             } footer: {
                 Text("The AdaFace weights are licensed for non-commercial research only, so this app can't be sold or distributed commercially while it includes them. See THIRD_PARTY_LICENSES.md for the full license terms.")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("MobileCLIP S2")
+                        .font(.headline)
+                    Text("Optional natural-language search model; only installed for a local research evaluation.")
+                        .foregroundStyle(.secondary)
+                    Link("github.com/apple/ml-mobileclip",
+                         destination: URL(string: "https://github.com/apple/ml-mobileclip")!)
+                        .font(.footnote)
+                    Text("MIT source · Apple research-model license for weights and converted Core ML derivatives")
+                        .font(.footnote)
+                }
+                .padding(.vertical, 6)
+            } header: {
+                Text("Optional research model")
+            } footer: {
+                Text("The model license excludes product development and commercial use. Converted image/text packages are disclosed derivatives and are never committed to this repository.")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("DMScrollBar")
+                        .font(.headline)
+                    Text("Interactive scrollbar used by the library grids.")
+                        .foregroundStyle(.secondary)
+                    Link("github.com/batanus/DMScrollBar",
+                         destination: URL(string: "https://github.com/batanus/DMScrollBar")!)
+                        .font(.footnote)
+                    Text("MIT License · pinned to 52b6624")
+                        .font(.footnote)
+                }
+                .padding(.vertical, 6)
+            } header: {
+                Text("Dependency")
             }
 
             Section {

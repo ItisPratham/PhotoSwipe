@@ -42,6 +42,12 @@ Carthage/Build/
 __pycache__/
 PhotoSwipe/Resources/FaceEmbedding.mlpackage/
 
+## MobileCLIP S2 research-model conversion. Source, tokenizer files, fixtures,
+## and provenance are tracked; model weights and Core ML derivatives are local.
+PhotoSwipe/Resources/MobileCLIPS2Image.mlpackage/
+PhotoSwipe/Resources/MobileCLIPS2Text.mlpackage/
+mobileclip_s2.pt
+
 ## macOS
 .DS_Store
 

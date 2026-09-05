@@ -56,3 +56,40 @@ THE SOFTWARE.
 **Source:** https://github.com/opencv/opencv_zoo (face_recognition_sface_2021dec.onnx)  
 **License:** Apache License 2.0 (code and weights — commercially safe)  
 **Would replace:** `FaceEmbedding.mlpackage` — swap via `scripts/convert_sface.py`.
+
+---
+
+## MobileCLIP S2 (research evaluation only; not currently bundled)
+
+**Source code:** [Apple ML-MobileCLIP](https://github.com/apple/ml-mobileclip), MIT,
+Copyright © 2024 Apple Inc. **Tokenizer resources:** `clip-vocab.json` and
+`clip-merges.txt`, copied unchanged from Apple's iOS sample. **Potential model
+assets:** `MobileCLIPS2Image.mlpackage` and `MobileCLIPS2Text.mlpackage`, produced
+from the Apple `mobileclip_s2.pt` checkpoint by `scripts/convert_mobileclip.py`.
+
+The checkpoint and converted packages are governed by the **Apple Machine
+Learning Research Model License Agreement**, reproduced in
+`docs/MobileCLIP_LICENSE_MODELS.txt`. The license limits use, modification,
+redistribution, and derivatives to research purposes; it expressly excludes
+commercial exploitation, product development, and use in a commercial product
+or service.
+
+The Core ML packages are model derivatives. If they are ever redistributed,
+they must be identified as MobileCLIP S2 conversions, disclose the split
+image/text encoders and fp16 internal precision, include the Model License, and
+include this attribution:
+
+> Apple Machine Learning Research Model is licensed under the Apple Machine
+> Learning Research Model License Agreement.
+
+The converter requires a local Apple checkout and checkpoint, records its
+source commit, checkpoint SHA-256, dependency versions, date, and deployment
+target in `docs/mobileclip-provenance.json`, and leaves model artifacts ignored.
+
+---
+
+## DMScrollBar
+
+**Source:** [batanus/DMScrollBar](https://github.com/batanus/DMScrollBar), MIT,
+Copyright © 2022 Dmitrii Medvedev. PhotoSwipe pins revision
+`52b662428629e659c18c7641d76ee4a8d495a1de`.
