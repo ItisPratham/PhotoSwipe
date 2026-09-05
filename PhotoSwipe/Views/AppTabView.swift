@@ -20,12 +20,22 @@ struct AppTabView: View {
     let statsStore: StatsStore
     let sizeStore: SizeStore
 
+    /// A deep link waiting to be applied, or nil. RootView withholds it until
+    /// the splash is gone, so it arrives as a change this shell can act on.
+    var cleanRequest: CleanRequest?
+    /// Called once the request has been applied, so it is consumed exactly
+    /// once and a repeat of the same link arrives as a fresh change.
+    var onCleanRequestHandled: () -> Void = {}
+
     /// Fires once the Clean tab's deck finishes its first load, so RootView's
     /// launch splash can wait for real content before crossfading in.
     var onCleanLoaded: () -> Void = {}
 
     @State private var selection: AppTab = .clean
     @State private var showSettings = false
+    /// Explicit so a deep link can replace the Clean destination instead of
+    /// stacking a second copy of the same screen on repeat taps.
+    @State private var cleanPath = NavigationPath()
     /// These models outlive navigation destinations so popping and reopening
     /// a scan screen reconnects to the same queue instead of starting a
     /// second library walk beside the first.
@@ -54,13 +64,18 @@ struct AppTabView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(service: library, store: reviewStore, stats: statsStore)
         }
+        .onChange(of: cleanRequest) { _, request in
+            guard let request else { return }
+            apply(request)
+            onCleanRequestHandled()
+        }
     }
 
     // MARK: - Tabs
 
     /// Fast path: lands directly in the default oldest-first, all-photos deck.
     private var cleanTab: some View {
-        NavigationStack {
+        NavigationStack(path: $cleanPath) {
             SwipeView(service: library,
                       store: reviewStore,
                       stats: statsStore,
@@ -71,6 +86,16 @@ struct AppTabView: View {
                 .navigationTitle("Clean")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { settingsToolbar }
+                .navigationDestination(for: AppRoute.self) { destination(for: $0) }
+        }
+    }
+
+    /// Deep links always land on Clean, replacing whatever it was showing.
+    private func apply(_ request: CleanRequest) {
+        selection = .clean
+        cleanPath = NavigationPath()
+        if let route = request.entry?.route {
+            cleanPath.append(route)
         }
     }
 

@@ -22,6 +22,10 @@ struct RootView: View {
     /// The stale-decision prune runs once per launch, after the first deck is
     /// up, so it never competes with the launch fetch.
     @State private var hasPrunedDecisions = false
+    /// A `photoswipe://` link captured on arrival but not acted on until
+    /// onboarding, permission, and the splash are out of the way. Only the
+    /// most recent one survives; it is cleared once the shell consumes it.
+    @State private var pendingCleanRequest: CleanRequest?
 
     /// Only the authorized home path has a library fetch to wait on; onboarding
     /// and the permission screen have nothing to load.
@@ -61,6 +65,10 @@ struct RootView: View {
             // widget picks up this install's real numbers.
             await stores.review.waitUntilLoaded()
             stores.publishSummary()
+        }
+        .onOpenURL { url in
+            guard let request = CleanRequest(url: url) else { return }
+            pendingCleanRequest = request
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -104,6 +112,10 @@ struct RootView: View {
                            reviewStore: stores.review,
                            statsStore: stores.stats,
                            sizeStore: stores.sizes,
+                           // Held back until the splash is gone, so a cold
+                           // launch from a widget doesn't push behind it.
+                           cleanRequest: launchFinished ? pendingCleanRequest : nil,
+                           onCleanRequestHandled: { pendingCleanRequest = nil },
                            onCleanLoaded: {
                                homeLoaded = true
                                guard !hasPrunedDecisions else { return }
