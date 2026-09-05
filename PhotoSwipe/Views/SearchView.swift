@@ -79,10 +79,19 @@ struct SearchView: View {
                 peoplePicker
                 if viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     recentSearches
-                } else if viewModel.assets.isEmpty, !viewModel.isRefreshing {
-                    ContentUnavailableView("No matches", systemImage: "magnifyingglass")
+                } else if viewModel.assets.isEmpty {
+                    if viewModel.isSearching {
+                        VStack(spacing: 12) {
+                            ProgressView().controlSize(.large)
+                            Text("Searching…").foregroundStyle(.secondary)
+                        }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
+                    } else {
+                        ContentUnavailableView("No matches", systemImage: "magnifyingglass")
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 40)
+                    }
                 } else {
                     if !viewModel.results.isEmpty {
                         NavigationLink(value: AppRoute.swipe(.search(

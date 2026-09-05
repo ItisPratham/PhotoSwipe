@@ -23,7 +23,9 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var recentQueries: [String]
     @Published private(set) var people: [PersonCluster] = []
     @Published private(set) var selectedPeople: [PersonCluster] = []
-    @Published private(set) var isRefreshing = false
+    /// True from the keystroke (through the debounce) until the newest search
+    /// lands, so the empty state reads "searching" rather than "no matches".
+    @Published private(set) var isSearching = false
 
     var progress: Double { total > 0 ? Double(processed) / Double(total) : 0 }
 
@@ -65,7 +67,6 @@ final class SearchViewModel: ObservableObject {
 
     func cancel() {
         queue.cancelAll()
-        isRefreshing = false
         phase = results.isEmpty ? .partial : .ready
     }
 
@@ -76,8 +77,10 @@ final class SearchViewModel: ObservableObject {
         guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             results = []
             assets = []
+            isSearching = false
             return
         }
+        isSearching = true
         let generation = generation
         debounce = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(200))
@@ -159,13 +162,14 @@ final class SearchViewModel: ObservableObject {
     }
 
     private func runSearch(using service: PhotoLibraryService, generation: Int, remember: Bool) async {
+        isSearching = true
+        // A superseded run must not clear the flag the newer run still owns.
+        defer { if generation == self.generation { isSearching = false } }
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty,
               UserDefaults.standard.bool(forKey: Self.enabledKey),
               phase != .missingModel(embedder.availability) else { return }
         if remember { addRecent(text) }
-        isRefreshing = !results.isEmpty
-        defer { isRefreshing = false }
         do {
             let eligible = selectedPeople.isEmpty ? nil : selectedPeople
                 .map { Set($0.photoIDs) }
