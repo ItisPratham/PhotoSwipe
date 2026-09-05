@@ -17,4 +17,18 @@ final class ScrollBarInstallerTests: XCTestCase {
             adjustedContentInset: .zero
         ))
     }
+
+    func testDirectScrollBarDragCannotOverscrollPastTheOpeningPosition() {
+        XCTAssertEqual(
+            ScrollBarInstaller.correctedDirectDragOffset(-44, top: 0, isDirectScrollbarDrag: true),
+            0
+        )
+    }
+
+    func testNativeScrollViewBounceIsUnchanged() {
+        XCTAssertEqual(
+            ScrollBarInstaller.correctedDirectDragOffset(-44, top: 0, isDirectScrollbarDrag: false),
+            -44
+        )
+    }
 }

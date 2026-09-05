@@ -23,6 +23,10 @@ struct ScrollBarInstaller: UIViewRepresentable {
         contentSize.height > bounds.height - adjustedContentInset.top - adjustedContentInset.bottom
     }
 
+    static func correctedDirectDragOffset(_ offset: CGFloat, top: CGFloat, isDirectScrollbarDrag: Bool) -> CGFloat {
+        isDirectScrollbarDrag ? max(offset, top) : offset
+    }
+
     final class ProbeView: UIView {
         weak var coordinator: Coordinator?
 
@@ -51,6 +55,8 @@ struct ScrollBarInstaller: UIViewRepresentable {
         private var scrollBar: DMScrollBar?
         private var previousIndicatorVisibility: Bool?
         private var pendingInstall: DispatchWorkItem?
+        private var offsetObservation: NSKeyValueObservation?
+        private var topContentOffset: CGFloat?
         /// DMScrollBar lays its scroll view out during initialization. That
         /// synchronously invokes ProbeView.layoutSubviews(), so installation
         /// must not re-enter before `scrollBar` has been assigned.
@@ -82,21 +88,25 @@ struct ScrollBarInstaller: UIViewRepresentable {
             defer { isInstalling = false }
 
             previousIndicatorVisibility = candidate.showsVerticalScrollIndicator
+            topContentOffset = candidate.contentOffset.y
             let bar = DMScrollBar(scrollView: candidate, configuration: Self.configuration)
             candidate.scrollBar = bar
             scrollBar = bar
+            observeDirectDragOffsets(in: candidate)
             refreshVisibility(in: candidate)
         }
 
         func uninstall() {
             pendingInstall?.cancel()
             pendingInstall = nil
+            offsetObservation = nil
             guard let scrollView else { return }
             if scrollView.scrollBar === scrollBar { scrollView.scrollBar = nil }
             scrollBar?.removeFromSuperview()
             if let previousIndicatorVisibility { scrollView.showsVerticalScrollIndicator = previousIndicatorVisibility }
             self.scrollBar = nil
             self.scrollView = nil
+            topContentOffset = nil
             previousIndicatorVisibility = nil
         }
 
@@ -123,6 +133,25 @@ struct ScrollBarInstaller: UIViewRepresentable {
                 bounds: scrollView.bounds,
                 adjustedContentInset: scrollView.adjustedContentInset
             )
+        }
+
+        private func observeDirectDragOffsets(in scrollView: UIScrollView) {
+            offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self, weak scrollView] _, _ in
+                guard let self, let scrollView, let topContentOffset = self.topContentOffset else { return }
+                let isDirectScrollbarDrag = self.scrollBar?.gestureRecognizers?.contains {
+                    $0.state == .began || $0.state == .changed
+                } == true
+                let corrected = ScrollBarInstaller.correctedDirectDragOffset(
+                    scrollView.contentOffset.y,
+                    top: topContentOffset,
+                    isDirectScrollbarDrag: isDirectScrollbarDrag
+                )
+                guard corrected != scrollView.contentOffset.y else { return }
+                scrollView.setContentOffset(
+                    CGPoint(x: scrollView.contentOffset.x, y: corrected),
+                    animated: false
+                )
+            }
         }
 
         private static let configuration = DMScrollBar.Configuration(
